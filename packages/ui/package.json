@@ -3,7 +3,8 @@
   "version": "0.0.0",
   "private": true,
   "exports": {
-    "./*": "./src/*.tsx"
+    "./*": "./src/*.tsx",
+    "./styles/*": "./src/styles/*.css"
   },
   "scripts": {
     "lint": "eslint . --max-warnings 0",
@@ -20,11 +21,13 @@
     "typescript": "5.9.2"
   },
   "dependencies": {
+    "@radix-ui/react-label": "^2.1.7",
     "@radix-ui/react-slot": "^1.2.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "tailwindcss": "^4.2.2",
     "tailwind-merge": "^3.5.0"
   }
 }
