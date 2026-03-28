@@ -3,7 +3,7 @@
 import Image from "next/image";
 import {
   alertMessage,
-  deployHref,
+  deployHrefWeb,
   description,
   docsHref,
   step1CodePath,
@@ -68,7 +68,11 @@ export default function Home() {
             <Separator />
             <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-center">
               <Button asChild size="lg" className="rounded-full">
-                <a href={deployHref} target="_blank" rel="noopener noreferrer">
+                <a
+                  href={deployHrefWeb}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   <Image
                     src="/vercel.svg"
                     alt=""

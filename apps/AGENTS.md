@@ -1,14 +1,26 @@
 # AGENTS.md — apps
 
+**Read this when:** you work under `apps/` and need to know which application to edit or how Next.js apps relate to React Native.
+
 Context for applications under `apps/`: **Next.js** sites (`web`, `docs`) and the **React Native** app (`native`).
 
 ## Apps at a glance
 
-| Package  | Stack           | Role                        | Port / notes          | Turbo filter      |
-| -------- | --------------- | --------------------------- | --------------------- | ----------------- |
-| `web`    | Next.js 16.2    | Primary web application     | 3000                  | `--filter=web`    |
-| `docs`   | Next.js 16.2    | Documentation site          | 3001                  | `--filter=docs`   |
-| `native` | RN + NativeWind | Mobile app (`nativeapp` id) | Metro (no fixed port) | `--filter=native` |
+| Package  | Stack           | Role                        | Port / notes          | Turbo `--filter` |
+| -------- | --------------- | --------------------------- | --------------------- | ---------------- |
+| `web`    | Next.js 16.2    | Primary web application     | 3000                  | `web`            |
+| `docs`   | Next.js 16.2    | Documentation site          | 3001                  | `docs`           |
+| `native` | RN + NativeWind | Mobile app (`nativeapp` id) | Metro (no fixed port) | `native`         |
+
+Use **`pnpm exec turbo <task> --filter=<name>`** with the filter column value (see root [`AGENTS.md`](../AGENTS.md) for the full workspace name table).
+
+## Choosing an app
+
+| Goal                                          | Where to work                                         |
+| --------------------------------------------- | ----------------------------------------------------- |
+| User-facing product / main Next experience    | **`web`** — [`web/AGENTS.md`](web/AGENTS.md)          |
+| Separate docs/marketing Next site (port 3001) | **`docs`** — [`docs/AGENTS.md`](docs/AGENTS.md)       |
+| iOS/Android, WebView shell, Metro, native UI  | **`native`** — [`native/AGENTS.md`](native/AGENTS.md) |
 
 ## Next.js (`web`, `docs`)
 
@@ -35,7 +47,7 @@ public/           → Static assets (favicon, SVGs, etc.)
 
 (Adjust relative path if the file layout changes.)
 
-**Dependencies:** `@repo/ui`, `next`, `react`, `react-dom`, Tailwind v4 (`tailwindcss`, `@tailwindcss/postcss`).
+**Dependencies:** `@repo/ui`, `next`, `react`, `react-dom`, Tailwind v4 (`tailwindcss`, `@tailwindcss/postcss`). Both **`web`** and **`docs`** use `@repo/turborepo-starter` for shared starter copy (with app-specific deploy targets).
 
 **Configuration:** ESLint `@repo/eslint-config/next-js`; TypeScript extends `@repo/typescript-config/nextjs.json`; Next.js ESM config.
 

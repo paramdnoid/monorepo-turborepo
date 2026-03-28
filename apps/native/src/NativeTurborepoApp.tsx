@@ -5,7 +5,7 @@ import '../global.css';
 
 import {
   alertMessage,
-  deployHref,
+  deployHrefWeb,
   description,
   docsHref,
   step1CodePath,
@@ -14,7 +14,14 @@ import {
   title,
   turborepoSiteHref,
 } from '@repo/turborepo-starter';
-import { Alert, Linking, Pressable, Text, View } from 'react-native';
+import {
+  Alert,
+  Linking,
+  Pressable,
+  Text,
+  View,
+  useColorScheme,
+} from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import GlobeIcon from '../assets/globe.svg';
@@ -35,12 +42,14 @@ import { Separator } from '../components/ui/separator';
 import { cn } from '../lib/utils';
 
 export function NativeTurborepoApp() {
+  const isDarkMode = useColorScheme() === 'dark';
+
   return (
     <SafeAreaProvider>
-      <View className={cn('dark flex-1 bg-background')}>
+      <View className={cn('flex-1 bg-background', isDarkMode && 'dark')}>
         <View className="flex min-h-full flex-1 flex-col items-center justify-center gap-10 px-4 py-16">
           <View className="h-[38px] w-[180px] shrink-0 items-center justify-center">
-            <TurborepoLogo />
+            <TurborepoLogo isDarkMode={isDarkMode} />
           </View>
 
           <Card className="w-full max-w-lg border-border/80 shadow-sm">
@@ -64,7 +73,7 @@ export function NativeTurborepoApp() {
                   size="lg"
                   className="rounded-full"
                   onPress={() => {
-                    Linking.openURL(deployHref).catch(() => {});
+                    Linking.openURL(deployHrefWeb).catch(() => {});
                   }}
                 >
                   <View className="flex-row items-center">

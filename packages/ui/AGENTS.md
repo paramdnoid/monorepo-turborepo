@@ -1,6 +1,19 @@
 # AGENTS.md — packages/ui
 
+**Read this when:** you add or change shared React components, styles, or `exports` for `@repo/ui`.
+
 Shared React component library (`@repo/ui`).
+
+## Turbo package name
+
+The workspace package name is **`@repo/ui`** (not the folder `ui` alone). From the repo root:
+
+```sh
+pnpm exec turbo lint --filter=@repo/ui
+pnpm exec turbo check-types --filter=@repo/ui
+```
+
+(`build` is only defined for Next apps; this package has no `build` script.)
 
 ## Overview
 
@@ -60,4 +73,4 @@ Illustrative examples: `accordion`, `alert-dialog`, `button`, `card`, `chart`, `
 
 ## Monorepo context
 
-Repo-wide commands and stack details: **`../../AGENTS.md`**.
+Repo-wide commands, workspace filters, and stack details: **[`../../AGENTS.md`](../../AGENTS.md)**.

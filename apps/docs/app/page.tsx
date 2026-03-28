@@ -1,6 +1,17 @@
 "use client";
 
 import Image from "next/image";
+import {
+  alertMessage,
+  deployHrefDocs,
+  description,
+  docsHref,
+  step1CodePathDocs,
+  step2Text,
+  templatesHref,
+  title,
+  turborepoSiteHref,
+} from "@repo/turborepo-starter";
 import { Button } from "@repo/ui/button";
 import {
   Card,
@@ -12,9 +23,6 @@ import {
 } from "@repo/ui/card";
 import { Code } from "@repo/ui/code";
 import { Separator } from "@repo/ui/separator";
-
-const deployHref =
-  "https://vercel.com/new/clone?demo-description=Learn+to+implement+a+monorepo+with+a+two+Next.js+sites+that+has+installed+three+local+packages.&demo-image=%2F%2Fimages.ctfassets.net%2Fe5382hct74si%2F4K8ZISWAzJ8X1504ca0zmC%2F0b21a1c6246add355e55816278ef54bc%2FBasic.png&demo-title=Monorepo+with+Turborepo&demo-url=https%3A%2F%2Fexamples-basic-web.vercel.sh%2F&from=templates&project-name=Monorepo+with+Turborepo&repository-name=monorepo-turborepo&repository-url=https%3A%2F%2Fgithub.com%2Fvercel%2Fturborepo%2Ftree%2Fmain%2Fexamples%2Fbasic&root-directory=apps%2Fdocs&skippable-integrations=1&teamSlug=vercel&utm_source=create-turbo";
 
 export default function Home() {
   return (
@@ -43,24 +51,28 @@ export default function Home() {
         <Card className="w-full max-w-lg border-border/80 shadow-sm">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl font-semibold tracking-tight">
-              Turborepo Starter
+              {title}
             </CardTitle>
             <CardDescription className="font-mono text-sm">
-              Monorepo mit Next.js, Tailwind und shadcn/ui
+              {description}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 font-mono text-sm leading-6">
             <ol className="list-inside list-decimal space-y-2 text-left text-muted-foreground">
               <li>
                 Bearbeite{" "}
-                <Code className="text-foreground">apps/docs/app/page.tsx</Code>
+                <Code className="text-foreground">{step1CodePathDocs}</Code>
               </li>
-              <li>Speichern — Änderungen erscheinen sofort.</li>
+              <li>{step2Text}</li>
             </ol>
             <Separator />
             <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-center">
               <Button asChild size="lg" className="rounded-full">
-                <a href={deployHref} target="_blank" rel="noopener noreferrer">
+                <a
+                  href={deployHrefDocs}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   <Image
                     src="/vercel.svg"
                     alt=""
@@ -77,11 +89,7 @@ export default function Home() {
                 className="rounded-full"
                 asChild
               >
-                <a
-                  href="https://turborepo.dev/docs?utm_source"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
+                <a href={docsHref} target="_blank" rel="noopener noreferrer">
                   Read our docs
                 </a>
               </Button>
@@ -91,7 +99,7 @@ export default function Home() {
                 className="rounded-full"
                 type="button"
                 onClick={() => {
-                  window.alert("Hello from @repo/ui");
+                  window.alert(alertMessage);
                 }}
               >
                 Open alert
@@ -101,7 +109,7 @@ export default function Home() {
           <CardFooter className="flex flex-wrap justify-center gap-6 text-sm text-muted-foreground">
             <a
               className="inline-flex items-center gap-2 underline-offset-4 hover:text-foreground hover:underline"
-              href="https://vercel.com/templates?search=turborepo&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
+              href={templatesHref}
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -116,7 +124,7 @@ export default function Home() {
             </a>
             <a
               className="inline-flex items-center gap-2 underline-offset-4 hover:text-foreground hover:underline"
-              href="https://turborepo.dev?utm_source=create-turbo"
+              href={turborepoSiteHref}
               target="_blank"
               rel="noopener noreferrer"
             >

@@ -5,24 +5,47 @@
 import '../global.css';
 
 import { useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  StyleSheet,
+  Text,
+  View,
+  useColorScheme,
+} from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 
+import { cn } from '../lib/utils';
 import { getWebAppUrl } from './config/web-app-url';
+
+function getOrigin(url: string): string {
+  const match = url.match(/^(https?:\/\/[^/]+)/i);
+  return match ? match[1] : '';
+}
 
 export function WebShell() {
   const uri = getWebAppUrl();
+  const isDarkMode = useColorScheme() === 'dark';
+  const allowedOrigin = getOrigin(uri);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   if (error) {
     return (
       <SafeAreaProvider>
-        <View style={styles.center}>
-          <Text style={styles.errorTitle}>{error}</Text>
-          <Text style={styles.errorUrl}>{uri}</Text>
-          <Text style={styles.hint}>
+        <View
+          className={cn(
+            'flex-1 items-center justify-center bg-background px-6',
+            isDarkMode && 'dark',
+          )}
+        >
+          <Text className="mb-2 text-center text-base font-semibold text-foreground">
+            {error}
+          </Text>
+          <Text className="mb-4 text-center text-xs text-muted-foreground">
+            {uri}
+          </Text>
+          <Text className="text-center text-sm leading-5 text-muted-foreground">
             Stelle sicher, dass im Repo-Root `pnpm dev` läuft und `web` auf Port
             3000 erreichbar ist. Auf einem echten Gerät setze
             `WEB_APP_HOST_OVERRIDE` in `src/config/web-app-url.ts`.
@@ -34,16 +57,37 @@ export function WebShell() {
 
   return (
     <SafeAreaProvider>
-      <View style={styles.flex}>
+      <View className={cn('flex-1 bg-background', isDarkMode && 'dark')}>
         {loading ? (
-          <View style={styles.loader}>
-            <ActivityIndicator size="large" />
-            <Text style={styles.loaderText}>Lade Next.js…</Text>
+          <View
+            style={styles.loader}
+            className="items-center justify-center bg-background"
+          >
+            <ActivityIndicator
+              size="large"
+              color={isDarkMode ? '#f5f5f5' : '#171717'}
+            />
+            <Text className="mt-3 text-sm text-muted-foreground">
+              Lade Next.js…
+            </Text>
           </View>
         ) : null}
         <WebView
           source={{ uri }}
           style={styles.flex}
+          originWhitelist={[allowedOrigin]}
+          onShouldStartLoadWithRequest={request => {
+            if (request.url === 'about:blank') {
+              return true;
+            }
+            if (!allowedOrigin) {
+              return false;
+            }
+            return (
+              request.url === allowedOrigin ||
+              request.url.startsWith(`${allowedOrigin}/`)
+            );
+          }}
           onLoadEnd={() => setLoading(false)}
           onHttpError={() => {
             setError('HTTP-Fehler beim Laden der Seite.');
@@ -56,7 +100,6 @@ export function WebShell() {
           javaScriptEnabled
           domStorageEnabled
           allowsBackForwardNavigationGestures
-          originWhitelist={['http://*', 'https://*']}
         />
       </View>
     </SafeAreaProvider>
@@ -65,39 +108,8 @@ export function WebShell() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  center: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  errorTitle: {
-    textAlign: 'center',
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  errorUrl: {
-    fontSize: 12,
-    opacity: 0.7,
-    marginBottom: 16,
-  },
-  hint: {
-    fontSize: 13,
-    opacity: 0.75,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
   loader: {
     ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
     zIndex: 1,
-    backgroundColor: '#fff',
-  },
-  loaderText: {
-    marginTop: 12,
-    fontSize: 14,
-    opacity: 0.7,
   },
 });

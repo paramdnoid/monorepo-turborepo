@@ -1,8 +1,17 @@
+import TurborepoDarkWordmark from '../assets/turborepo-dark.svg';
 import TurborepoLightWordmark from '../assets/turborepo-light.svg';
 
 /**
- * Matches web: in dark mode the light (white) wordmark is shown.
+ * Matches web: dark theme uses the light wordmark, light theme uses dark wordmark.
  */
-export function TurborepoLogo() {
-  return <TurborepoLightWordmark width={180} height={38} />;
+type TurborepoLogoProps = {
+  isDarkMode: boolean;
+};
+
+export function TurborepoLogo({ isDarkMode }: TurborepoLogoProps) {
+  if (isDarkMode) {
+    return <TurborepoLightWordmark width={180} height={38} />;
+  }
+
+  return <TurborepoDarkWordmark width={180} height={38} />;
 }
