@@ -60,7 +60,8 @@ export default function Home() {
           <CardContent className="space-y-4 font-mono text-sm leading-6">
             <ol className="list-inside list-decimal space-y-2 text-left text-muted-foreground">
               <li>
-                Bearbeite <Code className="text-foreground">{step1CodePath}</Code>
+                Bearbeite{" "}
+                <Code className="text-foreground">{step1CodePath}</Code>
               </li>
               <li>{step2Text}</li>
             </ol>

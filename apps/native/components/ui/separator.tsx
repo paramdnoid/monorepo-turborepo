@@ -1,20 +1,20 @@
-import * as React from "react";
-import { View } from "react-native";
+import * as React from 'react';
+import { View } from 'react-native';
 
-import { cn } from "../../lib/utils";
+import { cn } from '../../lib/utils';
 
 function Separator({
   className,
-  orientation = "horizontal",
+  orientation = 'horizontal',
   ...props
 }: React.ComponentProps<typeof View> & {
-  orientation?: "horizontal" | "vertical";
+  orientation?: 'horizontal' | 'vertical';
 }) {
   return (
     <View
       className={cn(
-        "shrink-0 bg-border",
-        orientation === "horizontal" ? "h-px w-full" : "h-full w-px",
+        'shrink-0 bg-border',
+        orientation === 'horizontal' ? 'h-px w-full' : 'h-full w-px',
         className,
       )}
       {...props}

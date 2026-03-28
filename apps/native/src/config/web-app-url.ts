@@ -1,4 +1,4 @@
-import { Platform } from "react-native";
+import { Platform } from 'react-native';
 
 /** Port of `pnpm dev` / Next (`apps/web`). */
 const PORT = 3000;
@@ -19,7 +19,7 @@ export function getWebAppUrl(): string {
   if (WEB_APP_HOST_OVERRIDE) {
     return `http://${WEB_APP_HOST_OVERRIDE}:${PORT}`;
   }
-  if (Platform.OS === "android") {
+  if (Platform.OS === 'android') {
     return `http://10.0.2.2:${PORT}`;
   }
   return `http://localhost:${PORT}`;

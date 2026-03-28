@@ -1,6 +1,6 @@
 # my-turborepo
 
-A [Turborepo](https://turborepo.dev) monorepo with two [Next.js](https://nextjs.org/) apps ([App Router](https://nextjs.org/docs/app)), a [React Native](https://reactnative.dev/) app, a shared UI package, and shared ESLint/TypeScript configs.
+A [Turborepo](https://turborepo.dev) monorepo with two [Next.js](https://nextjs.org/) apps ([App Router](https://nextjs.org/docs/app)), a [React Native](https://reactnative.dev/) app, four shared internal packages under `packages/` (UI, starter copy, ESLint and TypeScript configs).
 
 **Coding agents and conventions:** see [`AGENTS.md`](./AGENTS.md) for commands, stack details, and package-specific notes (`apps/AGENTS.md`, `packages/ui/AGENTS.md`, etc.).
 
@@ -19,13 +19,13 @@ pnpm install
 
 ## Scripts (root)
 
-| Script             | Description                                  |
-| ------------------ | -------------------------------------------- |
-| `pnpm dev`         | Run all `dev` tasks via Turborepo            |
-| `pnpm build`       | Build all packages and apps                  |
-| `pnpm lint`        | Lint across the workspace                    |
-| `pnpm check-types` | Type-check across the workspace              |
-| `pnpm format`      | Format `*.ts`, `*.tsx`, `*.md` with Prettier |
+| Script             | Description                                                                                         |
+| ------------------ | --------------------------------------------------------------------------------------------------- |
+| `pnpm dev`         | Run all `dev` tasks via Turborepo                                                                   |
+| `pnpm build`       | Build all packages and apps                                                                         |
+| `pnpm lint`        | Lint across the workspace                                                                           |
+| `pnpm check-types` | Type-check across the workspace                                                                     |
+| `pnpm format`      | Format `*.ts`, `*.tsx`, `*.md` (repo-wide) and `apps/native` `*.js` / `*.mjs` configs with Prettier |
 
 Scoped runs (examples):
 
@@ -36,13 +36,14 @@ pnpm exec turbo build --filter=docs
 
 ## What’s inside
 
-| Path                         | Description                                         |
-| ---------------------------- | --------------------------------------------------- |
-| `apps/web`                   | Primary Next.js app (port **3000**)                 |
-| `apps/docs`                  | Documentation Next.js app (port **3001**)           |
-| `packages/ui`                | Shared React components and styles (`@repo/ui`)     |
-| `packages/eslint-config`     | Shared ESLint flat configs (`@repo/eslint-config`)  |
-| `packages/typescript-config` | Shared `tsconfig` bases (`@repo/typescript-config`) |
+| Path                         | Description                                                            |
+| ---------------------------- | ---------------------------------------------------------------------- |
+| `apps/web`                   | Primary Next.js app (port **3000**)                                    |
+| `apps/docs`                  | Documentation Next.js app (port **3001**)                              |
+| `packages/ui`                | Shared React components and styles (`@repo/ui`)                        |
+| `packages/turborepo-starter` | Shared starter copy and URLs (`@repo/turborepo-starter`; web + native) |
+| `packages/eslint-config`     | Shared ESLint flat configs (`@repo/eslint-config`)                     |
+| `packages/typescript-config` | Shared `tsconfig` bases (`@repo/typescript-config`)                    |
 
 **Stack:** Next.js 16, React 19, TypeScript 5.9, Tailwind CSS 4, ESLint 9, Turborepo 2.8.
 

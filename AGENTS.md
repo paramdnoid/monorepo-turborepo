@@ -4,7 +4,7 @@ This file provides context for AI coding agents working in this repository.
 
 ## Project Overview
 
-Turborepo monorepo containing two Next.js applications, one React Native application, and three shared internal packages. Root package name: `my-turborepo`. Uses pnpm workspaces for dependency management and Turborepo for orchestrating builds and tasks across packages.
+Turborepo monorepo containing two Next.js applications, one React Native application, and four shared internal packages under `packages/`. Root package name: `my-turborepo`. Uses pnpm workspaces for dependency management and Turborepo for orchestrating builds and tasks across packages.
 
 **Bootstrap:** clone the repo, then run `pnpm install` once at the repository root to install all workspace dependencies.
 
@@ -31,6 +31,7 @@ apps/
   native/              → React Native application (bundle id / project: nativeapp)
 packages/
   ui/                  → Shared React component library (@repo/ui)
+  turborepo-starter/   → Shared starter copy and URLs (@repo/turborepo-starter; web + native)
   eslint-config/       → Shared ESLint configurations (@repo/eslint-config)
   typescript-config/   → Shared TypeScript configurations (@repo/typescript-config)
 ```
@@ -50,13 +51,13 @@ packages/
 
 Run from the repository root:
 
-| Task           | Command            | Filtered Example                            |
-| -------------- | ------------------ | ------------------------------------------- |
-| Build all      | `pnpm build`       | `pnpm exec turbo build --filter=web`        |
+| Task           | Command            | Filtered Example                                                                                        |
+| -------------- | ------------------ | ------------------------------------------------------------------------------------------------------- |
+| Build all      | `pnpm build`       | `pnpm exec turbo build --filter=web`                                                                    |
 | Dev all        | `pnpm dev`         | `pnpm exec turbo dev --filter=web` (runs all apps with a `dev` script: `web`, `docs`, `native` / Metro) |
-| Lint all       | `pnpm lint`        | `pnpm exec turbo lint --filter=native`      |
-| Type-check all | `pnpm check-types` | `pnpm exec turbo check-types --filter=docs` |
-| Format         | `pnpm format`      | —                                           |
+| Lint all       | `pnpm lint`        | `pnpm exec turbo lint --filter=native`                                                                  |
+| Type-check all | `pnpm check-types` | `pnpm exec turbo check-types --filter=docs`                                                             |
+| Format         | `pnpm format`      | —                                                                                                       |
 
 ## `@repo/ui` and builds
 
@@ -80,7 +81,7 @@ There is **no** root test script yet. When you add one, wire it through `turbo.j
 - **ESLint v9 flat config** — shared configs live in `@repo/eslint-config` with exports for `base`, `next-js`, and `react-internal`.
 - **TypeScript strict mode** — `strict: true` and `strictNullChecks: true` are enabled in packages and Next apps as configured.
 - **React JSX transform** — do not import React for JSX where the automatic JSX transform is configured.
-- **Prettier** — the root `format` script covers `.ts`, `.tsx`, and `.md`; other extensions are not included unless you extend the script.
+- **Prettier** — the root `format` script covers `.ts`, `.tsx`, and `.md` workspace-wide, plus `apps/native` `.js` / `.mjs` config files. React Native keeps its own [`.prettierrc.js`](apps/native/.prettierrc.js); use root Prettier (no separate `prettier` dependency in `apps/native`).
 
 ## Dependency Rules
 

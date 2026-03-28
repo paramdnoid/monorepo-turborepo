@@ -1,7 +1,7 @@
 /**
  * NativeWind + local `components/ui` — works offline; not the same source as `@repo/ui`.
  */
-import "../global.css";
+import '../global.css';
 
 import {
   alertMessage,
@@ -13,21 +13,15 @@ import {
   templatesHref,
   title,
   turborepoSiteHref,
-} from "@repo/turborepo-starter";
-import {
-  Alert,
-  Linking,
-  Pressable,
-  Text,
-  View,
-} from "react-native";
-import { SafeAreaProvider } from "react-native-safe-area-context";
+} from '@repo/turborepo-starter';
+import { Alert, Linking, Pressable, Text, View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import GlobeIcon from "../assets/globe.svg";
-import VercelIcon from "../assets/vercel.svg";
-import WindowIcon from "../assets/window.svg";
-import { TurborepoLogo } from "../components/turborepo-logo";
-import { Button } from "../components/ui/button";
+import GlobeIcon from '../assets/globe.svg';
+import VercelIcon from '../assets/vercel.svg';
+import WindowIcon from '../assets/window.svg';
+import { TurborepoLogo } from '../components/turborepo-logo';
+import { Button } from '../components/ui/button';
 import {
   Card,
   CardContent,
@@ -35,15 +29,15 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "../components/ui/card";
-import { Code } from "../components/ui/code";
-import { Separator } from "../components/ui/separator";
-import { cn } from "../lib/utils";
+} from '../components/ui/card';
+import { Code } from '../components/ui/code';
+import { Separator } from '../components/ui/separator';
+import { cn } from '../lib/utils';
 
 export function NativeTurborepoApp() {
   return (
     <SafeAreaProvider>
-      <View className={cn("dark flex-1 bg-background")}>
+      <View className={cn('dark flex-1 bg-background')}>
         <View className="flex min-h-full flex-1 flex-col items-center justify-center gap-10 px-4 py-16">
           <View className="h-[38px] w-[180px] shrink-0 items-center justify-center">
             <TurborepoLogo />
@@ -57,7 +51,7 @@ export function NativeTurborepoApp() {
             <CardContent className="gap-4 font-mono text-sm leading-6">
               <View className="gap-2">
                 <Text className="text-left font-mono text-sm leading-6 text-muted-foreground">
-                  1. Bearbeite{" "}
+                  1. Bearbeite{' '}
                   <Code className="text-foreground">{step1CodePath}</Code>
                 </Text>
                 <Text className="text-left font-mono text-sm leading-6 text-muted-foreground">
@@ -97,7 +91,7 @@ export function NativeTurborepoApp() {
                   size="lg"
                   className="rounded-full"
                   onPress={() => {
-                    Alert.alert("", alertMessage);
+                    Alert.alert('', alertMessage);
                   }}
                 >
                   Open alert

@@ -11,12 +11,12 @@ export const docsHref = "https://turborepo.dev/docs?utm_source";
 export const templatesHref =
   "https://vercel.com/templates?search=turborepo&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app";
 
-export const turborepoSiteHref = "https://turborepo.dev?utm_source=create-turbo";
+export const turborepoSiteHref =
+  "https://turborepo.dev?utm_source=create-turbo";
 
 export const title = "Turborepo Starter";
 
-export const description =
-  "Monorepo mit Next.js, Tailwind und shadcn/ui";
+export const description = "Monorepo mit Next.js, Tailwind und shadcn/ui";
 
 export const step1CodePath = "apps/web/app/page.tsx";
 

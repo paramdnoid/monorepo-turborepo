@@ -2,19 +2,14 @@
  * Embeds the Next.js web app so the UI is literally the same as `@repo/ui` + Tailwind in the browser.
  * Requires `pnpm dev` (or at least the `web` dev server on port 3000).
  */
-import "../global.css";
+import '../global.css';
 
-import { useState } from "react";
-import {
-  ActivityIndicator,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
-import { SafeAreaProvider } from "react-native-safe-area-context";
-import { WebView } from "react-native-webview";
+import { useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { WebView } from 'react-native-webview';
 
-import { getWebAppUrl } from "./config/web-app-url";
+import { getWebAppUrl } from './config/web-app-url';
 
 export function WebShell() {
   const uri = getWebAppUrl();
@@ -28,9 +23,9 @@ export function WebShell() {
           <Text style={styles.errorTitle}>{error}</Text>
           <Text style={styles.errorUrl}>{uri}</Text>
           <Text style={styles.hint}>
-            Stelle sicher, dass im Repo-Root `pnpm dev` läuft und `web` auf Port 3000 erreichbar ist.
-            Auf einem echten Gerät setze `WEB_APP_HOST_OVERRIDE` in
-            `src/config/web-app-url.ts`.
+            Stelle sicher, dass im Repo-Root `pnpm dev` läuft und `web` auf Port
+            3000 erreichbar ist. Auf einem echten Gerät setze
+            `WEB_APP_HOST_OVERRIDE` in `src/config/web-app-url.ts`.
           </Text>
         </View>
       </SafeAreaProvider>
@@ -51,19 +46,17 @@ export function WebShell() {
           style={styles.flex}
           onLoadEnd={() => setLoading(false)}
           onHttpError={() => {
-            setError("HTTP-Fehler beim Laden der Seite.");
+            setError('HTTP-Fehler beim Laden der Seite.');
             setLoading(false);
           }}
           onError={() => {
-            setError(
-              "Next.js nicht erreichbar.",
-            );
+            setError('Next.js nicht erreichbar.');
             setLoading(false);
           }}
           javaScriptEnabled
           domStorageEnabled
           allowsBackForwardNavigationGestures
-          originWhitelist={["http://*", "https://*"]}
+          originWhitelist={['http://*', 'https://*']}
         />
       </View>
     </SafeAreaProvider>
@@ -74,14 +67,14 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   center: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
     padding: 24,
   },
   errorTitle: {
-    textAlign: "center",
+    textAlign: 'center',
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: '600',
     marginBottom: 8,
   },
   errorUrl: {
@@ -92,15 +85,15 @@ const styles = StyleSheet.create({
   hint: {
     fontSize: 13,
     opacity: 0.75,
-    textAlign: "center",
+    textAlign: 'center',
     lineHeight: 20,
   },
   loader: {
     ...StyleSheet.absoluteFillObject,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
     zIndex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: '#fff',
   },
   loaderText: {
     marginTop: 12,

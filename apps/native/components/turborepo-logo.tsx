@@ -1,4 +1,4 @@
-import TurborepoLightWordmark from "../assets/turborepo-light.svg";
+import TurborepoLightWordmark from '../assets/turborepo-light.svg';
 
 /**
  * Matches web: in dark mode the light (white) wordmark is shown.

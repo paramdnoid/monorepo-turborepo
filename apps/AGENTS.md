@@ -4,10 +4,10 @@ Context for applications under `apps/`: **Next.js** sites (`web`, `docs`) and th
 
 ## Apps at a glance
 
-| Package  | Stack        | Role                        | Port / notes          | Turbo filter      |
-| -------- | ------------ | --------------------------- | --------------------- | ----------------- |
-| `web`    | Next.js 16.2 | Primary web application     | 3000                  | `--filter=web`    |
-| `docs`   | Next.js 16.2 | Documentation site          | 3001                  | `--filter=docs`   |
+| Package  | Stack           | Role                        | Port / notes          | Turbo filter      |
+| -------- | --------------- | --------------------------- | --------------------- | ----------------- |
+| `web`    | Next.js 16.2    | Primary web application     | 3000                  | `--filter=web`    |
+| `docs`   | Next.js 16.2    | Documentation site          | 3001                  | `--filter=docs`   |
 | `native` | RN + NativeWind | Mobile app (`nativeapp` id) | Metro (no fixed port) | `--filter=native` |
 
 ## Next.js (`web`, `docs`)
