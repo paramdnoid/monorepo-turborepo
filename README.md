@@ -1,12 +1,12 @@
 # my-turborepo
 
-A [Turborepo](https://turborepo.dev) monorepo with two [Next.js](https://nextjs.org/) apps ([App Router](https://nextjs.org/docs/app)), a shared UI package, and shared ESLint/TypeScript configs.
+A [Turborepo](https://turborepo.dev) monorepo with two [Next.js](https://nextjs.org/) apps ([App Router](https://nextjs.org/docs/app)), a [React Native](https://reactnative.dev/) app, a shared UI package, and shared ESLint/TypeScript configs.
 
 **Coding agents and conventions:** see [`AGENTS.md`](./AGENTS.md) for commands, stack details, and package-specific notes (`apps/AGENTS.md`, `packages/ui/AGENTS.md`, etc.).
 
 ## Requirements
 
-- [Node.js](https://nodejs.org/) 18 or newer
+- [Node.js](https://nodejs.org/) 22.11 or newer (required for the React Native app; see root `package.json` `engines`)
 - [pnpm](https://pnpm.io/) 9 (see `packageManager` in [`package.json`](./package.json))
 
 ## Setup

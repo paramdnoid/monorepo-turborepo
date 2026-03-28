@@ -1,23 +1,24 @@
-# AGENTS.md — apps (shared)
+# AGENTS.md — apps
 
-Shared rules for all **Next.js** applications under `apps/` (`web`, `docs`). Same stack and conventions; only ports and package names differ (see table below).
+Context for applications under `apps/`: **Next.js** sites (`web`, `docs`) and the **React Native** app (`native`).
 
 ## Apps at a glance
 
-| Package | Role                    | Port | Turbo filter    |
-| ------- | ----------------------- | ---- | --------------- |
-| `web`   | Primary web application | 3000 | `--filter=web`  |
-| `docs`  | Documentation site      | 3001 | `--filter=docs` |
+| Package  | Stack        | Role                        | Port / notes          | Turbo filter      |
+| -------- | ------------ | --------------------------- | --------------------- | ----------------- |
+| `web`    | Next.js 16.2 | Primary web application     | 3000                  | `--filter=web`    |
+| `docs`   | Next.js 16.2 | Documentation site          | 3001                  | `--filter=docs`   |
+| `native` | RN + NativeWind | Mobile app (`nativeapp` id) | Metro (no fixed port) | `--filter=native` |
 
-Run from an app directory: `pnpm dev`, `pnpm build`, `pnpm check-types`, etc. From repo root: `pnpm exec turbo dev --filter=web` (or `docs`).
+## Next.js (`web`, `docs`)
 
-## Overview
+Shared rules for both Next apps: same stack and conventions; only ports and package names differ.
 
 - **Framework:** Next.js 16.2 with App Router (`app/` directory)
 - **Build:** `pnpm build` → outputs to `.next/`
 - **Type-check:** `pnpm check-types` runs `next typegen` then `tsc --noEmit`
 
-## Structure (typical)
+**Structure (typical):**
 
 ```
 app/
@@ -34,26 +35,17 @@ public/           → Static assets (favicon, SVGs, etc.)
 
 (Adjust relative path if the file layout changes.)
 
-## Dependencies
+**Dependencies:** `@repo/ui`, `next`, `react`, `react-dom`, Tailwind v4 (`tailwindcss`, `@tailwindcss/postcss`).
 
-- `@repo/ui` — shared components, providers, and styles (e.g. `@repo/ui/button`, `@repo/ui/providers`)
-- `next`, `react`, `react-dom`
-- **Styling:** `tailwindcss`, `@tailwindcss/postcss` (Tailwind v4)
+**Configuration:** ESLint `@repo/eslint-config/next-js`; TypeScript extends `@repo/typescript-config/nextjs.json`; Next.js ESM config.
 
-## Configuration
+**Conventions:** Prefer Tailwind aligned with `@repo/ui`; wrap with `<Providers>` from `@repo/ui/providers`; import shared UI from `@repo/ui/<name>`; app-specific UI stays in the app, shared primitives in `packages/ui`.
 
-- **ESLint:** `@repo/eslint-config/next-js` (flat config in `eslint.config.js`)
-- **TypeScript:** extends `@repo/typescript-config/nextjs.json`
-- **Next.js:** `next.config.js` (ESM)
+Per-app notes: **[`web/AGENTS.md`](web/AGENTS.md)**, **[`docs/AGENTS.md`](docs/AGENTS.md)**.
 
-## Conventions
+## React Native (`native`)
 
-- Prefer Tailwind utility classes aligned with `@repo/ui` patterns; global CSS lives in `globals.css` and the UI package.
-- Wrap the app with `<Providers>` from `@repo/ui/providers` in the root layout (theme, tooltips, toasts).
-- Import shared UI from subpaths: `@repo/ui/<name>` (e.g. `@repo/ui/button`).
-- Static assets go in `public/`.
-- Local fonts use `next/font/local` in the root layout.
-- App-specific pages and content stay under that app’s `app/`; shared primitives belong in `packages/ui`, not duplicated across apps.
+**Tailwind / shadcn parity:** NativeWind + shared `theme-tokens.css` from `@repo/ui` styles; local `components/ui` (not `@repo/ui` imports). See **[`native/AGENTS.md`](native/AGENTS.md)** for Metro, iOS/Android, CocoaPods, and the `nativeapp` naming.
 
 ## Monorepo context
 

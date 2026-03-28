@@ -8,6 +8,8 @@ Internal library used by all Next.js apps in this monorepo. React components are
 
 **Stack highlights:** the [`radix-ui`](https://www.npmjs.com/package/radix-ui) meta-package (bundled primitives), [`@base-ui/react`](https://www.npmjs.com/package/@base-ui/react), `class-variance-authority`, `tailwind-merge`, `next-themes`, `lucide-react`, and other deps listed in `package.json` (do not assume legacy `@radix-ui/react-*` single packages unless you add them).
 
+**Shared theme tokens:** [`src/styles/theme-tokens.css`](./src/styles/theme-tokens.css) holds `:root` / `.dark` CSS variables and the Tailwind v4 `@theme inline` color/radius mappings. [`src/styles/globals.css`](./src/styles/globals.css) imports it, then adds `@source` for Next apps and `@layer base` for `body`. **`apps/native`** imports `theme-tokens.css` from its own `global.css` (NativeWind) so mobile stays visually aligned with web — without using these React components on native.
+
 ## Export map
 
 `package.json` exports (simplified):
