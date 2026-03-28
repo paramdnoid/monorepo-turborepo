@@ -1,11 +1,8 @@
 import * as React from "react";
-import { cn } from "./utils";
 
-type InputProps = React.InputHTMLAttributes<HTMLInputElement>;
+import { cn } from "@repo/ui/utils";
 
-// PropTypes validation is unnecessary for this internal TS component.
-// eslint-disable-next-line react/prop-types
-function Input({ className, type, ...props }: InputProps) {
+function Input({ className, type, ...props }: React.ComponentProps<"input">) {
   return (
     <input
       type={type}

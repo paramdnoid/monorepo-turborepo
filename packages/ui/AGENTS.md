@@ -39,8 +39,8 @@ No additional registration or barrel file is needed.
 
 ## Existing Components
 
-| Component | File | Notes |
-|-----------|------|-------|
-| `Button` | `src/button.tsx` | Client component — triggers an alert |
-| `Card` | `src/card.tsx` | Server component — renders a linked card |
-| `Code` | `src/code.tsx` | Inline code display |
+| Component | File             | Notes                                    |
+| --------- | ---------------- | ---------------------------------------- |
+| `Button`  | `src/button.tsx` | Client component — triggers an alert     |
+| `Card`    | `src/card.tsx`   | Server component — renders a linked card |
+| `Code`    | `src/code.tsx`   | Inline code display                      |
