@@ -12,6 +12,11 @@ Shared **ESLint v9 flat configs** for the monorepo (`@repo/eslint-config`). Entr
 | `@repo/eslint-config/next-js`        | `next.js` (`nextJsConfig`) | [`apps/web`](../../apps/web/eslint.config.js), [`apps/docs`](../../apps/docs/eslint.config.js) |
 | `@repo/eslint-config/react-internal` | `react-internal.js`        | [`packages/ui`](../../packages/ui/eslint.config.mjs)                                           |
 
+`next.js` also wires a local custom plugin from [`design-guardrails-plugin.js`](./design-guardrails-plugin.js) that enforces starter-page content contracts for:
+
+- [`apps/web/app/page.tsx`](../../apps/web/app/page.tsx)
+- [`apps/docs/app/page.tsx`](../../apps/docs/app/page.tsx)
+
 **React Native** (`apps/native`) does **not** use this package — it uses `@react-native/eslint-config` (see [`apps/native/AGENTS.md`](../../apps/native/AGENTS.md)).
 
 ## Tasks

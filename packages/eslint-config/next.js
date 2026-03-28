@@ -7,6 +7,7 @@ import pluginReact from "eslint-plugin-react";
 import globals from "globals";
 import pluginNext from "@next/eslint-plugin-next";
 import { config as baseConfig } from "./base.js";
+import { designGuardrailsPlugin } from "./design-guardrails-plugin.js";
 
 /**
  * A custom ESLint configuration for libraries that use Next.js.
@@ -52,6 +53,14 @@ export const nextJsConfig = [
       ...pluginReactHooks.configs.recommended.rules,
       // React scope no longer necessary with new JSX transform.
       "react/react-in-jsx-scope": "off",
+    },
+  },
+  {
+    plugins: {
+      "design-guardrails": designGuardrailsPlugin,
+    },
+    rules: {
+      "design-guardrails/starter-content-contract": "error",
     },
   },
 ];
