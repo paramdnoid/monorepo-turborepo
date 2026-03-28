@@ -1,8 +1,7 @@
 import type * as React from "react";
 import { cn } from "./utils";
 
-export interface CodeProps extends React.HTMLAttributes<HTMLElement> {}
-
+export type CodeProps = React.HTMLAttributes<HTMLElement>;
 export function Code({ className, ...props }: CodeProps) {
   return (
     <code
