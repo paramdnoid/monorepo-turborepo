@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@babel/runtime": "^7.25.0",
+    "@repo/brand": "workspace:*",
     "@repo/turborepo-starter": "workspace:^",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

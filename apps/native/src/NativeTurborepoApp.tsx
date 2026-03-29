@@ -27,7 +27,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import GlobeIcon from '../assets/globe.svg';
 import VercelIcon from '../assets/vercel.svg';
 import WindowIcon from '../assets/window.svg';
-import { TurborepoLogo } from '../components/turborepo-logo';
+import { BrandLogo } from '../components/brand-logo';
 import { Button } from '../components/ui/button';
 import {
   Card,
@@ -48,8 +48,8 @@ export function NativeTurborepoApp() {
     <SafeAreaProvider>
       <View className={cn('flex-1 bg-background', isDarkMode && 'dark')}>
         <View className="flex min-h-full flex-1 flex-col items-center justify-center gap-10 px-4 py-16">
-          <View className="h-[38px] w-[180px] shrink-0 items-center justify-center">
-            <TurborepoLogo isDarkMode={isDarkMode} />
+          <View className="h-[120px] w-[120px] shrink-0 items-center justify-center">
+            <BrandLogo />
           </View>
 
           <Card className="w-full max-w-lg border-border/80 shadow-sm">

@@ -4,7 +4,7 @@ This file provides context for AI coding agents working in this repository. **St
 
 ## Project Overview
 
-Turborepo monorepo containing two Next.js applications, one React Native application, and five shared internal packages under `packages/`. Root package name: `my-turborepo`. Uses pnpm workspaces for dependency management and Turborepo for orchestrating builds and tasks across packages.
+Turborepo monorepo containing two Next.js applications, one React Native application, and six shared internal packages under `packages/`. Root package name: `my-turborepo`. Uses pnpm workspaces for dependency management and Turborepo for orchestrating builds and tasks across packages.
 
 **Bootstrap:** clone the repo, then run `pnpm install` once at the repository root to install all workspace dependencies.
 
@@ -14,17 +14,18 @@ Turborepo monorepo containing two Next.js applications, one React Native applica
 
 Turborepo **`--filter`** values must match each package’s **`name`** in its `package.json`, not the folder path (e.g. use `--filter=web`, not `--filter=apps/web`).
 
-| `name` (filter)           | Path                         | Role                                      |
-| ------------------------- | ---------------------------- | ----------------------------------------- |
-| `my-turborepo`            | `./` (root)                  | Workspace root; scripts orchestrate Turbo |
-| `web`                     | `apps/web`                   | Primary Next.js app                       |
-| `docs`                    | `apps/docs`                  | Documentation Next.js app                 |
-| `native`                  | `apps/native`                | React Native app                          |
-| `@repo/ui`                | `packages/ui`                | Shared UI library                         |
+| `name` (filter)           | Path                         | Role                                                 |
+| ------------------------- | ---------------------------- | ---------------------------------------------------- |
+| `my-turborepo`            | `./` (root)                  | Workspace root; scripts orchestrate Turbo            |
+| `web`                     | `apps/web`                   | Primary Next.js app                                  |
+| `docs`                    | `apps/docs`                  | Documentation Next.js app                            |
+| `native`                  | `apps/native`                | React Native app                                     |
+| `@repo/ui`                | `packages/ui`                | Shared UI library                                    |
 | `@repo/fonts`             | `packages/fonts`             | Shared Geist fonts (`next/font/local`) for Next apps |
-| `@repo/turborepo-starter` | `packages/turborepo-starter` | Shared starter copy / URLs                |
-| `@repo/eslint-config`     | `packages/eslint-config`     | Shared ESLint flat configs                |
-| `@repo/typescript-config` | `packages/typescript-config` | Shared `tsconfig` bases                   |
+| `@repo/turborepo-starter` | `packages/turborepo-starter` | Shared starter copy / URLs                           |
+| `@repo/brand`             | `packages/brand`             | Shared app logo / favicon asset (PNG)                |
+| `@repo/eslint-config`     | `packages/eslint-config`     | Shared ESLint flat configs                           |
+| `@repo/typescript-config` | `packages/typescript-config` | Shared `tsconfig` bases                              |
 
 **Examples:**
 
@@ -44,8 +45,9 @@ pnpm exec turbo check-types --filter=native
 | Docs site (Next)                                | [`apps/docs/AGENTS.md`](apps/docs/AGENTS.md)                                   |
 | Mobile: WebView, Metro, iOS/Android, NativeWind | [`apps/native/AGENTS.md`](apps/native/AGENTS.md)                               |
 | Shared React components, tokens, `globals.css`  | [`packages/ui/AGENTS.md`](packages/ui/AGENTS.md)                               |
-| Shared local fonts (Geist) for Next.js layouts   | [`packages/fonts/AGENTS.md`](packages/fonts/AGENTS.md)                         |
+| Shared local fonts (Geist) for Next.js layouts  | [`packages/fonts/AGENTS.md`](packages/fonts/AGENTS.md)                         |
 | Starter screen copy and URLs (web + native)     | [`packages/turborepo-starter/AGENTS.md`](packages/turborepo-starter/AGENTS.md) |
+| Shared logo / app icon source (PNG)             | [`packages/brand/AGENTS.md`](packages/brand/AGENTS.md)                         |
 | ESLint rules shared across Next + UI            | [`packages/eslint-config/AGENTS.md`](packages/eslint-config/AGENTS.md)         |
 | `tsconfig` bases for Next and libraries         | [`packages/typescript-config/AGENTS.md`](packages/typescript-config/AGENTS.md) |
 
@@ -53,17 +55,18 @@ pnpm exec turbo check-types --filter=native
 
 More specific agent context lives next to the code:
 
-| Location                                                                       | Purpose                                             |
-| ------------------------------------------------------------------------------ | --------------------------------------------------- |
-| [`apps/AGENTS.md`](apps/AGENTS.md)                                             | All apps: Next.js (`web`, `docs`) + RN (`native`)   |
-| [`apps/web/AGENTS.md`](apps/web/AGENTS.md)                                     | Primary web app (port 3000)                         |
-| [`apps/docs/AGENTS.md`](apps/docs/AGENTS.md)                                   | Documentation site (port 3001)                      |
-| [`apps/native/AGENTS.md`](apps/native/AGENTS.md)                               | React Native mobile app                             |
-| [`packages/ui/AGENTS.md`](packages/ui/AGENTS.md)                               | Shared `@repo/ui` component library                 |
+| Location                                                                       | Purpose                                                    |
+| ------------------------------------------------------------------------------ | ---------------------------------------------------------- |
+| [`apps/AGENTS.md`](apps/AGENTS.md)                                             | All apps: Next.js (`web`, `docs`) + RN (`native`)          |
+| [`apps/web/AGENTS.md`](apps/web/AGENTS.md)                                     | Primary web app (port 3000)                                |
+| [`apps/docs/AGENTS.md`](apps/docs/AGENTS.md)                                   | Documentation site (port 3001)                             |
+| [`apps/native/AGENTS.md`](apps/native/AGENTS.md)                               | React Native mobile app                                    |
+| [`packages/ui/AGENTS.md`](packages/ui/AGENTS.md)                               | Shared `@repo/ui` component library                        |
 | [`packages/fonts/AGENTS.md`](packages/fonts/AGENTS.md)                         | Shared Geist typography (`@repo/fonts`) for `web` / `docs` |
-| [`packages/turborepo-starter/AGENTS.md`](packages/turborepo-starter/AGENTS.md) | Shared starter copy (`@repo/turborepo-starter`)     |
-| [`packages/eslint-config/AGENTS.md`](packages/eslint-config/AGENTS.md)         | Shared ESLint configs (`@repo/eslint-config`)       |
-| [`packages/typescript-config/AGENTS.md`](packages/typescript-config/AGENTS.md) | Shared TypeScript bases (`@repo/typescript-config`) |
+| [`packages/turborepo-starter/AGENTS.md`](packages/turborepo-starter/AGENTS.md) | Shared starter copy (`@repo/turborepo-starter`)            |
+| [`packages/brand/AGENTS.md`](packages/brand/AGENTS.md)                         | Shared logo / favicon (`@repo/brand`)                      |
+| [`packages/eslint-config/AGENTS.md`](packages/eslint-config/AGENTS.md)         | Shared ESLint configs (`@repo/eslint-config`)              |
+| [`packages/typescript-config/AGENTS.md`](packages/typescript-config/AGENTS.md) | Shared TypeScript bases (`@repo/typescript-config`)        |
 
 ## Monorepo Structure
 
@@ -76,6 +79,7 @@ packages/
   ui/                  → Shared React component library (@repo/ui)
   fonts/               → Shared Geist font files and `next/font/local` exports (@repo/fonts)
   turborepo-starter/   → Shared starter copy and URLs (@repo/turborepo-starter; web + native)
+  brand/               → Shared app logo PNG (@repo/brand; web + docs + native)
   eslint-config/       → Shared ESLint configurations (@repo/eslint-config)
   typescript-config/   → Shared TypeScript configurations (@repo/typescript-config)
 ```

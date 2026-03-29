@@ -45,7 +45,7 @@ const checks = [
   {
     file: "apps/native/src/NativeTurborepoApp.tsx",
     reason: "Native starter UI must align theme with system mode.",
-    mustInclude: ["useColorScheme", "isDarkMode", "TurborepoLogo isDarkMode"],
+    mustInclude: ["useColorScheme", "isDarkMode", "BrandLogo"],
     mustNotInclude: ["'dark flex-1 bg-background'"],
   },
   {

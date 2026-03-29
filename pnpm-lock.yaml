@@ -33,6 +33,9 @@ importers:
 
   apps/docs:
     dependencies:
+      '@repo/brand':
+        specifier: workspace:*
+        version: link:../../packages/brand
       '@repo/fonts':
         specifier: workspace:*
         version: link:../../packages/fonts
@@ -85,6 +88,9 @@ importers:
       '@babel/runtime':
         specifier: ^7.25.0
         version: 7.29.2
+      '@repo/brand':
+        specifier: workspace:*
+        version: link:../../packages/brand
       '@repo/turborepo-starter':
         specifier: workspace:^
         version: link:../../packages/turborepo-starter
@@ -197,6 +203,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@repo/brand':
+        specifier: workspace:*
+        version: link:../../packages/brand
       '@repo/fonts':
         specifier: workspace:*
         version: link:../../packages/fonts
@@ -243,6 +252,8 @@ importers:
       typescript:
         specifier: 5.9.2
         version: 5.9.2
+
+  packages/brand: {}
 
   packages/eslint-config:
     devDependencies:

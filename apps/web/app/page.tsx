@@ -1,5 +1,6 @@
 "use client";
 
+import brandLogo from "@repo/brand/logo";
 import Image from "next/image";
 import {
   alertMessage,
@@ -28,23 +29,14 @@ export default function Home() {
   return (
     <div className="flex min-h-svh flex-col bg-background">
       <main className="flex flex-1 flex-col items-center justify-center gap-10 px-4 py-16">
-        <div className="relative h-[38px] w-[180px] shrink-0">
+        <div className="relative h-[120px] w-[120px] shrink-0">
           <Image
-            className="object-contain dark:hidden"
-            src="/turborepo-dark.svg"
-            alt="Turborepo"
+            className="object-contain"
+            src={brandLogo}
+            alt={title}
             fill
-            sizes="180px"
+            sizes="120px"
             priority
-          />
-          <Image
-            className="hidden object-contain dark:block"
-            src="/turborepo-light.svg"
-            alt=""
-            fill
-            sizes="180px"
-            priority
-            aria-hidden
           />
         </div>
 
