@@ -1,0 +1,36 @@
+[   29432ms] [ERROR] ./apps/web/components/marketing/hero-section.tsx:227:20
+Expected '</', got 'jsx text'
+  225 |               </div>
+  226 |             </motion.div>
+> 227 |           </FadeIn>
+      |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 228 |         </div>
+      | ^^^^^^^^
+  229 |       </SectionContainer>
+  230 |     </section>
+  231 |   );
+
+Parsing ecmascript source code failed
+
+Import trace:
+  Server Component:
+    ./apps/web/components/marketing/hero-section.tsx
+    ./apps/web/app/page.tsx @ http://localhost:3000/_next/static/chunks/0h8d_next_dist_0hfr84.._.js:3272
+[   29486ms] [ERROR] ./apps/web/components/marketing/hero-section.tsx:227:20
+Expected '</', got 'jsx text'
+  225 |               </div>
+  226 |             </motion.div>
+> 227 |           </FadeIn>
+      |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 228 |         </div>
+      | ^^^^^^^^
+  229 |       </SectionContainer>
+  230 |     </section>
+  231 |   );
+
+Parsing ecmascript source code failed
+
+Import trace:
+  Server Component:
+    ./apps/web/components/marketing/hero-section.tsx
+    ./apps/web/app/page.tsx @ http://localhost:3000/_next/static/chunks/0h8d_next_dist_0hfr84.._.js:3272

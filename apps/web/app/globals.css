@@ -109,6 +109,29 @@
   );
 }
 
+/* Hero: Mockup ohne sichtbaren Rahmen — kein Schatten (wirkt auf hellem Grund oft wie weißer Rand), keine Doppel-Rundung mit dem img */
+.hero-dashboard-frame {
+  border-radius: 0.75rem;
+  padding: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+.dark .hero-dashboard-frame {
+  box-shadow: none;
+}
+
+/* Hero-KPIs: an muted Page-Hintergrund anbinden, weniger „lose Karten“ */
+.hero-metric-card {
+  border-radius: 0.75rem;
+  border: 1px solid color-mix(in oklch, var(--color-border) 42%, transparent);
+  background: color-mix(in oklch, var(--color-muted) 32%, transparent);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 36px -22px color-mix(in oklch, var(--color-foreground) 12%, transparent);
+}
+
 /* Compositor-friendly: opacity + transform only (see Web Interface Guidelines – Animation) */
 @keyframes gradient-x-breathe {
   0%,

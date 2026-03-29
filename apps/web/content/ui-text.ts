@@ -1373,7 +1373,7 @@ const uiTextDe = {
   landingSections: {
     hero: {
       badge: "Fuer Kaminfeger, Maler und SHK-Betriebe",
-      headingPrefix: "Die Handwerker Software,",
+      headingPrefix: "Die Handwerker\u00a0Software,",
       headingHighlight: "die mitdenkt",
       description:
         "Skalieren Sie Ablaeufe von Einsatzplanung bis Faktura mit einer Oberflaeche, die fuer produktive Mitarbeitende gebaut ist.",
@@ -2957,7 +2957,7 @@ const uiTextEnOverrides: DeepPartial<typeof uiTextDe> = {
   landingSections: {
     hero: {
       badge: "For chimney sweeps, painters, and HVAC businesses",
-      headingPrefix: "The trades software,",
+      headingPrefix: "The trades\u00a0software,",
       headingHighlight: "that thinks ahead",
       description:
         "Scale workflows from scheduling to invoicing with an interface built for productive teams.",
