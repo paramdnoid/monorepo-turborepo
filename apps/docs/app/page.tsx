@@ -30,19 +30,19 @@ export default function Home() {
       <main className="flex flex-1 flex-col items-center justify-center gap-10 px-4 py-16">
         <div className="relative h-[38px] w-[180px] shrink-0">
           <Image
-            className="dark:hidden"
+            className="object-contain dark:hidden"
             src="/turborepo-dark.svg"
             alt="Turborepo"
-            width={180}
-            height={38}
+            fill
+            sizes="180px"
             priority
           />
           <Image
-            className="hidden dark:block"
+            className="hidden object-contain dark:block"
             src="/turborepo-light.svg"
             alt=""
-            width={180}
-            height={38}
+            fill
+            sizes="180px"
             priority
             aria-hidden
           />
@@ -73,13 +73,15 @@ export default function Home() {
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  <Image
-                    src="/vercel.svg"
-                    alt=""
-                    width={20}
-                    height={20}
-                    className="mr-2 dark:invert"
-                  />
+                  <span className="relative mr-2 inline-block size-5 shrink-0">
+                    <Image
+                      src="/vercel.svg"
+                      alt=""
+                      fill
+                      className="object-contain dark:invert"
+                      sizes="20px"
+                    />
+                  </span>
                   Deploy now
                 </a>
               </Button>
