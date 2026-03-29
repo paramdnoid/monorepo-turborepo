@@ -20,7 +20,7 @@
 ## Tasks
 
 - **Turbo:** this package has no `lint` / `check-types` / `build` scripts; validation runs via dependent apps.
-- **Dependency:** add with `"@repo/turborepo-starter": "workspace:^"` (or `workspace:*`).
+- **Dependency:** add with `"@repo/turborepo-starter": "workspace:*"`.
 
 ## Monorepo context
 
