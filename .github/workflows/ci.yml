@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -31,17 +33,47 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Lint
-        run: pnpm lint
+      # PRs: only changed packages + dependents (--affected). main: full run.
+      - name: Lint, typecheck, build
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            pnpm exec turbo run lint check-types build --affected
+          else
+            pnpm exec turbo run lint check-types build
+          fi
 
-      - name: Typecheck
-        run: pnpm check-types
+      - name: Design guardrails
+        run: pnpm lint:design-guardrails
 
-      - name: Build
-        run: pnpm build
+      # PRs: install Chromium only if turbo would run @repo/playwright-web#e2e (saves time when web/UI unchanged).
+      - name: Plan Playwright E2E
+        id: playwright_e2e
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          JSON=$(pnpm exec turbo run e2e --affected --dry-run=json 2>&1 | sed '1d')
+          N=$(echo "$JSON" | jq '[.tasks[] | select(.taskId == "@repo/playwright-web#e2e" and .command == "playwright test")] | length' 2>/dev/null) || true
+          if ! [[ "${N:-}" =~ ^[0-9]+$ ]]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "$N" -gt 0 ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Install Playwright browsers
+        if: steps.playwright_e2e.outputs.run == 'true'
         run: pnpm --filter @repo/playwright-web exec playwright install --with-deps chromium
 
       - name: End-to-end tests
-        run: pnpm e2e
+        if: steps.playwright_e2e.outputs.run == 'true'
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            pnpm exec turbo run e2e --affected
+          else
+            pnpm exec turbo run e2e
+          fi
