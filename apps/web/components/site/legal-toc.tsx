@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { usePathname } from "next/navigation"
+import { usePathname, useSearchParams } from "next/navigation"
 import { uiText } from "@/content/ui-text"
 import { cn } from "@repo/ui/utils"
 
@@ -11,6 +11,7 @@ export function LegalTableOfContents() {
   const [headings, setHeadings] = useState<TocEntry[]>([])
   const [activeId, setActiveId] = useState("")
   const pathname = usePathname()
+  const searchParams = useSearchParams()
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -79,6 +80,9 @@ export function LegalTableOfContents() {
                   if (el) {
                     const y = el.getBoundingClientRect().top + window.scrollY - 96
                     window.scrollTo({ top: y, behavior: "smooth" })
+                    const nextSearch = searchParams.toString()
+                    const hashUrl = nextSearch ? `${pathname}?${nextSearch}#${heading.id}` : `${pathname}#${heading.id}`
+                    window.history.replaceState(null, "", hashUrl)
                   }
                 }}
                 className={cn(

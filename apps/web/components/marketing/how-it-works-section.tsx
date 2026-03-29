@@ -8,7 +8,7 @@ export function HowItWorksSection() {
   return (
     <section
       id="how-it-works"
-      className="relative -mt-10 overflow-hidden py-16 pt-22 sm:-mt-12 sm:py-20 sm:pt-24 md:-mt-16 md:py-28 md:pt-32"
+      className="relative -mt-10 scroll-mt-32 overflow-hidden py-16 pt-22 sm:-mt-12 sm:py-20 sm:pt-24 md:-mt-16 md:py-28 md:pt-32"
       aria-labelledby="how-it-works-heading"
     >
       <div
@@ -20,7 +20,7 @@ export function HowItWorksSection() {
           <p className="mb-3 text-xs font-bold uppercase tracking-[0.15em] text-primary">
             {uiText.landingSections.howItWorks.kicker}
           </p>
-          <h2 id="how-it-works-heading" className="hero-text-gloss font-sans mb-4 text-[1.9rem] font-extrabold sm:text-3xl md:text-4xl lg:text-5xl">
+          <h2 id="how-it-works-heading" className="hero-text-gloss font-sans mb-4 text-balance text-[1.9rem] font-extrabold sm:text-3xl md:text-4xl lg:text-5xl">
             {uiText.landingSections.howItWorks.headingPrefix}{" "}
             <GradientText>{uiText.landingSections.howItWorks.headingHighlight}</GradientText>
           </h2>

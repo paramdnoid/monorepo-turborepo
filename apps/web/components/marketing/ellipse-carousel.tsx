@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, type MotionValue, useTransform } from "framer-motion";
+import { motion, type MotionValue, useReducedMotion, useTransform } from "framer-motion";
 import { memo, type ReactNode, useMemo } from "react";
 
 const TWO_PI = Math.PI * 2;
@@ -80,9 +80,19 @@ export const EllipseCard = memo(function EllipseCard({
   ariaLabel?: string;
   isActive?: boolean;
 }) {
+  const prefersReducedMotion = useReducedMotion();
+  const effectiveDepth = useMemo(() => {
+    if (prefersReducedMotion !== true) return depth;
+    return {
+      ...depth,
+      blurMax: 0,
+      brightnessRange: [1, 1] as [number, number],
+    };
+  }, [depth, prefersReducedMotion]);
+
   const angleStep = TWO_PI / totalCount;
   const styles = useTransform(rotation, (r) =>
-    computeCardStyles(r, angleStep, index, radiusX, radiusY, depth),
+    computeCardStyles(r, angleStep, index, radiusX, radiusY, effectiveDepth),
   );
   const x = useTransform(styles, (s) => s.x);
   const y = useTransform(styles, (s) => s.y);
@@ -100,9 +110,9 @@ export const EllipseCard = memo(function EllipseCard({
       width: cardWidth,
       marginLeft: -(cardWidth / 2),
       marginTop: -(cardHeight / 2),
-      willChange: "transform, filter, opacity" as const,
+      willChange: prefersReducedMotion === true ? "transform, opacity" : "transform, filter, opacity",
     }),
-    [cardWidth, cardHeight],
+    [cardWidth, cardHeight, prefersReducedMotion],
   );
 
   return (

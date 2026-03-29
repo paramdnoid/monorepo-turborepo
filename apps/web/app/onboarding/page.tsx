@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { Suspense } from "react"
 
 import { OnboardingTradeStep } from "@/components/onboarding/onboarding-trade-step"
 import { getUiText } from "@/content/ui-text"
@@ -49,10 +50,12 @@ export default async function OnboardingPage() {
   const { firstName, lastName } = normalizeNamePrefill(user.name)
 
   return (
-    <OnboardingTradeStep
-      initialFirstName={firstName}
-      initialLastName={lastName}
-      initialEmail={normalizeEmailPrefill(user.email)}
-    />
+    <Suspense fallback={null}>
+      <OnboardingTradeStep
+        initialFirstName={firstName}
+        initialLastName={lastName}
+        initialEmail={normalizeEmailPrefill(user.email)}
+      />
+    </Suspense>
   )
 }

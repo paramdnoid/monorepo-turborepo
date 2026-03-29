@@ -52,7 +52,7 @@ export function FeaturesCarousel() {
     <FadeIn>
       <div
         ref={containerRef}
-        className="relative px-2 outline-none transition-opacity duration-300 sm:px-4 md:px-14"
+        className="relative px-2 transition-opacity duration-300 outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 sm:px-4 md:px-14"
         aria-busy={!isInteractive}
         onMouseEnter={isDesktop && isInteractive ? pauseAutoPlay : undefined}
         onMouseLeave={isDesktop && isInteractive ? resumeAutoPlay : undefined}
@@ -105,7 +105,7 @@ export function FeaturesCarousel() {
           className="premium-panel absolute left-0 top-1/2 z-30 hidden h-11 w-11 -translate-y-1/2 md:flex"
           aria-label={`${uiText.landingSections.featuresCarousel.previousLabelPrefix} ${uiText.landingSections.featuresCarousel.activePrefix} ${activeIndex + 1} ${uiText.landingSections.featuresCarousel.of} ${features.length}`}
         >
-          <ChevronLeft className="h-5 w-5" />
+          <ChevronLeft className="h-5 w-5" aria-hidden />
         </Button>
 
         <motion.div
@@ -140,7 +140,7 @@ export function FeaturesCarousel() {
               >
                 <div className={`feature-card h-full rounded-2xl p-4 ${activeIndex === i ? "feature-card-active" : ""}`}>
                   <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-lg bg-primary/8 text-primary ring-1 ring-primary/10">
-                    <feature.icon className="h-5 w-5" />
+                    <feature.icon className="h-5 w-5" aria-hidden />
                   </div>
                   <p className="font-sans text-[15px] font-bold tracking-tight">{feature.title}</p>
                   <p className="mt-1 text-xs leading-snug text-muted-foreground sm:text-[13px]">{feature.description}</p>
@@ -159,7 +159,7 @@ export function FeaturesCarousel() {
           className="premium-panel absolute right-0 top-1/2 z-30 hidden h-11 w-11 -translate-y-1/2 md:flex"
           aria-label={`${uiText.landingSections.featuresCarousel.nextLabelPrefix} ${uiText.landingSections.featuresCarousel.activePrefix} ${activeIndex + 1} ${uiText.landingSections.featuresCarousel.of} ${features.length}`}
         >
-          <ChevronRight className="h-5 w-5" />
+          <ChevronRight className="h-5 w-5" aria-hidden />
         </Button>
 
         {!isDesktop && (
@@ -195,7 +195,7 @@ export function FeaturesCarousel() {
                 className="h-9 w-9 rounded-full p-0 text-muted-foreground transition-[color,background-color,box-shadow] hover:text-foreground data-[state=on]:bg-primary data-[state=on]:text-primary-foreground sm:h-10 sm:w-10"
                 aria-label={feature.title}
               >
-                <feature.icon className="h-4 w-4" />
+                <feature.icon className="h-4 w-4" aria-hidden />
               </ToggleGroupItem>
             ))}
           </ToggleGroup>
@@ -205,7 +205,7 @@ export function FeaturesCarousel() {
           <ul className="flex flex-wrap justify-center gap-2">
             {activeFeature.benefits.map((benefit) => (
               <li key={benefit} className="flex items-center gap-1.5 rounded-full border border-border/60 bg-background/70 px-3 py-1 text-xs text-muted-foreground">
-                <Check className="h-3 w-3 text-primary" />
+                <Check className="h-3 w-3 text-primary" aria-hidden />
                 {benefit}
               </li>
             ))}

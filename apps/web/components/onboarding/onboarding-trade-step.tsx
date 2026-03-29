@@ -3,7 +3,7 @@
 import Image from "next/image"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 import { AuthPageShell } from "@/components/auth/auth-page-shell"
 import {
@@ -44,6 +44,16 @@ function normalizeBillingCycle(value: string | null): OnboardingBillingCycle {
   return value === "yearly" ? "yearly" : "monthly"
 }
 
+function parseInitialStep(params: URLSearchParams, planSkipped: boolean): OnboardingStep {
+  const raw = params.get("step")
+  if (!raw) return planSkipped ? 2 : 1
+  const n = Number.parseInt(raw, 10)
+  if (Number.isNaN(n) || n < 1 || n > 4) return planSkipped ? 2 : 1
+  if (n === 1 && planSkipped) return 2
+  if (n === 4) return planSkipped ? 2 : 1
+  return n as OnboardingStep
+}
+
 export function OnboardingTradeStep({
   initialFirstName = "",
   initialLastName = "",
@@ -54,7 +64,7 @@ export function OnboardingTradeStep({
   const [isPlanStepSkipped] = useState(() => isValidPlanTier(searchParams.get("plan")))
   const wasCheckoutCancelled = searchParams.get("payment") === "cancelled"
   const [currentStep, setCurrentStep] = useState<OnboardingStep>(() =>
-    isPlanStepSkipped ? 2 : 1,
+    parseInitialStep(searchParams, isValidPlanTier(searchParams.get("plan"))),
   )
   const [selectedTradeSlug, setSelectedTradeSlug] = useState("")
   const [selectedPlanTier, setSelectedPlanTier] = useState<OnboardingPlanTier>(() =>
@@ -75,6 +85,13 @@ export function OnboardingTradeStep({
     confirmPassword: "",
   })
 
+  useEffect(() => {
+    if (searchParams.get("step") === String(currentStep)) return
+    const next = new URLSearchParams(searchParams.toString())
+    next.set("step", String(currentStep))
+    router.replace(`/onboarding?${next.toString()}`, { scroll: false })
+  }, [currentStep, router, searchParams])
+
   const normalized = {
     companyName: accountValues.companyName.trim(),
     firstName: accountValues.firstName.trim(),
@@ -83,6 +100,38 @@ export function OnboardingTradeStep({
     password: accountValues.password,
     confirmPassword: accountValues.confirmPassword,
   }
+
+  const shouldWarnBeforeUnload = useMemo(() => {
+    if (currentStep === 1) return false
+    return (
+      currentStep === 4 ||
+      normalized.companyName.length > 0 ||
+      normalized.firstName.length > 0 ||
+      normalized.lastName.length > 0 ||
+      selectedTradeSlug.length > 0 ||
+      normalized.email.length > 0 ||
+      normalized.password.length > 0 ||
+      normalized.confirmPassword.length > 0
+    )
+  }, [
+    currentStep,
+    selectedTradeSlug,
+    normalized.companyName,
+    normalized.firstName,
+    normalized.lastName,
+    normalized.email,
+    normalized.password,
+    normalized.confirmPassword,
+  ])
+
+  useEffect(() => {
+    if (!shouldWarnBeforeUnload) return
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+    }
+    window.addEventListener("beforeunload", onBeforeUnload)
+    return () => window.removeEventListener("beforeunload", onBeforeUnload)
+  }, [shouldWarnBeforeUnload])
 
   const isStepOneValid =
     normalized.companyName.length > 0 &&
@@ -137,6 +186,7 @@ export function OnboardingTradeStep({
     const nextParams = new URLSearchParams(searchParams.toString())
     nextParams.set("plan", planTier)
     nextParams.set("billing", billingCycle)
+    nextParams.set("step", String(currentStep))
     router.replace(`/onboarding?${nextParams.toString()}`)
   }
 

@@ -31,7 +31,7 @@ export function TradesSection() {
         <FadeIn className="mx-auto mb-12 max-w-xl text-center md:mb-16">
           <h2
             id="trades-heading"
-            className="hero-text-gloss font-sans mb-3 text-[1.9rem] font-extrabold tracking-tight sm:text-3xl md:mb-4 md:text-4xl lg:text-5xl"
+            className="hero-text-gloss font-sans mb-3 text-balance text-[1.9rem] font-extrabold tracking-tight sm:text-3xl md:mb-4 md:text-4xl lg:text-5xl"
           >
             {uiText.landingSections.trades.headingPrefix} <GradientText>{uiText.landingSections.trades.headingHighlight}</GradientText>
           </h2>

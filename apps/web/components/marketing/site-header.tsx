@@ -72,7 +72,9 @@ export function SiteHeader() {
   }, []);
 
   return (
-    <header className={`fixed inset-x-0 top-0 z-50 border-b transition-[background-color,border-color,backdrop-filter] ${scrolled ? "bg-background/86 border-border/70 backdrop-blur-xl" : "border-transparent bg-transparent"}`}>
+    <header
+      className={`fixed inset-x-0 top-0 z-50 touch-manipulation border-b pt-[env(safe-area-inset-top)] transition-[background-color,border-color,backdrop-filter] ${scrolled ? "bg-background/86 border-border/70 backdrop-blur-xl" : "border-transparent bg-transparent"}`}
+    >
       <SectionContainer className="py-2.5">
         <div className="flex items-center justify-between lg:grid lg:grid-cols-[1fr_auto_1fr]">
           <div className="justify-self-start">
@@ -121,7 +123,7 @@ export function SiteHeader() {
           <Sheet open={isMobileNavOpen} onOpenChange={setIsMobileNavOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="lg:hidden" aria-label={uiText.landing.header.openMenuLabel}>
-                <Menu />
+                <Menu aria-hidden />
               </Button>
             </SheetTrigger>
             <SheetContent

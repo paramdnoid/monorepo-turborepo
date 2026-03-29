@@ -34,9 +34,9 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
   } as const;
 
   const iconMap = {
-    light: <SunIcon className="size-4" />,
-    dark: <MoonIcon className="size-4" />,
-    system: <MonitorIcon className="size-4" />,
+    light: <SunIcon className="size-4" aria-hidden />,
+    dark: <MoonIcon className="size-4" aria-hidden />,
+    system: <MonitorIcon className="size-4" aria-hidden />,
   } as const;
 
   const srLabel = `${uiText.common.cycleThemeMode}. ${themeLabelMap[activeTheme as keyof typeof themeLabelMap]} -> ${themeLabelMap[nextTheme as keyof typeof themeLabelMap]}`;

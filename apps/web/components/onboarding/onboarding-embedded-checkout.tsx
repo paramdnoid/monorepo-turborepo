@@ -19,6 +19,7 @@ import { ArrowLeft, Check, Loader2 } from "lucide-react"
 
 import { Button } from "@repo/ui/button"
 import { Input } from "@repo/ui/input"
+import { Label } from "@repo/ui/label"
 import { uiText } from "@/content/ui-text"
 import { cn } from "@/lib/utils"
 
@@ -179,20 +180,29 @@ function OnboardingPaymentForm({
             <p className="auth-label block text-foreground">{uiText.onboarding.checkout.paymentDataLabel}</p>
             <div className="space-y-2">
               <div className="space-y-2">
-                <p className="auth-label block text-foreground">{uiText.onboarding.checkout.cardholderNameLabel}</p>
+                <Label htmlFor="onboarding-checkout-cardholder" className="auth-label block text-foreground">
+                  {uiText.onboarding.checkout.cardholderNameLabel}
+                </Label>
                 <Input
+                  id="onboarding-checkout-cardholder"
+                  name="cc-name"
                   value={cardholderName}
                   onChange={(event) => setCardholderName(event.target.value)}
                   placeholder={uiText.onboarding.checkout.cardholderNamePlaceholder}
                   className="h-10"
                   autoComplete="cc-name"
+                  spellCheck={false}
                 />
               </div>
 
               <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
                 <div className="space-y-2 sm:min-w-0 sm:flex-[2.8]">
-                  <p className="auth-label block text-foreground">{uiText.onboarding.checkout.cardNumberLabel}</p>
+                  <p id="onboarding-checkout-card-number-label" className="auth-label block text-foreground">
+                    {uiText.onboarding.checkout.cardNumberLabel}
+                  </p>
                   <div
+                    role="group"
+                    aria-labelledby="onboarding-checkout-card-number-label"
                     className={cn(
                       hostedFieldBaseClass,
                       focusedField === "cardNumber" ? "border-ring ring-3 ring-ring/50" : null,
@@ -213,8 +223,12 @@ function OnboardingPaymentForm({
                 </div>
 
                 <div className="space-y-2 sm:min-w-0 sm:flex-1">
-                  <p className="auth-label block text-foreground">{uiText.onboarding.checkout.expiryLabel}</p>
+                  <p id="onboarding-checkout-expiry-label" className="auth-label block text-foreground">
+                    {uiText.onboarding.checkout.expiryLabel}
+                  </p>
                   <div
+                    role="group"
+                    aria-labelledby="onboarding-checkout-expiry-label"
                     className={cn(
                       hostedFieldBaseClass,
                       focusedField === "expiry" ? "border-ring ring-3 ring-ring/50" : null,
@@ -234,8 +248,12 @@ function OnboardingPaymentForm({
                 </div>
 
                 <div className="space-y-2 sm:min-w-0 sm:flex-1">
-                  <p className="auth-label block text-foreground">{uiText.onboarding.checkout.cvcLabel}</p>
+                  <p id="onboarding-checkout-cvc-label" className="auth-label block text-foreground">
+                    {uiText.onboarding.checkout.cvcLabel}
+                  </p>
                   <div
+                    role="group"
+                    aria-labelledby="onboarding-checkout-cvc-label"
                     className={cn(
                       hostedFieldBaseClass,
                       focusedField === "cvc" ? "border-ring ring-3 ring-ring/50" : null,
@@ -256,8 +274,13 @@ function OnboardingPaymentForm({
               </div>
 
               <div className="space-y-2">
-                <p className="auth-label block text-foreground">{uiText.onboarding.checkout.countryLabel}</p>
+                <Label htmlFor="onboarding-checkout-country" className="auth-label block text-foreground">
+                  {uiText.onboarding.checkout.countryLabel}
+                </Label>
                 <select
+                  id="onboarding-checkout-country"
+                  name="country"
+                  autoComplete="country"
                   value={countryCode}
                   onChange={(event) => setCountryCode(event.target.value)}
                   className="h-10 w-full rounded-lg border border-input bg-background px-2.5 py-1 text-base text-foreground transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm"

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import brandLogo from "@repo/brand/logo";
 import { geistMono, geistSans } from "@repo/fonts/geist";
 import { Providers } from "@repo/ui/providers";
@@ -7,6 +7,12 @@ import { LocaleProvider } from "@/components/locale-provider";
 import { getServerLocale } from "@/lib/i18n/server-locale";
 
 import "./globals.css";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+};
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getServerLocale();
@@ -44,7 +50,7 @@ export default async function RootLayout({
       <body className={`${geistSans.variable} ${geistMono.variable} min-h-svh flex flex-col font-sans antialiased`}>
         <a
           href="#main-content"
-          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-background focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:shadow-md"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-[calc(1rem+env(safe-area-inset-top))] focus:z-[100] focus:rounded-md focus:bg-background focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:shadow-md"
         >
           {locale === "en" ? "Skip to main content" : "Zum Hauptinhalt springen"}
         </a>

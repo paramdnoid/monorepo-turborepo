@@ -46,7 +46,7 @@ export function PricingSection() {
       <GlowBackground variant="subtle" />
       <SectionContainer className="relative z-20">
         <FadeIn className="mx-auto mb-8 max-w-2xl text-center">
-          <h2 id="pricing-heading" className="hero-text-gloss font-sans mb-3 text-[1.9rem] font-bold sm:text-3xl md:text-4xl lg:text-5xl">
+          <h2 id="pricing-heading" className="hero-text-gloss font-sans mb-3 text-balance text-[1.9rem] font-bold sm:text-3xl md:text-4xl lg:text-5xl">
             {uiText.landing.pricing.headingPrefix}<br /><GradientText>{uiText.landing.pricing.headingHighlight}</GradientText>
           </h2>
           <p className="text-base leading-[1.68] text-muted-foreground md:text-lg">
