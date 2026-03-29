@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+
 import { LegalHeader } from "@/components/site/legal-header";
 import { LegalTableOfContents } from "@/components/site/legal-toc";
 import { SiteFooter } from "@/components/marketing/site-footer";
@@ -19,7 +21,9 @@ export default function LegalLayout({
           <div className="legal-article-wrapper min-w-0" data-legal-article="">
             {children}
           </div>
-          <LegalTableOfContents />
+          <Suspense fallback={null}>
+            <LegalTableOfContents />
+          </Suspense>
         </div>
       </main>
 

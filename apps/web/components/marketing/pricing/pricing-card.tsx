@@ -10,6 +10,7 @@ import {
   formatPrice,
   savingsPercent,
 } from "@/components/marketing/pricing/pricing-types";
+import { useAppLocale } from "@/components/locale-provider";
 import { Button } from "@repo/ui/button";
 import { uiText } from "@/content/ui-text";
 
@@ -22,6 +23,7 @@ export function PricingCard({
   yearly: boolean;
   previousTierName?: string;
 }) {
+  const locale = useAppLocale();
   const isPopular = plan.isPopular;
   const ctaHref = (() => {
     const base = plan.ctaLink ?? "/onboarding";
@@ -36,8 +38,8 @@ export function PricingCard({
       ? Math.round(plan.priceYearly / 12)
       : plan.priceMonthly;
 
-  const { display, amount, suffix } = formatPrice(effectivePrice, yearly);
-  const monthlyPrice = formatPrice(plan.priceMonthly, false);
+  const { display, amount, suffix } = formatPrice(effectivePrice, yearly, locale);
+  const monthlyPrice = formatPrice(plan.priceMonthly, false, locale);
   const savings =
     yearly && plan.priceYearly != null && plan.priceYearly > 0
       ? savingsPercent(plan.priceMonthly, plan.priceYearly)
@@ -74,6 +76,7 @@ export function PricingCard({
               yearly={yearly}
               accent={isPopular}
               monthlyAmount={yearly ? monthlyPrice.amount : null}
+              locale={locale}
             />
             <span className="mt-1 block text-sm text-muted-foreground">{suffix}</span>
           </div>

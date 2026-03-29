@@ -1,4 +1,3 @@
-import brandLogo from "@repo/brand/logo";
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { SiteHeader } from "@/components/marketing/site-header";
 import { CtaSection } from "@/components/marketing/cta-section";
@@ -67,9 +66,6 @@ export default async function LandingPage() {
           __html: JSON.stringify(faqJsonLd).replace(/</g, "\\u003c"),
         }}
       />
-      <span className="sr-only" aria-hidden>
-        {brandLogo.src}
-      </span>
     </div>
   );
 }

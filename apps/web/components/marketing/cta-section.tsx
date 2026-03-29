@@ -41,7 +41,7 @@ export function CtaSection() {
       <SectionContainer width="narrow" className="text-center">
         <FadeIn delay={0.1}>
           <p className="mb-3 text-xs font-bold uppercase tracking-[0.15em] text-primary">{ctaText.kicker}</p>
-          <h2 id="cta-heading" className="hero-text-gloss font-sans mb-4 text-[1.9rem] font-extrabold sm:mb-6 sm:text-3xl md:text-4xl lg:text-5xl">
+          <h2 id="cta-heading" className="hero-text-gloss font-sans mb-4 text-balance text-[1.9rem] font-extrabold sm:mb-6 sm:text-3xl md:text-4xl lg:text-5xl">
             {ctaText.headingPrefix} <GradientText>{ctaText.headingHighlight}</GradientText>?
           </h2>
         </FadeIn>

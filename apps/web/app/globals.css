@@ -62,6 +62,14 @@
   animation: panel-enter 0.35s cubic-bezier(0.22, 0.61, 0.36, 1) both;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .animate-panel-enter,
+  .animate-gradient-x,
+  .animate-glow-pulse {
+    animation: none;
+  }
+}
+
 .landing-scrollbar-hidden {
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -101,19 +109,23 @@
   );
 }
 
-@keyframes gradient-x {
+/* Compositor-friendly: opacity + transform only (see Web Interface Guidelines – Animation) */
+@keyframes gradient-x-breathe {
   0%,
   100% {
-    background-position: 0% 50%;
+    opacity: 1;
+    transform: scale(1);
   }
   50% {
-    background-position: 100% 50%;
+    opacity: 0.94;
+    transform: scale(1.01);
   }
 }
 
 .animate-gradient-x {
-  background-size: 200% 200%;
-  animation: gradient-x 4s ease infinite;
+  display: inline-block;
+  animation: gradient-x-breathe 4s ease-in-out infinite;
+  will-change: transform, opacity;
 }
 
 @keyframes glow-pulse {

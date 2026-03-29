@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { HeartHandshake, LockKeyhole, Play, ShieldCheck, Sparkles, Zap } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -16,6 +16,7 @@ import { uiText } from "@/content/ui-text";
 
 export function HeroSection() {
   const text = uiText.landingSections.hero;
+  const prefersReducedMotion = useReducedMotion();
 
   return (
     <section className="relative min-h-screen overflow-hidden" aria-labelledby="hero-heading">
@@ -29,12 +30,15 @@ export function HeroSection() {
           <div className="text-center lg:text-left">
             <FadeIn delay={0.1}>
               <Badge variant="secondary" className="enterprise-kicker mb-6 px-3.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] sm:text-[11px]">
-                <Sparkles className="h-3 w-3 text-primary" />
+                <Sparkles className="h-3 w-3 text-primary" aria-hidden />
                 {text.badge}
               </Badge>
             </FadeIn>
             <FadeIn delay={0.2}>
-              <h1 id="hero-heading" className="hero-title-brutal hero-text-gloss text-[2.05rem] leading-[0.9] sm:text-[2.45rem] md:text-[2.85rem] lg:text-[3.2rem]">
+              <h1
+                id="hero-heading"
+                className="hero-title-brutal hero-text-gloss text-balance text-[2.05rem] leading-[0.9] sm:text-[2.45rem] md:text-[2.85rem] lg:text-[3.2rem]"
+              >
                 <span className="block">{text.headingPrefix}</span>
                 <span className="block">
                   <GradientText>{text.headingHighlight}</GradientText>
@@ -53,7 +57,7 @@ export function HeroSection() {
                 </GradientCta>
                 <Button size="lg" variant="outline" className="min-h-12 w-full gap-2 sm:w-auto" asChild>
                   <Link href="#trades">
-                    <Play className="h-4 w-4" />
+                    <Play className="h-4 w-4" aria-hidden />
                     {text.secondaryCta}
                   </Link>
                 </Button>
@@ -62,22 +66,22 @@ export function HeroSection() {
             <FadeIn delay={0.65}>
               <div className="mt-7 flex flex-wrap items-center justify-center gap-x-2.5 gap-y-2.5 text-[10px] font-medium uppercase tracking-[0.06em] text-muted-foreground sm:text-[11px] lg:justify-start">
                 <span className="flex items-center gap-2">
-                  <ShieldCheck className="h-4 w-4 text-primary" />
+                  <ShieldCheck className="h-4 w-4 text-primary" aria-hidden />
                   {text.trustDsgvo}
                 </span>
                 <span className="hidden sm:inline text-border">|</span>
                 <span className="flex items-center gap-2">
-                  <LockKeyhole className="h-4 w-4 text-primary" />
+                  <LockKeyhole className="h-4 w-4 text-primary" aria-hidden />
                   {text.trustEncryption}
                 </span>
                 <span className="hidden sm:inline text-border">|</span>
                 <span className="flex items-center gap-2">
-                  <Zap className="h-4 w-4 text-primary" />
+                  <Zap className="h-4 w-4 text-primary" aria-hidden />
                   {text.trustPayment}
                 </span>
                 <span className="hidden sm:inline text-border">|</span>
                 <span className="flex items-center gap-2">
-                  <HeartHandshake className="h-4 w-4 text-primary" />
+                  <HeartHandshake className="h-4 w-4 text-primary" aria-hidden />
                   {text.trustSupport}
                 </span>
               </div>
@@ -109,9 +113,11 @@ export function HeroSection() {
           <FadeIn delay={0.5} direction="left">
             <motion.div
               className="relative mx-auto w-full max-w-[calc(100vw-1.5rem)] perspective-[520px] sm:max-w-xl sm:perspective-[600px] lg:ml-auto lg:max-w-[min(60vw,54rem)] xl:max-w-[min(58vw,58rem)]"
-              initial={{ opacity: 0, y: 24, scale: 0.98 }}
+              initial={
+                prefersReducedMotion ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 24, scale: 0.98 }
+              }
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ duration: 0.7 }}
+              transition={{ duration: prefersReducedMotion ? 0 : 0.7 }}
             >
               <div className="group relative transition-transform duration-700 ease-out sm:transform-[rotateY(-14deg)_rotateX(5deg)] hover:sm:transform-[rotateY(-5deg)_rotateX(2deg)]">
                 <div className="premium-panel-strong overflow-hidden rounded-xl p-1">

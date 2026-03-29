@@ -32,7 +32,7 @@ export function FeaturesSection() {
             <Sparkles className="h-3.5 w-3.5 text-primary" />
             {uiText.landingSections.features.badge}
           </Badge>
-          <h2 id="features-heading" className="hero-text-gloss font-sans mb-3 text-[1.9rem] font-bold sm:text-3xl md:text-4xl lg:text-5xl">
+          <h2 id="features-heading" className="hero-text-gloss font-sans mb-3 text-balance text-[1.9rem] font-bold sm:text-3xl md:text-4xl lg:text-5xl">
             {uiText.landingSections.features.headingPrefix}<br /><GradientText>{uiText.landingSections.features.headingHighlight}</GradientText>
           </h2>
           <p className="text-base leading-[1.7] text-muted-foreground md:text-lg">

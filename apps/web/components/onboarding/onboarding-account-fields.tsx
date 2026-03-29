@@ -116,6 +116,7 @@ export function OnboardingCredentialsFields({
             name="email"
             type="email"
             autoComplete="email"
+            spellCheck={false}
             required
             value={values.email}
             onChange={(event) => onChange("email", event.target.value)}
