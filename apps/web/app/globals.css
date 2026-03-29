@@ -1,4 +1,4 @@
-@import "../../../packages/ui/src/styles/globals.css";
+@import "@repo/ui/styles/globals.css";
 
 /* Onboarding / auth panel utilities (from product design system) */
 .enterprise-grid {

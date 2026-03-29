@@ -13,7 +13,7 @@ pnpm exec turbo lint --filter=@repo/ui
 pnpm exec turbo check-types --filter=@repo/ui
 ```
 
-(`build` is only defined for Next apps; this package has no `build` script.)
+(`build` is only defined for Next apps; this package has no `build` script.) The `generate:component` script uses the repo’s `turbo` CLI (declared in this package’s `devDependencies`).
 
 ## Overview
 
@@ -30,7 +30,7 @@ Internal library used by all Next.js apps in this monorepo. React components are
 - **`@repo/ui/<component>`** — each `src/<name>.tsx` file (e.g. `button`, `dialog`, `sidebar`).
 - **`@repo/ui/utils`** — `src/utils.ts` (e.g. `cn()` helper).
 - **`@repo/ui/use-mobile`** — `src/use-mobile.ts`.
-- **`@repo/ui/styles/*`** — CSS under `src/styles/` (e.g. `globals.css` for apps to import).
+- **`@repo/ui/styles/*`** — CSS under `src/styles/` (e.g. `globals.css` for apps to import). The package `exports` map uses `"./styles/*": "./src/styles/*"` so requests like `@repo/ui/styles/globals.css` resolve to `src/styles/globals.css` without a duplicated `.css` suffix.
 
 Example imports:
 

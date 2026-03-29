@@ -1,4 +1,4 @@
-@import "../../../packages/ui/src/styles/globals.css";
+@import "@repo/ui/styles/globals.css";
 
 /* Rechte TOC-Sidebar: nur vertikal scrollen (verschachteltes overflow-y löst oft eine horizontale Leiste aus) */
 .docs-sidebar-scroll {
