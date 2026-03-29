@@ -65,7 +65,8 @@
 @media (prefers-reduced-motion: reduce) {
   .animate-panel-enter,
   .animate-gradient-x,
-  .animate-glow-pulse {
+  .animate-glow-pulse,
+  .hero-millimeter-paper::before {
     animation: none;
   }
 }
@@ -165,6 +166,53 @@
 
 .animate-glow-pulse {
   animation: glow-pulse 4s ease-in-out infinite;
+}
+
+/* Hero: Millimeterpapier — Drift per transform (background-position + var() in @keyframes wird oft nicht interpoliert) */
+.hero-millimeter-paper {
+  overflow: hidden;
+  /* Weiche Maske: Raster noch weiter nach unten, Ausblendung erst am unteren Hero-Rand */
+  mask-image: radial-gradient(ellipse 140% 132% at 50% 18%, black 26%, transparent 95%);
+  -webkit-mask-image: radial-gradient(ellipse 140% 132% at 50% 18%, black 26%, transparent 95%);
+  perspective: 1800px;
+  perspective-origin: 50% 24%;
+}
+
+.hero-millimeter-paper::before {
+  content: "";
+  position: absolute;
+  inset: -30%;
+  --paper-mm: 3.78px; /* 1 mm bei 96 dpi */
+  --paper-block: calc(var(--paper-mm) * 10);
+  --paper-fine: color-mix(in oklch, var(--color-primary) 6.5%, transparent);
+  --paper-major: color-mix(in oklch, var(--color-primary) 14%, transparent);
+  background-image:
+    linear-gradient(to right, var(--paper-fine) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--paper-fine) 1px, transparent 1px),
+    linear-gradient(to right, var(--paper-major) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--paper-major) 1px, transparent 1px);
+  background-size: var(--paper-mm) var(--paper-mm), var(--paper-mm) var(--paper-mm),
+    var(--paper-block) var(--paper-block), var(--paper-block) var(--paper-block);
+  transform-origin: center center;
+  /* Leicht gekippt (X) und im Raum gedreht (Z) */
+  transform: rotateX(1.4deg) rotate(-2.6deg) translate3d(0, 0, 0);
+  animation: hero-paper-float 90s linear infinite;
+  will-change: transform;
+}
+
+.dark .hero-millimeter-paper::before {
+  --paper-fine: color-mix(in oklch, var(--color-primary) 5.5%, transparent);
+  --paper-major: color-mix(in oklch, var(--color-primary) 12%, transparent);
+}
+
+@keyframes hero-paper-float {
+  0% {
+    transform: rotateX(1.4deg) rotate(-2.6deg) translate3d(0, 0, 0);
+  }
+  100% {
+    /* Eine Raster-Zelle (~37.8px) diagonal — nahtloser Loop, sichtbar sanfte Bewegung */
+    transform: rotateX(1.4deg) rotate(-2.6deg) translate3d(-37.8px, -37.8px, 0);
+  }
 }
 
 .executive-nav {

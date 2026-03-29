@@ -37,6 +37,10 @@ export function HeroSection() {
       <GlowBackground />
       <div
         aria-hidden
+        className="hero-millimeter-paper pointer-events-none absolute inset-0 z-0"
+      />
+      <div
+        aria-hidden
         className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-44 bg-linear-to-b from-transparent via-background/80 to-background md:h-56"
       />
       <SectionContainer className="relative z-20 flex min-h-screen flex-col justify-center pb-16 pt-30 sm:pt-28 lg:pt-26">

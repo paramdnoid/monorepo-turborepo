@@ -95,7 +95,7 @@ export const EllipseCard = memo(function EllipseCard({
       type="button"
       style={{ x, y, scale, zIndex, opacity, ...staticStyles }}
       onClick={onClick}
-      className="cursor-pointer rounded-2xl text-left shadow-lg shadow-black/15 ring-1 ring-black/5 dark:shadow-black/40 dark:ring-white/10"
+      className="cursor-pointer overflow-hidden rounded-2xl text-left shadow-none ring-0 outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
       aria-label={ariaLabel}
       aria-pressed={isActive}
     >

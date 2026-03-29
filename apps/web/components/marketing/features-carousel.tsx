@@ -8,10 +8,11 @@ import { EllipseCard, EllipseCarousel } from "@/components/marketing/ellipse-car
 import { FadeIn } from "@/components/marketing/fade-in";
 import { Button } from "@repo/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/onboarding/onboarding-toggle-group";
-import { features } from "@/content/features";
+import { features, type Feature } from "@/content/features";
 import { uiText } from "@/content/ui-text";
 import { useBreakpoint } from "@/hooks/use-breakpoint";
 import { useEllipseCarousel } from "@/hooks/use-ellipse-carousel";
+import { cn } from "@repo/ui/utils";
 
 const CAROUSEL_CONFIG = {
   xs: { radius: { x: 150, y: 18 }, card: { w: 248, h: 164 }, height: 250 },
@@ -20,6 +21,40 @@ const CAROUSEL_CONFIG = {
   lg: { radius: { x: 390, y: 48 }, card: { w: 312, h: 194 }, height: 328 },
   xl: { radius: { x: 440, y: 54 }, card: { w: 328, h: 200 }, height: 340 },
 } as const;
+
+function FeatureSlideCard({ feature, index, isActive }: { feature: Feature; index: number; isActive: boolean }) {
+  const Icon = feature.icon;
+  const stepLabel = String(index + 1).padStart(2, "0");
+
+  return (
+    <div className="h-full w-full rounded-2xl bg-linear-to-br from-primary/12 via-amber-500/10 to-primary/8 p-[3px] shadow-[0_22px_56px_-32px_color-mix(in_oklch,var(--color-foreground)_45%,transparent)]">
+      <div
+        className={cn(
+          "relative flex h-full min-h-0 flex-col overflow-hidden rounded-[13px] bg-linear-to-b from-card via-card to-muted/45 p-4 text-left shadow-[inset_0_1px_0_0_color-mix(in_oklch,var(--color-background)_70%,transparent)]",
+          isActive && "ring-1 ring-primary/35",
+        )}
+      >
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_40%_18%,color-mix(in_oklch,var(--color-primary)_12%,transparent)_0%,transparent_50%)]"
+        />
+        <span
+          className="pointer-events-none absolute right-1 top-0 font-mono text-[clamp(2rem,14vw,3.25rem)] font-black leading-none tabular-nums text-primary/[0.11] select-none sm:right-2 sm:top-1"
+          aria-hidden
+        >
+          {stepLabel}
+        </span>
+        <div className="relative z-[1] flex min-h-0 flex-col gap-2 pr-1">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-primary via-primary to-amber-600 text-primary-foreground shadow-[0_10px_28px_-8px_color-mix(in_oklch,var(--color-primary)_55%,transparent)] ring-[3px] ring-background/95">
+            <Icon className="h-5 w-5" aria-hidden strokeWidth={1.75} />
+          </div>
+          <p className="font-sans text-[15px] font-bold tracking-tight">{feature.title}</p>
+          <p className="text-xs leading-relaxed text-muted-foreground text-pretty sm:text-sm">{feature.description}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function FeaturesCarousel() {
   const carouselHintId = useId();
@@ -138,13 +173,7 @@ export function FeaturesCarousel() {
                 ariaLabel={`${feature.title} (${i + 1} ${uiText.landingSections.featuresCarousel.of} ${features.length})`}
                 isActive={activeIndex === i}
               >
-                <div className={`feature-card h-full rounded-2xl p-4 ${activeIndex === i ? "feature-card-active" : ""}`}>
-                  <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-lg bg-primary/8 text-primary ring-1 ring-primary/10">
-                    <feature.icon className="h-5 w-5" aria-hidden />
-                  </div>
-                  <p className="font-sans text-[15px] font-bold tracking-tight">{feature.title}</p>
-                  <p className="mt-1 text-xs leading-snug text-muted-foreground sm:text-[13px]">{feature.description}</p>
-                </div>
+                <FeatureSlideCard feature={feature} index={i} isActive={activeIndex === i} />
               </EllipseCard>
             ))}
           </EllipseCarousel>
