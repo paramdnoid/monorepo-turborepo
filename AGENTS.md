@@ -4,7 +4,7 @@ This file provides context for AI coding agents working in this repository. **St
 
 ## Project Overview
 
-Turborepo monorepo containing two Next.js applications, one React Native application, and six shared internal packages under `packages/`. Root package name: `my-turborepo`. Uses pnpm workspaces for dependency management and Turborepo for orchestrating builds and tasks across packages.
+Turborepo monorepo containing two Next.js applications, one React Native application, and eight shared internal packages under `packages/`. Root package name: `my-turborepo`. Uses pnpm workspaces for dependency management and Turborepo for orchestrating builds and tasks across packages.
 
 **Bootstrap:** clone the repo, then run `pnpm install` once at the repository root to install all workspace dependencies.
 
@@ -14,18 +14,20 @@ Turborepo monorepo containing two Next.js applications, one React Native applica
 
 Turborepo **`--filter`** values must match each package’s **`name`** in its `package.json`, not the folder path (e.g. use `--filter=web`, not `--filter=apps/web`).
 
-| `name` (filter)           | Path                         | Role                                                 |
-| ------------------------- | ---------------------------- | ---------------------------------------------------- |
-| `my-turborepo`            | `./` (root)                  | Workspace root; scripts orchestrate Turbo            |
-| `web`                     | `apps/web`                   | Primary Next.js app                                  |
-| `docs`                    | `apps/docs`                  | Documentation Next.js app                            |
-| `native`                  | `apps/native`                | React Native app                                     |
-| `@repo/ui`                | `packages/ui`                | Shared UI library                                    |
-| `@repo/fonts`             | `packages/fonts`             | Shared Geist fonts (`next/font/local`) for Next apps |
-| `@repo/turborepo-starter` | `packages/turborepo-starter` | Shared starter copy / URLs                           |
-| `@repo/brand`             | `packages/brand`             | Shared app logo / favicon asset (PNG)                |
-| `@repo/eslint-config`     | `packages/eslint-config`     | Shared ESLint flat configs                           |
-| `@repo/typescript-config` | `packages/typescript-config` | Shared `tsconfig` bases                              |
+| `name` (filter)           | Path                         | Role                                                      |
+| ------------------------- | ---------------------------- | --------------------------------------------------------- |
+| `my-turborepo`            | `./` (root)                  | Workspace root; scripts orchestrate Turbo                 |
+| `web`                     | `apps/web`                   | Primary Next.js app                                       |
+| `docs`                    | `apps/docs`                  | Documentation Next.js app                                 |
+| `native`                  | `apps/native`                | React Native app                                          |
+| `@repo/ui`                | `packages/ui`                | Shared UI library                                         |
+| `@repo/fonts`             | `packages/fonts`             | Shared Geist fonts (`next/font/local`) for Next apps      |
+| `@repo/turborepo-starter` | `packages/turborepo-starter` | Shared starter copy / URLs                                |
+| `@repo/brand`             | `packages/brand`             | Shared app logo / favicon asset (PNG)                     |
+| `@repo/eslint-config`     | `packages/eslint-config`     | Shared ESLint flat configs                                |
+| `@repo/typescript-config` | `packages/typescript-config` | Shared `tsconfig` bases                                   |
+| `@repo/tailwind-config`   | `packages/tailwind-config`   | Shared Tailwind v4 styles + PostCSS for apps / `@repo/ui` |
+| `@repo/playwright-web`    | `packages/playwright-web`    | Playwright E2E against `web` (depends on `web` workspace) |
 
 **Examples:**
 
@@ -38,18 +40,20 @@ pnpm exec turbo check-types --filter=native
 
 ## Agent navigation (what to open for which task)
 
-| If you are…                                     | Read                                                                           |
-| ----------------------------------------------- | ------------------------------------------------------------------------------ |
-| Choosing or comparing apps                      | [`apps/AGENTS.md`](apps/AGENTS.md)                                             |
-| Primary product / marketing site (Next)         | [`apps/web/AGENTS.md`](apps/web/AGENTS.md)                                     |
-| Docs site (Next)                                | [`apps/docs/AGENTS.md`](apps/docs/AGENTS.md)                                   |
-| Mobile: WebView, Metro, iOS/Android, NativeWind | [`apps/native/AGENTS.md`](apps/native/AGENTS.md)                               |
-| Shared React components, tokens, `globals.css`  | [`packages/ui/AGENTS.md`](packages/ui/AGENTS.md)                               |
-| Shared local fonts (Geist) for Next.js layouts  | [`packages/fonts/AGENTS.md`](packages/fonts/AGENTS.md)                         |
-| Starter screen copy and URLs (web + native)     | [`packages/turborepo-starter/AGENTS.md`](packages/turborepo-starter/AGENTS.md) |
-| Shared logo / app icon source (PNG)             | [`packages/brand/AGENTS.md`](packages/brand/AGENTS.md)                         |
-| ESLint rules shared across Next + UI            | [`packages/eslint-config/AGENTS.md`](packages/eslint-config/AGENTS.md)         |
-| `tsconfig` bases for Next and libraries         | [`packages/typescript-config/AGENTS.md`](packages/typescript-config/AGENTS.md) |
+| If you are…                                     | Read                                                                                   |
+| ----------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Choosing or comparing apps                      | [`apps/AGENTS.md`](apps/AGENTS.md)                                                     |
+| Primary product / marketing site (Next)         | [`apps/web/AGENTS.md`](apps/web/AGENTS.md)                                             |
+| Docs site (Next)                                | [`apps/docs/AGENTS.md`](apps/docs/AGENTS.md)                                           |
+| Mobile: WebView, Metro, iOS/Android, NativeWind | [`apps/native/AGENTS.md`](apps/native/AGENTS.md)                                       |
+| Shared React components, tokens, `globals.css`  | [`packages/ui/AGENTS.md`](packages/ui/AGENTS.md)                                       |
+| Shared local fonts (Geist) for Next.js layouts  | [`packages/fonts/AGENTS.md`](packages/fonts/AGENTS.md)                                 |
+| Starter screen copy and URLs (web + native)     | [`packages/turborepo-starter/AGENTS.md`](packages/turborepo-starter/AGENTS.md)         |
+| Shared logo / app icon source (PNG)             | [`packages/brand/AGENTS.md`](packages/brand/AGENTS.md)                                 |
+| ESLint rules shared across Next + UI            | [`packages/eslint-config/AGENTS.md`](packages/eslint-config/AGENTS.md)                 |
+| `tsconfig` bases for Next and libraries         | [`packages/typescript-config/AGENTS.md`](packages/typescript-config/AGENTS.md)         |
+| Shared Tailwind / PostCSS wiring                | [`packages/tailwind-config/`](packages/tailwind-config/) (`exports` in `package.json`) |
+| Web E2E (Playwright)                            | [`packages/playwright-web/`](packages/playwright-web/)                                 |
 
 ## Where to Look Next
 
@@ -67,6 +71,8 @@ More specific agent context lives next to the code:
 | [`packages/brand/AGENTS.md`](packages/brand/AGENTS.md)                         | Shared logo / favicon (`@repo/brand`)                      |
 | [`packages/eslint-config/AGENTS.md`](packages/eslint-config/AGENTS.md)         | Shared ESLint configs (`@repo/eslint-config`)              |
 | [`packages/typescript-config/AGENTS.md`](packages/typescript-config/AGENTS.md) | Shared TypeScript bases (`@repo/typescript-config`)        |
+| [`packages/tailwind-config/`](packages/tailwind-config/)                       | Shared styles + PostCSS (`@repo/tailwind-config`)          |
+| [`packages/playwright-web/`](packages/playwright-web/)                         | Playwright smoke/E2E for `web` (`@repo/playwright-web`)    |
 
 ## Monorepo Structure
 
@@ -82,6 +88,8 @@ packages/
   brand/               → Shared app logo PNG (@repo/brand; web + docs + native)
   eslint-config/       → Shared ESLint configurations (@repo/eslint-config)
   typescript-config/   → Shared TypeScript configurations (@repo/typescript-config)
+  tailwind-config/     → Shared Tailwind v4 + PostCSS (@repo/tailwind-config)
+  playwright-web/      → Playwright E2E package targeting web (@repo/playwright-web)
 ```
 
 ## Tech Stack
@@ -92,7 +100,7 @@ packages/
 - **Web:** Next.js 16.2 (App Router), React 19.2, Tailwind CSS 4.2
 - **Mobile:** React Native 0.84.x (see `apps/native`)
 - **Language:** TypeScript 5.9.x (strict mode, strictNullChecks enabled) in shared packages and Next apps; `apps/native` uses the RN TypeScript preset
-- **Linting:** ESLint v9 (flat config) in Next apps and packages; React Native app uses `@react-native/eslint-config`
+- **Linting:** ESLint v9 (flat config) in Next apps, `@repo/ui`, and `@repo/eslint-config`; `apps/native` uses ESLint 8 with `@react-native/eslint-config`
 - **Formatting:** Prettier (root); see **Commands** below for the exact `format` script
 
 ## Commands
@@ -118,7 +126,7 @@ prettier --write "**/*.{ts,tsx,md}" "apps/native/**/*.{js,mjs}"
 
 `pnpm lint` also runs the root Turbo task `lint:design-guardrails` ([`check-design-guardrails.mjs`](check-design-guardrails.mjs)) after workspace linting.
 
-## Local verification (same as CI)
+## Local verification (aligned with CI)
 
 Before pushing, from the repo root:
 
@@ -129,11 +137,13 @@ pnpm check-types
 pnpm build
 ```
 
-Matches [`.github/workflows/ci.yml`](.github/workflows/ci.yml) (`pnpm install --frozen-lockfile` in CI).
+[`ci.yml`](.github/workflows/ci.yml) uses `pnpm install --frozen-lockfile`, then `turbo run lint check-types build` (on pull requests with `--affected`), then `turbo run lint:design-guardrails`, then **conditionally** `turbo run e2e` (PRs: `--affected`) after installing Playwright Chromium when that plan includes `@repo/playwright-web#e2e`. Root **`pnpm lint`** already runs workspace lint and **`lint:design-guardrails`** in one go; it does **not** run E2E — run **`pnpm e2e`** locally when you need Playwright.
 
 ## `@repo/ui` and builds
 
 `@repo/ui` is consumed **from source** via `package.json` `exports` (no `build` script in that package). App builds (`pnpm build` / `turbo build`) compile Next.js apps; upstream `^build` in Turbo is harmless for packages that do not define a `build` task. `apps/native` has no `build` script; mobile binaries are built locally with Xcode / Android tooling.
+
+Some asset/config-only packages (`@repo/fonts`, `@repo/brand`, `@repo/turborepo-starter`, `@repo/tailwind-config`) define no `lint` / `check-types` / `build` scripts; Turbo skips them for those tasks and validation happens through dependent apps or packages.
 
 **React Native:** By default `apps/native` embeds the **Next.js** app in a **WebView** (same `@repo/ui` + Tailwind as the browser) when `USE_WEBVIEW` is true in `apps/native/src/config/features.ts`. With `USE_WEBVIEW` false, it uses **NativeWind** + `apps/native/components/ui` and shared theme tokens from `packages/ui/src/styles/theme-tokens.css`.
 
@@ -147,7 +157,7 @@ Never commit secrets. Use `.env.example` (committed) for placeholder names only;
 
 Root script **`pnpm test`** runs `turbo run test` (see [`turbo.json`](turbo.json)); packages without a `test` script are skipped. Today only **`native`** defines Jest (`apps/native`).
 
-**CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml) on `main` and pull requests): installs dependencies with `pnpm install --frozen-lockfile`, runs **`pnpm lint`**, **`pnpm check-types`**, and **`pnpm build`** on Node 22. It does **not** run **`pnpm test`** or iOS/Android native compilation. Run tests and device builds locally when needed.
+**CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml) on `main` and pull requests): installs with `pnpm install --frozen-lockfile` on Node 22, then runs **`turbo run lint`**, **`check-types`**, and **`build`** (pull requests: **`--affected`**), then **`turbo run lint:design-guardrails`**, then **Playwright E2E** when the dry-run plan includes `@repo/playwright-web#e2e` (pull requests: **`e2e --affected`**). It does **not** run **`pnpm test`** (Jest) or compile iOS/Android binaries. Run Jest and device builds locally when needed.
 
 ## Code Conventions
 
