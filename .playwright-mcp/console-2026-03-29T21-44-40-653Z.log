@@ -1,0 +1,12 @@
+[     256ms] Error: Minified React error #418; visit https://react.dev/errors/418?args[]=text&args[]= for the full message or use the non-minified dev environment for full errors and additional helpful warnings.
+    at rX (https://turborepo.dev/_next/static/chunks/18bubx_dzn8wd.js?dpl=dpl_6PQa8eLuqjeDQiqSLNZE33fVPtMh:1:47239)
+    at rY (https://turborepo.dev/_next/static/chunks/18bubx_dzn8wd.js?dpl=dpl_6PQa8eLuqjeDQiqSLNZE33fVPtMh:1:48272)
+    at https://turborepo.dev/_next/static/chunks/18bubx_dzn8wd.js?dpl=dpl_6PQa8eLuqjeDQiqSLNZE33fVPtMh:1:142620
+    at sh (https://turborepo.dev/_next/static/chunks/18bubx_dzn8wd.js?dpl=dpl_6PQa8eLuqjeDQiqSLNZE33fVPtMh:1:147781)
+    at sd (https://turborepo.dev/_next/static/chunks/18bubx_dzn8wd.js?dpl=dpl_6PQa8eLuqjeDQiqSLNZE33fVPtMh:1:139031)
+    at https://turborepo.dev/_next/static/chunks/18bubx_dzn8wd.js?dpl=dpl_6PQa8eLuqjeDQiqSLNZE33fVPtMh:1:133856
+    at se (https://turborepo.dev/_next/static/chunks/18bubx_dzn8wd.js?dpl=dpl_6PQa8eLuqjeDQiqSLNZE33fVPtMh:1:133957)
+    at s$ (https://turborepo.dev/_next/static/chunks/18bubx_dzn8wd.js?dpl=dpl_6PQa8eLuqjeDQiqSLNZE33fVPtMh:1:160521)
+    at MessagePort.O (https://turborepo.dev/_next/static/chunks/18bubx_dzn8wd.js?dpl=dpl_6PQa8eLuqjeDQiqSLNZE33fVPtMh:1:8682)
+[     311ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://turborepo.dev/images/product-icons/repo-dark-32x32.png:0
+[     358ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://turborepo.dev/images/product-icons/repo-dark-32x32.png:0

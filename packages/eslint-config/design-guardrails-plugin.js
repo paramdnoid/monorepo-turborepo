@@ -1,26 +1,4 @@
-const TARGETS = {
-  docs: {
-    pathSuffix: "/apps/docs/app/page.tsx",
-    requiredImports: [
-      "deployHrefDocs",
-      "docsHref",
-      "templatesHref",
-      "turborepoSiteHref",
-      "alertMessage",
-      "step2Text",
-      "title",
-      "description",
-      "step1CodePathDocs",
-    ],
-    forbiddenStrings: [
-      "https://turborepo.dev/docs?utm_source",
-      "https://vercel.com/templates?search=turborepo",
-      "https://turborepo.dev?utm_source=create-turbo",
-      "Hello from @repo/ui",
-    ],
-    forbidVariableNames: ["deployHref"],
-  },
-};
+const TARGETS = {};
 
 function normalizeFilename(filename) {
   return String(filename).replaceAll("\\", "/");

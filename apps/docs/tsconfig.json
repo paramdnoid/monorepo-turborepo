@@ -3,11 +3,13 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
+      "@/lib/i18n/locale": ["../web/lib/i18n/locale.ts"],
       "@/*": ["./*"],
       "@/components/*": ["./components/*"],
       "@/hooks/*": ["./hooks/*"],
       "@/lib/*": ["./lib/*"],
-      "@repo/ui/*": ["../../packages/ui/src/*"]
+      "@repo/ui/*": ["../../packages/ui/src/*"],
+      "@web/*": ["../web/*"]
     },
     "plugins": [
       {

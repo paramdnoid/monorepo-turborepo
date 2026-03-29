@@ -1,0 +1,864 @@
+[  290585ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr?id=D6Mhk7Y9ixmXY_L9Po0b-' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/_next/static/chunks/0h8d_next_dist_client_07we3ap._.js:13299
+[  291589ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr?id=D6Mhk7Y9ixmXY_L9Po0b-' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/_next/static/chunks/0h8d_next_dist_client_07we3ap._.js:13299
+[  292591ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr?id=D6Mhk7Y9ixmXY_L9Po0b-' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/_next/static/chunks/0h8d_next_dist_client_07we3ap._.js:13299
+[  293593ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr?id=D6Mhk7Y9ixmXY_L9Po0b-' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/_next/static/chunks/0h8d_next_dist_client_07we3ap._.js:13299
+[  294596ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr?id=D6Mhk7Y9ixmXY_L9Po0b-' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/_next/static/chunks/0h8d_next_dist_client_07we3ap._.js:13299
+[  299600ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr?id=D6Mhk7Y9ixmXY_L9Po0b-' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/_next/static/chunks/0h8d_next_dist_client_07we3ap._.js:13299
+[  304610ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr?id=D6Mhk7Y9ixmXY_L9Po0b-' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/_next/static/chunks/0h8d_next_dist_client_07we3ap._.js:13299
+[  309626ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr?id=D6Mhk7Y9ixmXY_L9Po0b-' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/_next/static/chunks/0h8d_next_dist_client_07we3ap._.js:13299
+[  314657ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr?id=D6Mhk7Y9ixmXY_L9Po0b-' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/_next/static/chunks/0h8d_next_dist_client_07we3ap._.js:13299
+[  319700ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr?id=D6Mhk7Y9ixmXY_L9Po0b-' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/_next/static/chunks/0h8d_next_dist_client_07we3ap._.js:13299
+[  324759ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr?id=D6Mhk7Y9ixmXY_L9Po0b-' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/_next/static/chunks/0h8d_next_dist_client_07we3ap._.js:13299
+[  329954ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr?id=D6Mhk7Y9ixmXY_L9Po0b-' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/_next/static/chunks/0h8d_next_dist_client_07we3ap._.js:13299
+[  523796ms] [ERROR] ./apps/docs/components/docs-shell.tsx:22:1
+Module not found: Can't resolve 'lucide-react'
+  20 |   SidebarTrigger,
+  21 | } from "@repo/ui/sidebar";
+> 22 | import { BookOpenIcon, ExternalLinkIcon } from "lucide-react";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  23 | import Image from "next/image";
+  24 | import Link from "next/link";
+  25 |
+
+Import trace:
+  Server Component:
+    ./apps/docs/components/docs-shell.tsx
+    ./apps/docs/app/layout.tsx
+
+https://nextjs.org/docs/messages/module-not-found @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_0hfr84.._.js:3272
+[  523797ms] [ERROR] ./apps/docs/components/docs-theme-toggle.tsx:4:1
+Module not found: Can't resolve 'lucide-react'
+  2 |
+  3 | import { useSyncExternalStore } from "react";
+> 4 | import { MonitorIcon, MoonIcon, SunIcon } from "lucide-react";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5 | import { useTheme } from "next-themes";
+  6 |
+  7 | import { Button } from "@repo/ui/button";
+
+Import traces:
+  Client Component Browser:
+    ./apps/docs/components/docs-theme-toggle.tsx [Client Component Browser]
+    ./apps/docs/components/docs-shell.tsx [Client Component Browser]
+    ./apps/docs/components/docs-shell.tsx [Server Component]
+    ./apps/docs/app/layout.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/docs/components/docs-theme-toggle.tsx [Client Component SSR]
+    ./apps/docs/components/docs-shell.tsx [Client Component SSR]
+    ./apps/docs/components/docs-shell.tsx [Server Component]
+    ./apps/docs/app/layout.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_0hfr84.._.js:3272
+[  523797ms] [ERROR] ./apps/docs/components/docs-theme-toggle.tsx:5:1
+Module not found: Can't resolve 'next-themes'
+  3 | import { useSyncExternalStore } from "react";
+  4 | import { MonitorIcon, MoonIcon, SunIcon } from "lucide-react";
+> 5 | import { useTheme } from "next-themes";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  6 |
+  7 | import { Button } from "@repo/ui/button";
+  8 | import { cn } from "@repo/ui/utils";
+
+Import traces:
+  Client Component Browser:
+    ./apps/docs/components/docs-theme-toggle.tsx [Client Component Browser]
+    ./apps/docs/components/docs-shell.tsx [Client Component Browser]
+    ./apps/docs/components/docs-shell.tsx [Server Component]
+    ./apps/docs/app/layout.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/docs/components/docs-theme-toggle.tsx [Client Component SSR]
+    ./apps/docs/components/docs-shell.tsx [Client Component SSR]
+    ./apps/docs/components/docs-shell.tsx [Server Component]
+    ./apps/docs/app/layout.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_0hfr84.._.js:3272
+[  524182ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3001/?_rsc=wnywt:0
+[  524228ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3001/?_rsc=wnywt:0
+[  524271ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3001/:0
+[  524399ms] Error: ./apps/docs/components/docs-shell.tsx:22:1
+Module not found: Can't resolve 'lucide-react'
+  20 |   SidebarTrigger,
+  21 | } from "@repo/ui/sidebar";
+> 22 | import { BookOpenIcon, ExternalLinkIcon } from "lucide-react";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  23 | import Image from "next/image";
+  24 | import Link from "next/link";
+  25 |
+
+
+
+Import trace:
+  Server Component:
+    ./apps/docs/components/docs-shell.tsx
+    ./apps/docs/app/layout.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+    at <unknown> (Error: ./apps/docs/components/docs-shell.tsx:22:1)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+    at Object.getCompilationErrors (file:///Users/andre/Projects/monorepo-turborepo/node_modules/.pnpm/next@16.2.0_@playwright+test@1.58.2_babel-plugin-react-compiler@1.0.0_react-dom@19.2.0_react@19.2.0__react@19.2.0/node_modules/next/dist/server/dev/hot-reloader-turbopack.js:1189:59)
+    at DevBundlerService.getCompilationError (file:///Users/andre/Projects/monorepo-turborepo/node_modules/.pnpm/next@16.2.0_@playwright+test@1.58.2_babel-plugin-react-compiler@1.0.0_react-dom@19.2.0_react@19.2.0__react@19.2.0/node_modules/next/dist/server/lib/dev-bundler-service.js:44:55)
+    at DevServer.getCompilationError (file:///Users/andre/Projects/monorepo-turborepo/node_modules/.pnpm/next@16.2.0_@playwright+test@1.58.2_babel-plugin-react-compiler@1.0.0_react-dom@19.2.0_react@19.2.0__react@19.2.0/node_modules/next/dist/server/dev/next-dev-server.js:719:42)
+    at DevServer.findPageComponents (file:///Users/andre/Projects/monorepo-turborepo/node_modules/.pnpm/next@16.2.0_@playwright+test@1.58.2_babel-plugin-react-compiler@1.0.0_react-dom@19.2.0_react@19.2.0__react@19.2.0/node_modules/next/dist/server/dev/next-dev-server.js:689:43)
+    at async DevServer.renderErrorToResponseImpl (file:///Users/andre/Projects/monorepo-turborepo/node_modules/.pnpm/next@16.2.0_@playwright+test@1.58.2_babel-plugin-react-compiler@1.0.0_react-dom@19.2.0_react@19.2.0__react@19.2.0/node_modules/next/dist/server/base-server.js:1745:26)
+[  524400ms] Error: Module [next]/entry/page-loader.ts { PAGE => "[project]/node_modules/.pnpm/next@16.2.0_react-dom@19.2.0_react@19.2.0__react@19.2.0/node_modules/next/dist/pages/_error.js [client] (ecmascript)" } [client] (ecmascript) was instantiated because it was required from module [hmr-entry]/hmr-entry.js { ENTRY => "[project]/apps/docs/pages/_error" }, but the module factory is not available.
+This is often caused by a stale browser cache, misconfigured Cache-Control headers, or a service worker serving outdated responses.
+To fix this, make sure your Cache-Control headers allow revalidation of chunks and review your service worker configuration. As an immediate workaround, try hard-reloading the page, clearing the browser cache, or unregistering any service workers.
+    at instantiateModuleShared (http://localhost:3001/_next/static/chunks/turbopack-apps_docs_pages__app_0jpzst7._.js:1272:15)
+    at instantiateModule (http://localhost:3001/_next/static/chunks/turbopack-apps_docs_pages__app_0jpzst7._.js:1621:12)
+    at getOrInstantiateModuleFromParent (http://localhost:3001/_next/static/chunks/turbopack-apps_docs_pages__app_0jpzst7._.js:1604:12)
+    at DevContext.commonJsRequire [as r] (http://localhost:3001/_next/static/chunks/turbopack-apps_docs_pages__app_0jpzst7._.js:299:12)
+    at module evaluation (http://localhost:3001/_next/static/chunks/%5Broot-of-the-server%5D__02i8gpe._.js:468:23)
+    at http://localhost:3001/_next/static/chunks/turbopack-apps_docs_pages__app_0jpzst7._.js:1307:27
+    at runModuleExecutionHooks (http://localhost:3001/_next/static/chunks/turbopack-apps_docs_pages__app_0jpzst7._.js:1636:13)
+    at instantiateModuleShared (http://localhost:3001/_next/static/chunks/turbopack-apps_docs_pages__app_0jpzst7._.js:1305:9)
+    at instantiateModule (http://localhost:3001/_next/static/chunks/turbopack-apps_docs_pages__app_0jpzst7._.js:1621:12)
+    at getOrInstantiateRuntimeModule (http://localhost:3001/_next/static/chunks/turbopack-apps_docs_pages__app_0jpzst7._.js:1582:12)
+    at Object.registerChunk (http://localhost:3001/_next/static/chunks/turbopack-apps_docs_pages__app_0jpzst7._.js:1985:21)
+[  524399ms] [ERROR] ./apps/docs/components/docs-shell.tsx:22:1
+Module not found: Can't resolve 'lucide-react'
+  20 |   SidebarTrigger,
+  21 | } from "@repo/ui/sidebar";
+> 22 | import { BookOpenIcon, ExternalLinkIcon } from "lucide-react";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  23 | import Image from "next/image";
+  24 | import Link from "next/link";
+  25 |
+
+Import trace:
+  Server Component:
+    ./apps/docs/components/docs-shell.tsx
+    ./apps/docs/app/layout.tsx
+
+https://nextjs.org/docs/messages/module-not-found @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_07j~k5t._.js:1945
+[  524399ms] [ERROR] ./apps/docs/components/docs-theme-toggle.tsx:4:1
+Module not found: Can't resolve 'lucide-react'
+  2 |
+  3 | import { useSyncExternalStore } from "react";
+> 4 | import { MonitorIcon, MoonIcon, SunIcon } from "lucide-react";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5 | import { useTheme } from "next-themes";
+  6 |
+  7 | import { Button } from "@repo/ui/button";
+
+Import traces:
+  Client Component Browser:
+    ./apps/docs/components/docs-theme-toggle.tsx [Client Component Browser]
+    ./apps/docs/components/docs-shell.tsx [Client Component Browser]
+    ./apps/docs/components/docs-shell.tsx [Server Component]
+    ./apps/docs/app/layout.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/docs/components/docs-theme-toggle.tsx [Client Component SSR]
+    ./apps/docs/components/docs-shell.tsx [Client Component SSR]
+    ./apps/docs/components/docs-shell.tsx [Server Component]
+    ./apps/docs/app/layout.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_07j~k5t._.js:1945
+[  524399ms] [ERROR] ./apps/docs/components/docs-theme-toggle.tsx:5:1
+Module not found: Can't resolve 'next-themes'
+  3 | import { useSyncExternalStore } from "react";
+  4 | import { MonitorIcon, MoonIcon, SunIcon } from "lucide-react";
+> 5 | import { useTheme } from "next-themes";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  6 |
+  7 | import { Button } from "@repo/ui/button";
+  8 | import { cn } from "@repo/ui/utils";
+
+Import traces:
+  Client Component Browser:
+    ./apps/docs/components/docs-theme-toggle.tsx [Client Component Browser]
+    ./apps/docs/components/docs-shell.tsx [Client Component Browser]
+    ./apps/docs/components/docs-shell.tsx [Server Component]
+    ./apps/docs/app/layout.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/docs/components/docs-theme-toggle.tsx [Client Component SSR]
+    ./apps/docs/components/docs-shell.tsx [Client Component SSR]
+    ./apps/docs/components/docs-shell.tsx [Server Component]
+    ./apps/docs/app/layout.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_07j~k5t._.js:1945
+[  531950ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3001/:0
+[  531993ms] Error: Module [next]/entry/page-loader.ts { PAGE => "[project]/node_modules/.pnpm/next@16.2.0_react-dom@19.2.0_react@19.2.0__react@19.2.0/node_modules/next/app.js [client] (ecmascript)" } [client] (ecmascript) was instantiated because it was required from module [hmr-entry]/hmr-entry.js { ENTRY => "[project]/apps/docs/pages/_app" }, but the module factory is not available.
+This is often caused by a stale browser cache, misconfigured Cache-Control headers, or a service worker serving outdated responses.
+To fix this, make sure your Cache-Control headers allow revalidation of chunks and review your service worker configuration. As an immediate workaround, try hard-reloading the page, clearing the browser cache, or unregistering any service workers.
+    at instantiateModuleShared (http://localhost:3001/_next/static/chunks/turbopack-apps_docs_pages__app_0jpzst7._.js:1272:15)
+    at instantiateModule (http://localhost:3001/_next/static/chunks/turbopack-apps_docs_pages__app_0jpzst7._.js:1621:12)
+    at getOrInstantiateModuleFromParent (http://localhost:3001/_next/static/chunks/turbopack-apps_docs_pages__app_0jpzst7._.js:1604:12)
+    at DevContext.commonJsRequire [as r] (http://localhost:3001/_next/static/chunks/turbopack-apps_docs_pages__app_0jpzst7._.js:299:12)
+    at module evaluation (http://localhost:3001/_next/static/chunks/%5Broot-of-the-server%5D__12z.rdy._.js:468:23)
+    at http://localhost:3001/_next/static/chunks/turbopack-apps_docs_pages__app_0jpzst7._.js:1307:27
+    at runModuleExecutionHooks (http://localhost:3001/_next/static/chunks/turbopack-apps_docs_pages__app_0jpzst7._.js:1636:13)
+    at instantiateModuleShared (http://localhost:3001/_next/static/chunks/turbopack-apps_docs_pages__app_0jpzst7._.js:1305:9)
+    at instantiateModule (http://localhost:3001/_next/static/chunks/turbopack-apps_docs_pages__app_0jpzst7._.js:1621:12)
+    at getOrInstantiateRuntimeModule (http://localhost:3001/_next/static/chunks/turbopack-apps_docs_pages__app_0jpzst7._.js:1582:12)
+    at Object.registerChunk (http://localhost:3001/_next/static/chunks/turbopack-apps_docs_pages__app_0jpzst7._.js:1985:21)
+[  531981ms] [WARNING] [HMR] Invalid message: {"type":"isrManifest","data":{"/":false,"/?_rsc=wnywt":false}}
+TypeError: Cannot read properties of undefined (reading 'components')
+    at handleStaticIndicator (http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2791:46)
+    at processMessage (http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2805:17)
+    at http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2679:13
+    at WebSocket.handleMessage (http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2324:17) @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_07j~k5t._.js:1226
+[  531983ms] [ERROR] ./apps/docs/components/docs-shell.tsx:22:1
+Module not found: Can't resolve 'lucide-react'
+  20 |   SidebarTrigger,
+  21 | } from "@repo/ui/sidebar";
+> 22 | import { BookOpenIcon, ExternalLinkIcon } from "lucide-react";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  23 | import Image from "next/image";
+  24 | import Link from "next/link";
+  25 |
+
+Import trace:
+  Server Component:
+    ./apps/docs/components/docs-shell.tsx
+    ./apps/docs/app/layout.tsx
+
+https://nextjs.org/docs/messages/module-not-found @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_07j~k5t._.js:1945
+[  531983ms] [ERROR] ./apps/docs/components/docs-theme-toggle.tsx:4:1
+Module not found: Can't resolve 'lucide-react'
+  2 |
+  3 | import { useSyncExternalStore } from "react";
+> 4 | import { MonitorIcon, MoonIcon, SunIcon } from "lucide-react";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5 | import { useTheme } from "next-themes";
+  6 |
+  7 | import { Button } from "@repo/ui/button";
+
+Import traces:
+  Client Component Browser:
+    ./apps/docs/components/docs-theme-toggle.tsx [Client Component Browser]
+    ./apps/docs/components/docs-shell.tsx [Client Component Browser]
+    ./apps/docs/components/docs-shell.tsx [Server Component]
+    ./apps/docs/app/layout.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/docs/components/docs-theme-toggle.tsx [Client Component SSR]
+    ./apps/docs/components/docs-shell.tsx [Client Component SSR]
+    ./apps/docs/components/docs-shell.tsx [Server Component]
+    ./apps/docs/app/layout.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_07j~k5t._.js:1945
+[  531983ms] [ERROR] ./apps/docs/components/docs-theme-toggle.tsx:5:1
+Module not found: Can't resolve 'next-themes'
+  3 | import { useSyncExternalStore } from "react";
+  4 | import { MonitorIcon, MoonIcon, SunIcon } from "lucide-react";
+> 5 | import { useTheme } from "next-themes";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  6 |
+  7 | import { Button } from "@repo/ui/button";
+  8 | import { cn } from "@repo/ui/utils";
+
+Import traces:
+  Client Component Browser:
+    ./apps/docs/components/docs-theme-toggle.tsx [Client Component Browser]
+    ./apps/docs/components/docs-shell.tsx [Client Component Browser]
+    ./apps/docs/components/docs-shell.tsx [Server Component]
+    ./apps/docs/app/layout.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/docs/components/docs-theme-toggle.tsx [Client Component SSR]
+    ./apps/docs/components/docs-shell.tsx [Client Component SSR]
+    ./apps/docs/components/docs-shell.tsx [Server Component]
+    ./apps/docs/app/layout.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_07j~k5t._.js:1945
+[  538410ms] [ERROR] Failed to load resource: net::ERR_CONTENT_LENGTH_MISMATCH @ http://localhost:3001/_next/static/chunks/apps_docs_pages__error_07xvfw~._.js:0
+[  541905ms] [WARNING] [HMR] Invalid message: {"type":"isrManifest","data":{"/":false,"/?_rsc=wnywt":false}}
+TypeError: Cannot read properties of undefined (reading 'components')
+    at handleStaticIndicator (http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2791:46)
+    at processMessage (http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2805:17)
+    at http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2679:13
+    at WebSocket.handleMessage (http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2324:17) @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_07j~k5t._.js:1226
+[  560279ms] [ERROR] ./apps/docs/components/docs-shell.tsx:24:1
+Module not found: Can't resolve 'lucide-react'
+  22 |   SidebarTrigger,
+  23 | } from "@repo/ui/sidebar";
+> 24 | import { BookOpenIcon, ExternalLinkIcon } from "lucide-react";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  25 | import Image from "next/image";
+  26 | import Link from "next/link";
+  27 |
+
+Import trace:
+  Server Component:
+    ./apps/docs/components/docs-shell.tsx
+    ./apps/docs/app/layout.tsx
+
+https://nextjs.org/docs/messages/module-not-found @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_07j~k5t._.js:1945
+[  560279ms] [ERROR] ./apps/docs/components/docs-theme-toggle.tsx:4:1
+Module not found: Can't resolve 'lucide-react'
+  2 |
+  3 | import { useSyncExternalStore } from "react";
+> 4 | import { MonitorIcon, MoonIcon, SunIcon } from "lucide-react";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5 | import { useTheme } from "next-themes";
+  6 |
+  7 | import { Button } from "@repo/ui/button";
+
+Import traces:
+  Client Component Browser:
+    ./apps/docs/components/docs-theme-toggle.tsx [Client Component Browser]
+    ./apps/docs/components/docs-shell.tsx [Client Component Browser]
+    ./apps/docs/components/docs-shell.tsx [Server Component]
+    ./apps/docs/app/layout.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/docs/components/docs-theme-toggle.tsx [Client Component SSR]
+    ./apps/docs/components/docs-shell.tsx [Client Component SSR]
+    ./apps/docs/components/docs-shell.tsx [Server Component]
+    ./apps/docs/app/layout.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_07j~k5t._.js:1945
+[  560279ms] [ERROR] ./apps/docs/components/docs-theme-toggle.tsx:5:1
+Module not found: Can't resolve 'next-themes'
+  3 | import { useSyncExternalStore } from "react";
+  4 | import { MonitorIcon, MoonIcon, SunIcon } from "lucide-react";
+> 5 | import { useTheme } from "next-themes";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  6 |
+  7 | import { Button } from "@repo/ui/button";
+  8 | import { cn } from "@repo/ui/utils";
+
+Import traces:
+  Client Component Browser:
+    ./apps/docs/components/docs-theme-toggle.tsx [Client Component Browser]
+    ./apps/docs/components/docs-shell.tsx [Client Component Browser]
+    ./apps/docs/components/docs-shell.tsx [Server Component]
+    ./apps/docs/app/layout.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/docs/components/docs-theme-toggle.tsx [Client Component SSR]
+    ./apps/docs/components/docs-shell.tsx [Client Component SSR]
+    ./apps/docs/components/docs-shell.tsx [Server Component]
+    ./apps/docs/app/layout.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_07j~k5t._.js:1945
+[  562443ms] [ERROR] ./apps/docs/components/docs-shell.tsx:24:1
+Module not found: Can't resolve 'lucide-react'
+  22 |   SidebarTrigger,
+  23 | } from "@repo/ui/sidebar";
+> 24 | import { BookOpenIcon, ExternalLinkIcon } from "lucide-react";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  25 | import Image from "next/image";
+  26 | import Link from "next/link";
+  27 |
+
+Import trace:
+  Server Component:
+    ./apps/docs/components/docs-shell.tsx
+    ./apps/docs/app/layout.tsx
+
+https://nextjs.org/docs/messages/module-not-found @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_07j~k5t._.js:1945
+[  562443ms] [ERROR] ./apps/docs/components/docs-theme-toggle.tsx:4:1
+Module not found: Can't resolve 'lucide-react'
+  2 |
+  3 | import { useSyncExternalStore } from "react";
+> 4 | import { MonitorIcon, MoonIcon, SunIcon } from "lucide-react";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5 | import { useTheme } from "next-themes";
+  6 |
+  7 | import { Button } from "@repo/ui/button";
+
+Import traces:
+  Client Component Browser:
+    ./apps/docs/components/docs-theme-toggle.tsx [Client Component Browser]
+    ./apps/docs/components/docs-shell.tsx [Client Component Browser]
+    ./apps/docs/components/docs-shell.tsx [Server Component]
+    ./apps/docs/app/layout.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/docs/components/docs-theme-toggle.tsx [Client Component SSR]
+    ./apps/docs/components/docs-shell.tsx [Client Component SSR]
+    ./apps/docs/components/docs-shell.tsx [Server Component]
+    ./apps/docs/app/layout.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_07j~k5t._.js:1945
+[  562443ms] [ERROR] ./apps/docs/components/docs-theme-toggle.tsx:5:1
+Module not found: Can't resolve 'next-themes'
+  3 | import { useSyncExternalStore } from "react";
+  4 | import { MonitorIcon, MoonIcon, SunIcon } from "lucide-react";
+> 5 | import { useTheme } from "next-themes";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  6 |
+  7 | import { Button } from "@repo/ui/button";
+  8 | import { cn } from "@repo/ui/utils";
+
+Import traces:
+  Client Component Browser:
+    ./apps/docs/components/docs-theme-toggle.tsx [Client Component Browser]
+    ./apps/docs/components/docs-shell.tsx [Client Component Browser]
+    ./apps/docs/components/docs-shell.tsx [Server Component]
+    ./apps/docs/app/layout.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/docs/components/docs-theme-toggle.tsx [Client Component SSR]
+    ./apps/docs/components/docs-shell.tsx [Client Component SSR]
+    ./apps/docs/components/docs-shell.tsx [Server Component]
+    ./apps/docs/app/layout.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_07j~k5t._.js:1945
+[  562589ms] [WARNING] [HMR] Invalid message: {"type":"isrManifest","data":{"/?_rsc=wnywt":false}}
+TypeError: Cannot read properties of undefined (reading 'components')
+    at handleStaticIndicator (http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2791:46)
+    at processMessage (http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2805:17)
+    at http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2679:13
+    at WebSocket.handleMessage (http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2324:17) @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_07j~k5t._.js:1226
+[  562621ms] [WARNING] [HMR] Invalid message: {"type":"isrManifest","data":{"/?_rsc=wnywt":false}}
+TypeError: Cannot read properties of undefined (reading 'components')
+    at handleStaticIndicator (http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2791:46)
+    at processMessage (http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2805:17)
+    at http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2679:13
+    at WebSocket.handleMessage (http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2324:17) @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_07j~k5t._.js:1226
+[  562631ms] [WARNING] [HMR] Invalid message: {"type":"isrManifest","data":{"/?_rsc=wnywt":false}}
+TypeError: Cannot read properties of undefined (reading 'components')
+    at handleStaticIndicator (http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2791:46)
+    at processMessage (http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2805:17)
+    at http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2679:13
+    at WebSocket.handleMessage (http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2324:17) @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_07j~k5t._.js:1226
+[  562942ms] [WARNING] [HMR] Invalid message: {"type":"isrManifest","data":{"/?_rsc=wnywt":false}}
+TypeError: Cannot read properties of undefined (reading 'components')
+    at handleStaticIndicator (http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2791:46)
+    at processMessage (http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2805:17)
+    at http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2679:13
+    at WebSocket.handleMessage (http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2324:17) @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_07j~k5t._.js:1226
+[  563011ms] [WARNING] [HMR] Invalid message: {"type":"isrManifest","data":{"/?_rsc=wnywt":false}}
+TypeError: Cannot read properties of undefined (reading 'components')
+    at handleStaticIndicator (http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2791:46)
+    at processMessage (http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2805:17)
+    at http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2679:13
+    at WebSocket.handleMessage (http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2324:17) @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_07j~k5t._.js:1226
+[  711067ms] [WARNING] [Fast Refresh] performing full reload
+
+Fast Refresh will perform a full reload when you edit a file that's imported by modules outside of the React rendering tree.
+You might have a file which exports a React component but also exports a value that is imported by a non-React component file.
+Consider migrating the non-React component export to a separate file and importing it into both files.
+
+It is also possible the parent component of the component you edited is a class component, which disables Fast Refresh.
+Fast Refresh requires at least one parent function component in your React tree. @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_0hfr84.._.js:2431
+[  792064ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3001/?_rsc=wnywt:0
+[  793318ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3001/?_rsc=wnywt:0
+[  793574ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3001/:0
+[  794769ms] Error: ./apps/web/content/faqs.ts:1:1
+Module not found: Can't resolve '@/lib/i18n/locale'
+> 1 | import { type Locale, normalizeLocale } from "@/lib/i18n/locale";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  2 |
+  3 | type FaqEntry = { question: string; answer: string };
+  4 |
+
+Import map: aliased to relative './lib/i18n/locale' inside of [project]/apps/docs
+
+
+Import trace:
+  Server Component:
+    ./apps/web/content/faqs.ts
+    ./apps/docs/app/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+    at <unknown> (Error: ./apps/web/content/faqs.ts:1:1)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+    at Object.getCompilationErrors (file:///Users/andre/Projects/monorepo-turborepo/node_modules/.pnpm/next@16.2.0_@playwright+test@1.58.2_babel-plugin-react-compiler@1.0.0_react-dom@19.2.0_react@19.2.0__react@19.2.0/node_modules/next/dist/server/dev/hot-reloader-turbopack.js:1189:59)
+    at DevBundlerService.getCompilationError (file:///Users/andre/Projects/monorepo-turborepo/node_modules/.pnpm/next@16.2.0_@playwright+test@1.58.2_babel-plugin-react-compiler@1.0.0_react-dom@19.2.0_react@19.2.0__react@19.2.0/node_modules/next/dist/server/lib/dev-bundler-service.js:44:55)
+    at DevServer.getCompilationError (file:///Users/andre/Projects/monorepo-turborepo/node_modules/.pnpm/next@16.2.0_@playwright+test@1.58.2_babel-plugin-react-compiler@1.0.0_react-dom@19.2.0_react@19.2.0__react@19.2.0/node_modules/next/dist/server/dev/next-dev-server.js:719:42)
+    at DevServer.findPageComponents (file:///Users/andre/Projects/monorepo-turborepo/node_modules/.pnpm/next@16.2.0_@playwright+test@1.58.2_babel-plugin-react-compiler@1.0.0_react-dom@19.2.0_react@19.2.0__react@19.2.0/node_modules/next/dist/server/dev/next-dev-server.js:689:43)
+    at async DevServer.renderErrorToResponseImpl (file:///Users/andre/Projects/monorepo-turborepo/node_modules/.pnpm/next@16.2.0_@playwright+test@1.58.2_babel-plugin-react-compiler@1.0.0_react-dom@19.2.0_react@19.2.0__react@19.2.0/node_modules/next/dist/server/base-server.js:1745:26)
+[  794791ms] Invalid or unexpected token
+[  794777ms] [ERROR] ./apps/web/content/faqs.ts:1:1
+Module not found: Can't resolve '@/lib/i18n/locale'
+> 1 | import { type Locale, normalizeLocale } from "@/lib/i18n/locale";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  2 |
+  3 | type FaqEntry = { question: string; answer: string };
+  4 |
+
+Import map: aliased to relative './lib/i18n/locale' inside of [project]/apps/docs
+
+Import trace:
+  Server Component:
+    ./apps/web/content/faqs.ts
+    ./apps/docs/app/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_07j~k5t._.js:1945
+[  794777ms] [ERROR] ./apps/web/content/features.ts:13:1
+Module not found: Can't resolve '@/lib/i18n/locale'
+  11 |   WifiOff,
+  12 | } from "lucide-react";
+> 13 | import { type Locale, normalizeLocale } from "@/lib/i18n/locale";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  14 |
+  15 | export interface Feature {
+  16 |   icon: LucideIcon;
+
+Import map: aliased to relative './lib/i18n/locale' inside of [project]/apps/docs
+
+Import trace:
+  Server Component:
+    ./apps/web/content/features.ts
+    ./apps/docs/components/documentation-sections.tsx
+    ./apps/docs/app/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_07j~k5t._.js:1945
+[  794777ms] [ERROR] ./apps/web/content/steps.ts:1:1
+Module not found: Can't resolve '@/lib/i18n/locale'
+> 1 | import { type Locale, normalizeLocale } from "@/lib/i18n/locale"
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  2 |
+  3 | export interface Step {
+  4 |   step: string;
+
+Import map: aliased to relative './lib/i18n/locale' inside of [project]/apps/docs
+
+Import trace:
+  Server Component:
+    ./apps/web/content/steps.ts
+    ./apps/docs/components/documentation-sections.tsx
+    ./apps/docs/app/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_07j~k5t._.js:1945
+[  794777ms] [ERROR] ./apps/web/content/trades.ts:11:1
+Module not found: Can't resolve '@/lib/i18n/locale'
+   9 |   Wrench,
+  10 | } from "lucide-react";
+> 11 | import { type Locale, normalizeLocale } from "@/lib/i18n/locale";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  12 |
+  13 | // Additional icon names used in tradeFeatures:
+  14 | // Shield, BarChart3, Route, Layers, Scan, Building2, Pipette, FileText
+
+Import map: aliased to relative './lib/i18n/locale' inside of [project]/apps/docs
+
+Import trace:
+  Server Component:
+    ./apps/web/content/trades.ts
+    ./apps/docs/components/documentation-sections.tsx
+    ./apps/docs/app/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_07j~k5t._.js:1945
+[  794777ms] [ERROR] ./apps/web/content/ui-text.ts:1:1
+Module not found: Can't resolve '@/lib/i18n/locale'
+> 1 | import { type Locale, normalizeLocale } from "@/lib/i18n/locale"
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  2 |
+  3 | const uiTextDe = {
+  4 |   landing: {
+
+Import map: aliased to relative './lib/i18n/locale' inside of [project]/apps/docs
+
+Import trace:
+  Server Component:
+    ./apps/web/content/ui-text.ts
+    ./apps/docs/app/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_07j~k5t._.js:1945
+[ 1058302ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3001/?_rsc=wnywt:0
+[ 1058353ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3001/?_rsc=wnywt:0
+[ 1058418ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3001/:0
+[ 1064551ms] [ERROR] Failed to load resource: net::ERR_CONTENT_LENGTH_MISMATCH @ http://localhost:3001/_next/static/chunks/apps_docs_pages__app_07xvfw~._.js:0
+[ 1064569ms] Error: Module [next]/entry/page-loader.ts { PAGE => "[project]/node_modules/.pnpm/next@16.2.0_@playwright+test@1.58.2_babel-plugin-react-compiler@1.0.0_react-dom@19.2.0_react@19.2.0__react@19.2.0/node_modules/next/dist/pages/_error.js [client] (ecmascript)" } [client] (ecmascript) was instantiated because it was required from module [hmr-entry]/hmr-entry.js { ENTRY => "[project]/apps/docs/pages/_error" }, but the module factory is not available.
+This is often caused by a stale browser cache, misconfigured Cache-Control headers, or a service worker serving outdated responses.
+To fix this, make sure your Cache-Control headers allow revalidation of chunks and review your service worker configuration. As an immediate workaround, try hard-reloading the page, clearing the browser cache, or unregistering any service workers.
+    at instantiateModuleShared (http://localhost:3001/_next/static/chunks/turbopack-apps_docs_pages__app_02.lrlr._.js:1272:15)
+    at instantiateModule (http://localhost:3001/_next/static/chunks/turbopack-apps_docs_pages__app_02.lrlr._.js:1621:12)
+    at getOrInstantiateModuleFromParent (http://localhost:3001/_next/static/chunks/turbopack-apps_docs_pages__app_02.lrlr._.js:1604:12)
+    at DevContext.commonJsRequire [as r] (http://localhost:3001/_next/static/chunks/turbopack-apps_docs_pages__app_02.lrlr._.js:299:12)
+    at module evaluation (http://localhost:3001/_next/static/chunks/%5Broot-of-the-server%5D__02i8gpe._.js:468:23)
+    at http://localhost:3001/_next/static/chunks/turbopack-apps_docs_pages__app_02.lrlr._.js:1307:27
+    at runModuleExecutionHooks (http://localhost:3001/_next/static/chunks/turbopack-apps_docs_pages__app_02.lrlr._.js:1636:13)
+    at instantiateModuleShared (http://localhost:3001/_next/static/chunks/turbopack-apps_docs_pages__app_02.lrlr._.js:1305:9)
+    at instantiateModule (http://localhost:3001/_next/static/chunks/turbopack-apps_docs_pages__app_02.lrlr._.js:1621:12)
+    at getOrInstantiateRuntimeModule (http://localhost:3001/_next/static/chunks/turbopack-apps_docs_pages__app_02.lrlr._.js:1582:12)
+    at Object.registerChunk (http://localhost:3001/_next/static/chunks/turbopack-apps_docs_pages__app_02.lrlr._.js:1985:21)
+[ 1064562ms] [WARNING] [HMR] Invalid message: {"type":"isrManifest","data":{"/?_rsc=wnywt":false,"/":false}}
+TypeError: Cannot read properties of undefined (reading 'components')
+    at handleStaticIndicator (http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2791:46)
+    at processMessage (http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2805:17)
+    at http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2679:13
+    at WebSocket.handleMessage (http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2324:17) @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_11l9n2o._.js:1226
+[ 1064567ms] [ERROR] ./apps/docs/components/docs-table-of-contents.tsx:4:1
+Export GithubIcon doesn't exist in target module
+   2 |
+   3 | import { useCallback, useEffect, useState } from "react";
+>  4 | import {
+     | ^^^^^^^
+>  5 |   ArrowUpCircleIcon,
+     | ^^^^^^^^^^^^^^^^^^^^
+>  6 |   CopyIcon,
+     | ^^^^^^^^^^^
+>  7 |   GithubIcon,
+     | ^^^^^^^^^^^^^
+>  8 |   LifeBuoyIcon,
+     | ^^^^^^^^^^^^^^^
+>  9 |   ListIcon,
+     | ^^^^^^^^^^^
+> 10 |   MessageSquareIcon,
+     | ^^^^^^^^^^^^^^^^^^^^
+> 11 | } from "lucide-react";
+     | ^^^^^^^^^^^^^^^^^^^^^^
+  12 |
+  13 | import { docsNavSections } from "@/content/docs-nav";
+  14 | import { Separator } from "@repo/ui/separator";
+
+The export GithubIcon was not found in module [project]/node_modules/.pnpm/lucide-react@1.7.0_react@19.2.0/node_modules/lucide-react/dist/esm/lucide-react.js [app-client] (ecmascript).
+Did you mean to import GiftIcon?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./apps/docs/components/docs-table-of-contents.tsx [Client Component Browser]
+    ./apps/docs/components/docs-shell.tsx [Client Component Browser]
+    ./apps/docs/components/docs-shell.tsx [Server Component]
+    ./apps/docs/app/layout.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/docs/components/docs-table-of-contents.tsx [Client Component SSR]
+    ./apps/docs/components/docs-shell.tsx [Client Component SSR]
+    ./apps/docs/components/docs-shell.tsx [Server Component]
+    ./apps/docs/app/layout.tsx [Server Component] @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_11l9n2o._.js:1945
+[ 1064567ms] [ERROR] ./apps/docs/components/docs-table-of-contents.tsx:4:1
+Export GithubIcon doesn't exist in target module
+   2 |
+   3 | import { useCallback, useEffect, useState } from "react";
+>  4 | import {
+     | ^^^^^^^
+>  5 |   ArrowUpCircleIcon,
+     | ^^^^^^^^^^^^^^^^^^^^
+>  6 |   CopyIcon,
+     | ^^^^^^^^^^^
+>  7 |   GithubIcon,
+     | ^^^^^^^^^^^^^
+>  8 |   LifeBuoyIcon,
+     | ^^^^^^^^^^^^^^^
+>  9 |   ListIcon,
+     | ^^^^^^^^^^^
+> 10 |   MessageSquareIcon,
+     | ^^^^^^^^^^^^^^^^^^^^
+> 11 | } from "lucide-react";
+     | ^^^^^^^^^^^^^^^^^^^^^^
+  12 |
+  13 | import { docsNavSections } from "@/content/docs-nav";
+  14 | import { Separator } from "@repo/ui/separator";
+
+The export GithubIcon was not found in module [project]/node_modules/.pnpm/lucide-react@1.7.0_react@19.2.0/node_modules/lucide-react/dist/esm/lucide-react.js [app-ssr] (ecmascript).
+Did you mean to import GiftIcon?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./apps/docs/components/docs-table-of-contents.tsx [Client Component Browser]
+    ./apps/docs/components/docs-shell.tsx [Client Component Browser]
+    ./apps/docs/components/docs-shell.tsx [Server Component]
+    ./apps/docs/app/layout.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/docs/components/docs-table-of-contents.tsx [Client Component SSR]
+    ./apps/docs/components/docs-shell.tsx [Client Component SSR]
+    ./apps/docs/components/docs-shell.tsx [Server Component]
+    ./apps/docs/app/layout.tsx [Server Component] @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_11l9n2o._.js:1945
+[ 1078772ms] [WARNING] [HMR] Invalid message: {"type":"isrManifest","data":{"/?_rsc=wnywt":false}}
+TypeError: Cannot read properties of undefined (reading 'components')
+    at handleStaticIndicator (http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2791:46)
+    at processMessage (http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2805:17)
+    at http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2679:13
+    at WebSocket.handleMessage (http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2324:17) @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_11l9n2o._.js:1226
+[ 1079378ms] [WARNING] [HMR] Invalid message: {"type":"isrManifest","data":{"/?_rsc=wnywt":false}}
+TypeError: Cannot read properties of undefined (reading 'components')
+    at handleStaticIndicator (http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2791:46)
+    at processMessage (http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2805:17)
+    at http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2679:13
+    at WebSocket.handleMessage (http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2324:17) @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_11l9n2o._.js:1226
+[ 1079665ms] [WARNING] [HMR] Invalid message: {"type":"isrManifest","data":{"/?_rsc=wnywt":false}}
+TypeError: Cannot read properties of undefined (reading 'components')
+    at handleStaticIndicator (http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2791:46)
+    at processMessage (http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2805:17)
+    at http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2679:13
+    at WebSocket.handleMessage (http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2324:17) @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_11l9n2o._.js:1226
+[ 1079837ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3001/:0
+[ 1079967ms] [ERROR] Encountered a script tag while rendering React component. Scripts inside React components are never executed when rendering on the client. Consider using template tag instead (https://developer.mozilla.org/en-US/docs/Web/HTML/Element/template). @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_0hfr84.._.js:3272
+[ 1080037ms] ReferenceError: ListIcon is not defined
+    at DocsTableOfContents (http://localhost:3001/_next/static/chunks/_0wbwty2._.js:441:450)
+    at Object.react_stack_bottom_frame (http://localhost:3001/_next/static/chunks/0h8d_next_dist_compiled_react-dom_01qrn-.._.js:15037:24)
+    at renderWithHooks (http://localhost:3001/_next/static/chunks/0h8d_next_dist_compiled_react-dom_01qrn-.._.js:4620:24)
+    at updateFunctionComponent (http://localhost:3001/_next/static/chunks/0h8d_next_dist_compiled_react-dom_01qrn-.._.js:6081:21)
+    at beginWork (http://localhost:3001/_next/static/chunks/0h8d_next_dist_compiled_react-dom_01qrn-.._.js:6691:24)
+    at runWithFiberInDEV (http://localhost:3001/_next/static/chunks/0h8d_next_dist_compiled_react-dom_01qrn-.._.js:965:74)
+    at performUnitOfWork (http://localhost:3001/_next/static/chunks/0h8d_next_dist_compiled_react-dom_01qrn-.._.js:9555:97)
+    at workLoopSync (http://localhost:3001/_next/static/chunks/0h8d_next_dist_compiled_react-dom_01qrn-.._.js:9449:40)
+    at renderRootSync (http://localhost:3001/_next/static/chunks/0h8d_next_dist_compiled_react-dom_01qrn-.._.js:9433:13)
+    at performWorkOnRoot (http://localhost:3001/_next/static/chunks/0h8d_next_dist_compiled_react-dom_01qrn-.._.js:9098:47)
+    at performWorkOnRootViaSchedulerTask (http://localhost:3001/_next/static/chunks/0h8d_next_dist_compiled_react-dom_01qrn-.._.js:10255:9)
+    at MessagePort.performWorkUntilDeadline (http://localhost:3001/_next/static/chunks/0h8d_next_dist_compiled_0th09_~._.js:2647:64)
+[ 1080541ms] [WARNING] [Fast Refresh] performing full reload because your application had an unrecoverable error @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_0hfr84.._.js:2431
+[ 1081118ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3001/:0
+[ 1081212ms] [ERROR] Encountered a script tag while rendering React component. Scripts inside React components are never executed when rendering on the client. Consider using template tag instead (https://developer.mozilla.org/en-US/docs/Web/HTML/Element/template). @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_0hfr84.._.js:3272
+[ 1081279ms] ReferenceError: ArrowUpCircleIcon is not defined
+    at DocsTableOfContents (http://localhost:3001/_next/static/chunks/_0wbwty2._.js:531:454)
+    at Object.react_stack_bottom_frame (http://localhost:3001/_next/static/chunks/0h8d_next_dist_compiled_react-dom_01qrn-.._.js:15037:24)
+    at renderWithHooks (http://localhost:3001/_next/static/chunks/0h8d_next_dist_compiled_react-dom_01qrn-.._.js:4620:24)
+    at updateFunctionComponent (http://localhost:3001/_next/static/chunks/0h8d_next_dist_compiled_react-dom_01qrn-.._.js:6081:21)
+    at beginWork (http://localhost:3001/_next/static/chunks/0h8d_next_dist_compiled_react-dom_01qrn-.._.js:6691:24)
+    at runWithFiberInDEV (http://localhost:3001/_next/static/chunks/0h8d_next_dist_compiled_react-dom_01qrn-.._.js:965:74)
+    at performUnitOfWork (http://localhost:3001/_next/static/chunks/0h8d_next_dist_compiled_react-dom_01qrn-.._.js:9555:97)
+    at workLoopSync (http://localhost:3001/_next/static/chunks/0h8d_next_dist_compiled_react-dom_01qrn-.._.js:9449:40)
+    at renderRootSync (http://localhost:3001/_next/static/chunks/0h8d_next_dist_compiled_react-dom_01qrn-.._.js:9433:13)
+    at performWorkOnRoot (http://localhost:3001/_next/static/chunks/0h8d_next_dist_compiled_react-dom_01qrn-.._.js:9098:47)
+    at performWorkOnRootViaSchedulerTask (http://localhost:3001/_next/static/chunks/0h8d_next_dist_compiled_react-dom_01qrn-.._.js:10255:9)
+    at MessagePort.performWorkUntilDeadline (http://localhost:3001/_next/static/chunks/0h8d_next_dist_compiled_0th09_~._.js:2647:64)
+[ 1084415ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3001/:0
+[ 1084488ms] Error: Module [next]/entry/page-loader.ts { PAGE => "[project]/node_modules/.pnpm/next@16.2.0_@playwright+test@1.58.2_babel-plugin-react-compiler@1.0.0_react-dom@19.2.0_react@19.2.0__react@19.2.0/node_modules/next/app.js [client] (ecmascript)" } [client] (ecmascript) was instantiated because it was required from module [hmr-entry]/hmr-entry.js { ENTRY => "[project]/apps/docs/pages/_app" }, but the module factory is not available.
+This is often caused by a stale browser cache, misconfigured Cache-Control headers, or a service worker serving outdated responses.
+To fix this, make sure your Cache-Control headers allow revalidation of chunks and review your service worker configuration. As an immediate workaround, try hard-reloading the page, clearing the browser cache, or unregistering any service workers.
+    at instantiateModuleShared (http://localhost:3001/_next/static/chunks/turbopack-apps_docs_pages__app_02.lrlr._.js:1272:15)
+    at instantiateModule (http://localhost:3001/_next/static/chunks/turbopack-apps_docs_pages__app_02.lrlr._.js:1621:12)
+    at getOrInstantiateModuleFromParent (http://localhost:3001/_next/static/chunks/turbopack-apps_docs_pages__app_02.lrlr._.js:1604:12)
+    at DevContext.commonJsRequire [as r] (http://localhost:3001/_next/static/chunks/turbopack-apps_docs_pages__app_02.lrlr._.js:299:12)
+    at module evaluation (http://localhost:3001/_next/static/chunks/%5Broot-of-the-server%5D__12z.rdy._.js:468:23)
+    at http://localhost:3001/_next/static/chunks/turbopack-apps_docs_pages__app_02.lrlr._.js:1307:27
+    at runModuleExecutionHooks (http://localhost:3001/_next/static/chunks/turbopack-apps_docs_pages__app_02.lrlr._.js:1636:13)
+    at instantiateModuleShared (http://localhost:3001/_next/static/chunks/turbopack-apps_docs_pages__app_02.lrlr._.js:1305:9)
+    at instantiateModule (http://localhost:3001/_next/static/chunks/turbopack-apps_docs_pages__app_02.lrlr._.js:1621:12)
+    at getOrInstantiateRuntimeModule (http://localhost:3001/_next/static/chunks/turbopack-apps_docs_pages__app_02.lrlr._.js:1582:12)
+    at Object.registerChunk (http://localhost:3001/_next/static/chunks/turbopack-apps_docs_pages__app_02.lrlr._.js:1985:21)
+[ 1084439ms] [WARNING] [HMR] Invalid message: {"type":"isrManifest","data":{"/":false,"/?_rsc=wnywt":false}}
+TypeError: Cannot read properties of undefined (reading 'components')
+    at handleStaticIndicator (http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2791:46)
+    at processMessage (http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2805:17)
+    at http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2679:13
+    at WebSocket.handleMessage (http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2324:17) @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_11l9n2o._.js:1226
+[ 1084443ms] [ERROR] ./apps/docs/components/docs-table-of-contents.tsx:4:1
+Export Github doesn't exist in target module
+   2 |
+   3 | import { useCallback, useEffect, useState } from "react";
+>  4 | import {
+     | ^^^^^^^
+>  5 |   ArrowUpCircle,
+     | ^^^^^^^^^^^^^^^^
+>  6 |   Copy,
+     | ^^^^^^^
+>  7 |   Github,
+     | ^^^^^^^^^
+>  8 |   LifeBuoy,
+     | ^^^^^^^^^^^
+>  9 |   List,
+     | ^^^^^^^
+> 10 |   MessageSquare,
+     | ^^^^^^^^^^^^^^^^
+> 11 | } from "lucide-react";
+     | ^^^^^^^^^^^^^^^^^^^^^^
+  12 |
+  13 | import { docsNavSections } from "@/content/docs-nav";
+  14 | import { Separator } from "@repo/ui/separator";
+
+The export Github was not found in module [project]/node_modules/.pnpm/lucide-react@1.7.0_react@19.2.0/node_modules/lucide-react/dist/esm/lucide-react.js [app-client] (ecmascript).
+Did you mean to import Gift?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./apps/docs/components/docs-table-of-contents.tsx [Client Component Browser]
+    ./apps/docs/components/docs-shell.tsx [Client Component Browser]
+    ./apps/docs/components/docs-shell.tsx [Server Component]
+    ./apps/docs/app/layout.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/docs/components/docs-table-of-contents.tsx [Client Component SSR]
+    ./apps/docs/components/docs-shell.tsx [Client Component SSR]
+    ./apps/docs/components/docs-shell.tsx [Server Component]
+    ./apps/docs/app/layout.tsx [Server Component] @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_11l9n2o._.js:1945
+[ 1084443ms] [ERROR] ./apps/docs/components/docs-table-of-contents.tsx:4:1
+Export Github doesn't exist in target module
+   2 |
+   3 | import { useCallback, useEffect, useState } from "react";
+>  4 | import {
+     | ^^^^^^^
+>  5 |   ArrowUpCircle,
+     | ^^^^^^^^^^^^^^^^
+>  6 |   Copy,
+     | ^^^^^^^
+>  7 |   Github,
+     | ^^^^^^^^^
+>  8 |   LifeBuoy,
+     | ^^^^^^^^^^^
+>  9 |   List,
+     | ^^^^^^^
+> 10 |   MessageSquare,
+     | ^^^^^^^^^^^^^^^^
+> 11 | } from "lucide-react";
+     | ^^^^^^^^^^^^^^^^^^^^^^
+  12 |
+  13 | import { docsNavSections } from "@/content/docs-nav";
+  14 | import { Separator } from "@repo/ui/separator";
+
+The export Github was not found in module [project]/node_modules/.pnpm/lucide-react@1.7.0_react@19.2.0/node_modules/lucide-react/dist/esm/lucide-react.js [app-ssr] (ecmascript).
+Did you mean to import Gift?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./apps/docs/components/docs-table-of-contents.tsx [Client Component Browser]
+    ./apps/docs/components/docs-shell.tsx [Client Component Browser]
+    ./apps/docs/components/docs-shell.tsx [Server Component]
+    ./apps/docs/app/layout.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/docs/components/docs-table-of-contents.tsx [Client Component SSR]
+    ./apps/docs/components/docs-shell.tsx [Client Component SSR]
+    ./apps/docs/components/docs-shell.tsx [Server Component]
+    ./apps/docs/app/layout.tsx [Server Component] @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_11l9n2o._.js:1945
+[ 1084832ms] [WARNING] [HMR] Invalid message: {"type":"isrManifest","data":{"/":false,"/?_rsc=wnywt":false}}
+TypeError: Cannot read properties of undefined (reading 'components')
+    at handleStaticIndicator (http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2791:46)
+    at processMessage (http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2805:17)
+    at http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2679:13
+    at WebSocket.handleMessage (http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2324:17) @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_11l9n2o._.js:1226
+[ 1085170ms] [WARNING] [HMR] Invalid message: {"type":"isrManifest","data":{"/":false,"/?_rsc=wnywt":false}}
+TypeError: Cannot read properties of undefined (reading 'components')
+    at handleStaticIndicator (http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2791:46)
+    at processMessage (http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2805:17)
+    at http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2679:13
+    at WebSocket.handleMessage (http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2324:17) @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_11l9n2o._.js:1226
+[ 1085185ms] [WARNING] [HMR] Invalid message: {"type":"isrManifest","data":{"/":false,"/?_rsc=wnywt":false}}
+TypeError: Cannot read properties of undefined (reading 'components')
+    at handleStaticIndicator (http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2791:46)
+    at processMessage (http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2805:17)
+    at http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2679:13
+    at WebSocket.handleMessage (http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2324:17) @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_11l9n2o._.js:1226
+[ 1085200ms] [WARNING] [HMR] Invalid message: {"type":"isrManifest","data":{"/":false,"/?_rsc=wnywt":false}}
+TypeError: Cannot read properties of undefined (reading 'components')
+    at handleStaticIndicator (http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2791:46)
+    at processMessage (http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2805:17)
+    at http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2679:13
+    at WebSocket.handleMessage (http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_10tl17o._.js:2324:17) @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_11l9n2o._.js:1226
+[ 1085208ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3001/:0
+[ 1389550ms] [ERROR] Failed to load resource: net::ERR_EMPTY_RESPONSE @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_compiled_react-dom_01qrn-.._.js:0
+[ 1389550ms] [ERROR] Failed to load resource: net::ERR_EMPTY_RESPONSE @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_compiled_next-devtools_index_0whyse0.js:0
+[ 1389550ms] [ERROR] Failed to load resource: net::ERR_EMPTY_RESPONSE @ http://localhost:3001/_next/static/chunks/%5Bturbopack%5D_browser_dev_hmr-client_hmr-client_ts_0rmof36._.js:0
+[ 1389551ms] [ERROR] Failed to load resource: net::ERR_INCOMPLETE_CHUNKED_ENCODING @ http://localhost:3001/_next/static/chunks/_0.kkq2e._.css:0
+[ 1389551ms] [ERROR] Failed to load resource: net::ERR_INCOMPLETE_CHUNKED_ENCODING @ http://localhost:3001/:0
+[ 1389552ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_compiled_0th09_~._.js:0
+[ 1389552ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_compiled_react-server-dom-turbopack_13lp5gy._.js:0
+[ 1389553ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_07we3ap._.js:0
+[ 1389553ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_0hfr84.._.js:0
+[ 1389553ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3001/_next/static/chunks/apps_docs_0rqeker._.js:0
+[ 1389554ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3001/_next/static/chunks/0i4a_%40swc_helpers_cjs_0hvz.20._.js:0
+[ 1389554ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3001/_next/static/chunks/turbopack-apps_docs_102pgqa._.js:0
+[ 1389554ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3001/_next/static/chunks/_0c6-.3p._.js:0
+[ 1389556ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3001/_next/static/chunks/0h8d_next_0.t_gct._.js:0
+[ 1389556ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3001/_next/static/chunks/0995_tailwind-merge_dist_bundle-mjs_mjs_0osztqy._.js:0
+[ 1389556ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3001/_next/static/chunks/apps_docs_app_layout_tsx_0kxs~4e._.js:0
+[ 1389556ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3001/_next/static/chunks/node_modules__pnpm_0zs.4zr._.js:0
+[ 1389556ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_components_builtin_global-error_0mii6m8.js:0
+[ 1389557ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3001/_next/static/chunks/apps_docs_app_page_tsx_0mii6m8._.js:0
+[ 2573832ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3001/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Flogo.0j.p3qcr882gh.png&w=1920&q=75:0
+[ 2574834ms] [ERROR] WebSocket connection to 'ws://localhost:3001/_next/webpack-hmr?id=Ck7i-SAgkoZs78Y-WXUhf' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_07we3ap._.js:13299
+[ 2575837ms] [ERROR] WebSocket connection to 'ws://localhost:3001/_next/webpack-hmr?id=Ck7i-SAgkoZs78Y-WXUhf' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_07we3ap._.js:13299
+[ 2576838ms] [ERROR] WebSocket connection to 'ws://localhost:3001/_next/webpack-hmr?id=Ck7i-SAgkoZs78Y-WXUhf' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_07we3ap._.js:13299
+[ 2577841ms] [ERROR] WebSocket connection to 'ws://localhost:3001/_next/webpack-hmr?id=Ck7i-SAgkoZs78Y-WXUhf' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_07we3ap._.js:13299
+[ 2578844ms] [ERROR] WebSocket connection to 'ws://localhost:3001/_next/webpack-hmr?id=Ck7i-SAgkoZs78Y-WXUhf' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_07we3ap._.js:13299
+[ 2583851ms] [ERROR] WebSocket connection to 'ws://localhost:3001/_next/webpack-hmr?id=Ck7i-SAgkoZs78Y-WXUhf' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3001/_next/static/chunks/0h8d_next_dist_client_07we3ap._.js:13299
