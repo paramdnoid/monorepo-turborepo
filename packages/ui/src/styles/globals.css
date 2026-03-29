@@ -9,6 +9,15 @@
 @source "../**/*.{ts,tsx}";
 
 @layer base {
+  /* Web Interface Guidelines: match color-scheme to theme (scrollbars, native inputs) */
+  html {
+    color-scheme: light;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
   * {
     @apply border-border outline-ring/50;
   }
