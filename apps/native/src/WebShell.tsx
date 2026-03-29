@@ -24,13 +24,24 @@ function getOrigin(url: string): string {
 }
 
 export function WebShell() {
-  const uri = getWebAppUrl();
+  let uri: string | null = null;
+  let configError: string | null = null;
+
+  try {
+    uri = getWebAppUrl();
+  } catch (caughtError) {
+    configError =
+      caughtError instanceof Error
+        ? caughtError.message
+        : 'Ungültige WebView-Konfiguration.';
+  }
+
   const isDarkMode = useColorScheme() === 'dark';
-  const allowedOrigin = getOrigin(uri);
+  const allowedOrigin = uri ? getOrigin(uri) : '';
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  if (error) {
+  if (configError || error) {
     return (
       <SafeAreaProvider>
         <View
@@ -40,15 +51,18 @@ export function WebShell() {
           )}
         >
           <Text className="mb-2 text-center text-base font-semibold text-foreground">
-            {error}
+            {configError ?? error}
           </Text>
-          <Text className="mb-4 text-center text-xs text-muted-foreground">
-            {uri}
-          </Text>
+          {uri ? (
+            <Text className="mb-4 text-center text-xs text-muted-foreground">
+              {uri}
+            </Text>
+          ) : null}
           <Text className="text-center text-sm leading-5 text-muted-foreground">
             Stelle sicher, dass im Repo-Root `pnpm dev` läuft und `web` auf Port
             3000 erreichbar ist. Auf einem echten Gerät setze
-            `WEB_APP_HOST_OVERRIDE` in `src/config/web-app-url.ts`.
+            `WEB_APP_HOST_OVERRIDE` in `src/config/web-app-url.ts`. Für
+            Produktions-Builds setze `WEB_APP_PROD_URL` auf eine `https://`-URL.
           </Text>
         </View>
       </SafeAreaProvider>
@@ -73,7 +87,7 @@ export function WebShell() {
           </View>
         ) : null}
         <WebView
-          source={{ uri }}
+          source={{ uri: uri ?? 'about:blank' }}
           style={styles.flex}
           originWhitelist={[allowedOrigin]}
           onShouldStartLoadWithRequest={request => {

@@ -31,7 +31,7 @@ Root `pnpm dev` starts Metro here together with the Next.js `dev` tasks (`dev` a
 ## Stack
 
 - **React Native** 0.84.x, **React** 19.x
-- **WebView mode (default):** [`src/config/features.ts`](./src/config/features.ts) sets `USE_WEBVIEW = true`. The app loads the **Next.js** dev server (port **3000**) inside [`react-native-webview`](https://github.com/react-native-webview/react-native-webview) — **identical DOM and `@repo/ui`** to the browser. Requires `pnpm dev` at the repo root (or only the `web` app on :3000). URL logic: [`src/config/web-app-url.ts`](./src/config/web-app-url.ts) (`localhost` on iOS Simulator, `10.0.2.2` on Android Emulator; set `WEB_APP_HOST_OVERRIDE` for a physical device). The WebView shell now enforces a narrow allowed origin (derived from the configured URL) and token-styled loading/error fallbacks.
+- **WebView mode (default):** [`src/config/features.ts`](./src/config/features.ts) sets `USE_WEBVIEW = true`. The app loads the **Next.js** dev server (port **3000**) inside [`react-native-webview`](https://github.com/react-native-webview/react-native-webview) — **identical DOM and `@repo/ui`** to the browser. Requires `pnpm dev` at the repo root (or only the `web` app on :3000). URL logic: [`src/config/web-app-url.ts`](./src/config/web-app-url.ts) (`localhost` on iOS Simulator, `10.0.2.2` on Android Emulator; set `WEB_APP_HOST_OVERRIDE` for a physical device). In production (`__DEV__ === false`) WebView requires an explicit `WEB_APP_PROD_URL` with `https://...`; otherwise the app surfaces a configuration error instead of loading an insecure URL. The WebView shell also enforces a narrow allowed origin (derived from the configured URL) and token-styled loading/error fallbacks.
 - **Native UI mode:** set `USE_WEBVIEW` to `false`. Then **NativeWind v5** + [`components/ui/`](./components/ui/) + shared [`theme-tokens.css`](../../packages/ui/src/styles/theme-tokens.css) — offline-capable, not the same source as `@repo/ui`. Theme selection follows system light/dark mode (no hardcoded dark wrapper).
 - **Animation:** `react-native-reanimated` + `react-native-worklets` (required by Reanimated 4 / NativeWind).
 - **TypeScript:** `@react-native/typescript-config` + [`nativewind-env.d.ts`](./nativewind-env.d.ts); `pnpm check-types` runs `tsc --noEmit`.
@@ -42,6 +42,7 @@ Root `pnpm dev` starts Metro here together with the Next.js `dev` tasks (`dev` a
 
 - **iOS:** After dependency changes, run `bundle install` and `bundle exec pod install` under `ios/`. Open **`nativeapp.xcworkspace`** in Xcode (not the `.xcodeproj` alone).
 - **Android:** Gradle under `android/`; JDK and Android SDK as required by RN docs.
+  - Release builds now require explicit signing credentials (`NATIVEAPP_RELEASE_STORE_FILE`, `NATIVEAPP_RELEASE_STORE_PASSWORD`, `NATIVEAPP_RELEASE_KEY_ALIAS`, `NATIVEAPP_RELEASE_KEY_PASSWORD`). If a release task is requested without these values, Gradle fails fast.
 
 CI does **not** compile iOS/Android binaries; it runs `pnpm lint`, `pnpm check-types`, and `pnpm build` (Next.js apps only). Local simulator/device builds stay on developer machines.
 

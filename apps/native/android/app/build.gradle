@@ -71,6 +71,21 @@ def enableProguardInReleaseBuilds = false
  * this variant is about 6MiB larger per architecture than default.
  */
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
+def releaseStoreFile = findProperty('NATIVEAPP_RELEASE_STORE_FILE')
+def releaseStorePassword = findProperty('NATIVEAPP_RELEASE_STORE_PASSWORD')
+def releaseKeyAlias = findProperty('NATIVEAPP_RELEASE_KEY_ALIAS')
+def releaseKeyPassword = findProperty('NATIVEAPP_RELEASE_KEY_PASSWORD')
+def hasReleaseSigning = [
+    releaseStoreFile,
+    releaseStorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword,
+].every { value ->
+    value != null && value.toString().trim()
+}
+def releaseTaskRequested = gradle.startParameter.taskNames.any { task ->
+    task.toLowerCase().contains('release')
+}
 
 android {
     ndkVersion rootProject.ext.ndkVersion
@@ -92,17 +107,35 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        if (hasReleaseSigning) {
+            release {
+                storeFile file(releaseStoreFile)
+                storePassword releaseStorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+            }
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
+            manifestPlaceholders = [usesCleartextTraffic: "true"]
         }
         release {
             // Caution! In production, you need to generate your own keystore file.
             // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            signingConfig hasReleaseSigning ? signingConfigs.release : signingConfigs.debug
+            manifestPlaceholders = [usesCleartextTraffic: "false"]
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+
+            if (!hasReleaseSigning && releaseTaskRequested) {
+                throw new GradleException(
+                    "Release-Signing fehlt. Setze NATIVEAPP_RELEASE_STORE_FILE, " +
+                    "NATIVEAPP_RELEASE_STORE_PASSWORD, NATIVEAPP_RELEASE_KEY_ALIAS " +
+                    "und NATIVEAPP_RELEASE_KEY_PASSWORD."
+                )
+            }
         }
     }
 }
