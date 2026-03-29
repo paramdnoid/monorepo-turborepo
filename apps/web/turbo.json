@@ -1,9 +1,42 @@
 {
   "$schema": "https://turborepo.dev/schema.json",
-  "extends": ["//"],
+  "extends": [
+    "//"
+  ],
   "tasks": {
     "build": {
-      "outputs": [".next/**", "!.next/cache/**"]
+      "outputs": [
+        ".next/**",
+        "!.next/cache/**"
+      ],
+      "env": [
+        "NODE_ENV",
+        "FEATURE_STRIPE_BILLING",
+        "FEATURE_STRIPE_WEBHOOK_ENABLED",
+        "STRIPE_WEBHOOK_SECRET",
+        "STRIPE_WEBHOOK_TOLERANCE_SECONDS",
+        "STRIPE_SECRET_KEY",
+        "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+        "STRIPE_PRICE_STARTER_MONTHLY",
+        "STRIPE_PRICE_STARTER_YEARLY",
+        "STRIPE_PRICE_PROFESSIONAL_MONTHLY",
+        "STRIPE_PRICE_PROFESSIONAL_YEARLY",
+        "STRIPE_ONBOARDING_SUCCESS_URL",
+        "STRIPE_ONBOARDING_CANCEL_URL",
+        "NEXT_PUBLIC_SITE_URL",
+        "AUTH_OIDC_TOKEN_ENDPOINT",
+        "AUTH_OIDC_CLIENT_ID",
+        "AUTH_KEYCLOAK_BASE_URL",
+        "KEYCLOAK_BASE_URL",
+        "AUTH_KEYCLOAK_REALM",
+        "AUTH_KEYCLOAK_ADMIN_REALM",
+        "AUTH_KEYCLOAK_ADMIN_CLIENT_ID",
+        "AUTH_KEYCLOAK_ADMIN_USERNAME",
+        "AUTH_KEYCLOAK_ADMIN_PASSWORD",
+        "OPENROUTESERVICE_BASE_URL",
+        "OPENROUTESERVICE_API_KEY",
+        "ADDRESS_API_TIMEOUT_MS"
+      ]
     }
   }
 }

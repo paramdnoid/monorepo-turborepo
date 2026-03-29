@@ -1,139 +1,75 @@
-"use client";
-
 import brandLogo from "@repo/brand/logo";
-import Image from "next/image";
-import {
-  alertMessage,
-  deployHrefWeb,
-  description,
-  docsHref,
-  step1CodePathWeb,
-  step2Text,
-  templatesHref,
-  title,
-  turborepoSiteHref,
-} from "@repo/turborepo-starter";
-import { Button } from "@repo/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@repo/ui/card";
-import { Code } from "@repo/ui/code";
-import { Separator } from "@repo/ui/separator";
+import { SiteFooter } from "@/components/marketing/site-footer";
+import { SiteHeader } from "@/components/marketing/site-header";
+import { CtaSection } from "@/components/marketing/cta-section";
+import { FeaturesSection } from "@/components/marketing/features-section";
+import { HeroSection } from "@/components/marketing/hero-section";
+import { HowItWorksSection } from "@/components/marketing/how-it-works-section";
+import { LandingScrollbarToggle } from "@/components/marketing/landing-scrollbar-toggle";
+import { PricingSection } from "@/components/marketing/pricing-section";
+import { TradesSection } from "@/components/marketing/trades-section";
+import { getFaqs } from "@/content/faqs";
+import { getUiText } from "@/content/ui-text";
+import { getServerLocale } from "@/lib/i18n/server-locale";
 
-export default function Home() {
+export default async function LandingPage() {
+  const locale = await getServerLocale();
+  const ui = getUiText(locale);
+  const faqs = getFaqs(locale);
+
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://example.com";
+
+  const softwareJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: "ZunftGewerk",
+    applicationCategory: "BusinessApplication",
+    operatingSystem: "Web, iOS, Android, Windows, macOS, Linux",
+    description: ui.landing.footer.brandDescription,
+    url: siteUrl,
+    inLanguage: locale,
+  };
+
+  const faqJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    inLanguage: locale,
+    mainEntity: faqs.map((faq) => ({
+      "@type": "Question",
+      name: faq.question,
+      acceptedAnswer: { "@type": "Answer", text: faq.answer },
+    })),
+  };
+
   return (
-    <div className="flex min-h-svh flex-col bg-background">
-      <main className="flex flex-1 flex-col items-center justify-center gap-10 px-4 py-16">
-        <div className="relative h-[120px] w-[120px] shrink-0">
-          <Image
-            className="object-contain"
-            src={brandLogo}
-            alt={title}
-            fill
-            sizes="120px"
-            priority
-          />
-        </div>
-
-        <Card className="w-full max-w-lg border-border/80 shadow-sm">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-semibold tracking-tight">
-              {title}
-            </CardTitle>
-            <CardDescription className="font-mono text-sm">
-              {description}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4 font-mono text-sm leading-6">
-            <ol className="list-inside list-decimal space-y-2 text-left text-muted-foreground">
-              <li>
-                Bearbeite{" "}
-                <Code className="text-foreground">{step1CodePathWeb}</Code>
-              </li>
-              <li>{step2Text}</li>
-            </ol>
-            <Separator />
-            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-center">
-              <Button asChild size="lg" className="rounded-full">
-                <a
-                  href={deployHrefWeb}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <span className="relative mr-2 inline-block size-5 shrink-0">
-                    <Image
-                      src="/vercel.svg"
-                      alt=""
-                      fill
-                      className="object-contain dark:invert"
-                      sizes="20px"
-                    />
-                  </span>
-                  Deploy now
-                </a>
-              </Button>
-              <Button
-                variant="outline"
-                size="lg"
-                className="rounded-full"
-                asChild
-              >
-                <a href={docsHref} target="_blank" rel="noopener noreferrer">
-                  Read our docs
-                </a>
-              </Button>
-              <Button
-                variant="secondary"
-                size="lg"
-                className="rounded-full"
-                type="button"
-                onClick={() => {
-                  window.alert(alertMessage);
-                }}
-              >
-                Open alert
-              </Button>
-            </div>
-          </CardContent>
-          <CardFooter className="flex flex-wrap justify-center gap-6 text-sm text-muted-foreground">
-            <a
-              className="inline-flex items-center gap-2 underline-offset-4 hover:text-foreground hover:underline"
-              href={templatesHref}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Image
-                aria-hidden
-                src="/window.svg"
-                alt=""
-                width={16}
-                height={16}
-              />
-              Examples
-            </a>
-            <a
-              className="inline-flex items-center gap-2 underline-offset-4 hover:text-foreground hover:underline"
-              href={turborepoSiteHref}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Image
-                aria-hidden
-                src="/globe.svg"
-                alt=""
-                width={16}
-                height={16}
-              />
-              Go to turborepo.dev →
-            </a>
-          </CardFooter>
-        </Card>
+    <div className="min-h-screen">
+      <LandingScrollbarToggle />
+      <SiteHeader />
+      <main id="main-content" tabIndex={-1}>
+        <HeroSection />
+        <TradesSection />
+        <FeaturesSection />
+        <HowItWorksSection />
+        <PricingSection />
+        <CtaSection />
       </main>
+      <SiteFooter />
+
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(softwareJsonLd).replace(/</g, "\\u003c"),
+        }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(faqJsonLd).replace(/</g, "\\u003c"),
+        }}
+      />
+      <span className="sr-only" aria-hidden>
+        {brandLogo.src}
+      </span>
     </div>
   );
 }

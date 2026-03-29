@@ -1,4 +1,7 @@
 @import "tailwindcss";
+/* Default Tailwind v4 `dark:` uses prefers-color-scheme; next-themes toggles `.dark` on
+   <html>. Without this override, `dark:*` utilities disagree with theme CSS variables. */
+@custom-variant dark (&:where(.dark, .dark *));
 @import "@repo/tailwind-config";
 @import "./theme-tokens.css";
 @source "../../../apps/web/**/*.{ts,tsx}";

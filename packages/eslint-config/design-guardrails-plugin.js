@@ -1,20 +1,4 @@
 const TARGETS = {
-  web: {
-    pathSuffix: "/apps/web/app/page.tsx",
-    requiredImports: [
-      "deployHrefWeb",
-      "docsHref",
-      "templatesHref",
-      "turborepoSiteHref",
-      "alertMessage",
-      "step1CodePathWeb",
-      "step2Text",
-      "title",
-      "description",
-    ],
-    forbiddenStrings: [],
-    forbidVariableNames: [],
-  },
   docs: {
     pathSuffix: "/apps/docs/app/page.tsx",
     requiredImports: [

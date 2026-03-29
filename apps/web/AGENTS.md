@@ -1,23 +1,29 @@
 # AGENTS.md — apps/web
 
-**Read this when:** you change the primary Next.js product (routes, layout, env, or homepage content).
+**Read this when:** you change the primary Next.js product (routes, layout, env, landing, onboarding, or legal).
 
-**Purpose:** Main user-facing web app — Turborepo starter UI, `@repo/ui`, port **3000**.
+**Purpose:** Main user-facing web app — product landing, onboarding (Keycloak/Stripe APIs), legal pages, `@repo/ui`, port **3000**.
 
 ## Key paths
 
-| Path                                 | Role                                                            |
-| ------------------------------------ | --------------------------------------------------------------- |
-| [`app/layout.tsx`](app/layout.tsx)   | Root layout: Geist from `@repo/fonts/geist`, `<Providers>` from `@repo/ui/providers` |
-| [`app/page.tsx`](app/page.tsx)       | Home route — imports shared copy from `@repo/turborepo-starter` |
-| [`app/globals.css`](app/globals.css) | Imports shared styles from `@repo/ui`                           |
-| [`.env.example`](.env.example)       | Document env vars; copy to `.env.local` for overrides           |
+| Path | Role |
+| ---- | ---- |
+| [`app/layout.tsx`](app/layout.tsx) | Root layout: Geist, `<Providers>` (`@repo/ui/providers`), `LocaleProvider`, `generateMetadata` |
+| [`app/page.tsx`](app/page.tsx) | Landing: marketing sections, JSON-LD, `@repo/brand`, `getUiText` / `getServerLocale` |
+| [`app/onboarding/`](app/onboarding/) | Onboarding wizard (server page + client components) |
+| [`app/legal/`](app/legal/) | Imprint, privacy, terms (`layout` + `SiteFooter` / `LegalHeader`) |
+| [`app/api/onboarding/`](app/api/onboarding/) | `register`, `complete-billing` route handlers |
+| [`content/`](content/) | `ui-text`, `faqs`, `features`, `steps`, `trades` (copy and data) |
+| [`components/marketing/`](components/marketing/) | Landing sections, header, footer, FAQ dialog |
+| [`components/onboarding/`](components/onboarding/) | Onboarding UI + app-local `ToggleGroup` (premium variant) |
+| [`lib/i18n/`](lib/i18n/), [`lib/auth/`](lib/auth/), [`lib/trades/`](lib/trades/) | Locale, session cookie/JWT, trade ids |
+| [`app/globals.css`](app/globals.css) | Imports `@repo/ui` globals + product utilities (panels, hero, legal scrollbar) |
+| [`.env.example`](.env.example) | Stripe, Keycloak/OIDC — copy to `.env.local` |
 
 ## Dependencies (workspace)
 
-- `@repo/ui` — components and global CSS
-- `@repo/fonts` — shared Geist Sans / Geist Mono (`@repo/fonts/geist`) for `next/font` CSS variables
-- `@repo/turborepo-starter` — shared starter strings and URLs for the home page (single source of truth)
+- `@repo/ui`, `@repo/fonts`, `@repo/brand`, `@repo/turborepo-starter` (not required on the homepage; docs/native still use it)
+- Direct: `zod`, Stripe packages, `lucide-react`, `framer-motion`, `radix-ui`, `next-themes`, `class-variance-authority`, `server-only`
 
 ## Commands
 
@@ -30,8 +36,4 @@ pnpm exec turbo lint --filter=web
 pnpm exec turbo check-types --filter=web
 ```
 
-From this directory: `pnpm dev`, `pnpm build`, etc. (same scripts).
-
-Shared Next.js structure and conventions: **[`../AGENTS.md`](../AGENTS.md)**.
-
-Monorepo-wide commands and stack: **[`../../AGENTS.md`](../../AGENTS.md)**.
+Shared Next.js structure: **[`../AGENTS.md`](../AGENTS.md)**. Monorepo-wide: **[`../../AGENTS.md`](../../AGENTS.md)**.

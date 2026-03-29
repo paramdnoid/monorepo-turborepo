@@ -14,8 +14,8 @@ const checks = [
   },
   {
     file: "apps/web/app/page.tsx",
-    reason: "Web homepage must use shared starter content.",
-    mustInclude: ['from "@repo/turborepo-starter"', "deployHrefWeb"],
+    reason: "Web homepage must use product content and shared brand.",
+    mustInclude: ['from "@repo/brand/logo"', 'from "@/content/ui-text"', "getServerLocale"],
   },
   {
     file: "apps/docs/app/page.tsx",
