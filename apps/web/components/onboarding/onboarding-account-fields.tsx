@@ -134,6 +134,7 @@ export function OnboardingCredentialsFields({
             name="password"
             type="password"
             autoComplete="new-password"
+            spellCheck={false}
             required
             minLength={8}
             value={values.password}
@@ -152,6 +153,7 @@ export function OnboardingCredentialsFields({
             name="confirmPassword"
             type="password"
             autoComplete="new-password"
+            spellCheck={false}
             required
             minLength={8}
             aria-invalid={hasPasswordMismatch}

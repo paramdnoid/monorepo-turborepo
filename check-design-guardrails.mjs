@@ -13,9 +13,14 @@ const checks = [
     mustInclude: ["export const deployHrefWeb", "export const deployHrefDocs"],
   },
   {
+    file: "apps/web/app/layout.tsx",
+    reason: "Web root layout must use the shared brand asset (favicon/metadata).",
+    mustInclude: ['from "@repo/brand/logo"'],
+  },
+  {
     file: "apps/web/app/page.tsx",
-    reason: "Web homepage must use product content and shared brand.",
-    mustInclude: ['from "@repo/brand/logo"', 'from "@/content/ui-text"', "getServerLocale"],
+    reason: "Web homepage must use product content and server locale.",
+    mustInclude: ['from "@/content/ui-text"', "getServerLocale"],
   },
   {
     file: "apps/docs/app/page.tsx",

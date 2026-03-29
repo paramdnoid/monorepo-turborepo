@@ -62,7 +62,7 @@ export function CtaSection() {
           {trustItems.map((item) => (
             <StaggerItem key={item.text}>
               <Badge variant="secondary" className="gap-2 border border-border/60 bg-background/60 px-3.5 py-2 text-xs font-medium backdrop-blur-sm sm:px-4 sm:text-[13px]">
-                <item.icon className="size-3.5 text-primary" />
+                <item.icon className="size-3.5 text-primary" aria-hidden />
                 {item.text}
               </Badge>
             </StaggerItem>

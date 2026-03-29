@@ -35,7 +35,7 @@ export function LanguageSwitcher() {
       aria-label={switchLabel}
       title={switchLabel}
     >
-      <Globe className="mr-1.5 size-3.5" />
+      <Globe className="mr-1.5 size-3.5" aria-hidden />
       {LOCALE_LABELS[currentLocale]}
     </Button>
   )

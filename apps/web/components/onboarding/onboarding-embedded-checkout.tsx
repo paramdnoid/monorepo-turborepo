@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 
 import {
   CardCvcElement,
@@ -47,6 +47,7 @@ function OnboardingPaymentForm({
   const [countryCode, setCountryCode] = useState("CH")
   const [focusedField, setFocusedField] = useState<"cardNumber" | "expiry" | "cvc" | null>(null)
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<CheckoutPaymentMethod>("card")
+  const errorMessageRef = useRef<HTMLParagraphElement>(null)
 
   const elementStyle: StripeElementStyle = {
     base: {
@@ -117,6 +118,23 @@ function OnboardingPaymentForm({
   function handlePaymentElementChange() {
     setErrorMessage(null)
   }
+
+  useEffect(() => {
+    if (!errorMessage) return
+    const frame = window.requestAnimationFrame(() => {
+      if (selectedPaymentMethod !== "card") {
+        errorMessageRef.current?.focus()
+        return
+      }
+      const cardNumberElement = elements?.getElement(CardNumberElement)
+      if (cardNumberElement) {
+        cardNumberElement.focus()
+      } else {
+        errorMessageRef.current?.focus()
+      }
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [errorMessage, elements, selectedPaymentMethod])
 
   const visibleError = errorMessage
   const hostedFieldBaseClass =
@@ -213,7 +231,7 @@ function OnboardingPaymentForm({
                       options={{
                         style: elementStyle,
                         showIcon: true,
-                        placeholder: "1234 1234 1234 1234",
+                        placeholder: "1234 1234 1234 1234…",
                       }}
                       onChange={handlePaymentElementChange}
                       onFocus={() => setFocusedField("cardNumber")}
@@ -238,7 +256,7 @@ function OnboardingPaymentForm({
                     <CardExpiryElement
                       options={{
                         style: elementStyle,
-                        placeholder: "MM/JJ",
+                        placeholder: "MM/JJ…",
                       }}
                       onChange={handlePaymentElementChange}
                       onFocus={() => setFocusedField("expiry")}
@@ -304,7 +322,16 @@ function OnboardingPaymentForm({
         )}
       </div>
 
-      {visibleError ? <p className="text-xs text-destructive sm:text-sm">{visibleError}</p> : null}
+      {visibleError ? (
+        <p
+          ref={errorMessageRef}
+          tabIndex={-1}
+          role="alert"
+          className="text-xs text-destructive outline-none focus-visible:ring-2 focus-visible:ring-ring/40 sm:text-sm"
+        >
+          {visibleError}
+        </p>
+      ) : null}
 
       <div className="my-1.5" aria-hidden>
         <span className="block h-px w-full bg-border/75" />
@@ -312,7 +339,7 @@ function OnboardingPaymentForm({
 
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center">
         <Button type="button" variant="outline" className="h-9 gap-2 sm:w-auto" onClick={onBack}>
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4" aria-hidden />
           {uiText.onboarding.checkout.backToCredentials}
         </Button>
         <Button
@@ -325,13 +352,13 @@ function OnboardingPaymentForm({
         >
           {isSubmitting ? (
             <>
-              <Loader2 className="ml-1 h-4 w-4 animate-spin" />
+              <Loader2 className="ml-1 h-4 w-4 animate-spin" aria-hidden />
               {uiText.onboarding.checkout.confirmingPayment}
             </>
           ) : (
             <>
               {uiText.onboarding.checkout.confirmPayment}
-              <Check className="ml-1 h-4 w-4" />
+              <Check className="ml-1 h-4 w-4" aria-hidden />
             </>
           )}
         </Button>

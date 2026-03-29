@@ -1,7 +1,10 @@
 "use client"
 
+import { useAppLocale } from "@/components/locale-provider"
 import { ToggleGroup, ToggleGroupItem } from "@/components/onboarding/onboarding-toggle-group"
 import { uiText } from "@/content/ui-text"
+import { formatEurInteger } from "@/components/marketing/pricing/pricing-types"
+import type { Locale } from "@/lib/i18n/locale"
 import { cn } from "@/lib/utils"
 import { Check, Sparkles } from "lucide-react"
 
@@ -31,12 +34,8 @@ const planCosts: Record<OnboardingPlanTier, { monthly: number; yearly: number; t
   },
 }
 
-function formatEuroFromCents(cents: number) {
-  return new Intl.NumberFormat("de-DE", {
-    style: "currency",
-    currency: "EUR",
-    maximumFractionDigits: 0,
-  }).format(Math.round(cents / 100))
+function formatEuroFromCents(cents: number, locale: Locale) {
+  return formatEurInteger(Math.round(cents / 100), locale)
 }
 
 function calculateSavingsPercent(monthlyCents: number, yearlyCents: number) {
@@ -51,11 +50,12 @@ export function OnboardingPlanSelector({
   onSelectPlanTier,
   onSelectBillingCycle,
 }: OnboardingPlanSelectorProps) {
+  const locale = useAppLocale()
   const selectedPlanCosts = planCosts[selectedPlanTier]
-  const monthlyDisplay = formatEuroFromCents(selectedPlanCosts.monthly)
-  const yearlyDisplay = formatEuroFromCents(selectedPlanCosts.yearly)
-  const monthlyEquivalentForYearly = formatEuroFromCents(Math.round(selectedPlanCosts.yearly / 12))
-  const yearlyAtMonthlyPriceDisplay = formatEuroFromCents(selectedPlanCosts.monthly * 12)
+  const monthlyDisplay = formatEuroFromCents(selectedPlanCosts.monthly, locale)
+  const yearlyDisplay = formatEuroFromCents(selectedPlanCosts.yearly, locale)
+  const monthlyEquivalentForYearly = formatEuroFromCents(Math.round(selectedPlanCosts.yearly / 12), locale)
+  const yearlyAtMonthlyPriceDisplay = formatEuroFromCents(selectedPlanCosts.monthly * 12, locale)
   const yearlySavingsPercent = calculateSavingsPercent(
     selectedPlanCosts.monthly,
     selectedPlanCosts.yearly,
@@ -85,8 +85,8 @@ export function OnboardingPlanSelector({
             const isSelected = selectedPlanTier === tier
             const costs = planCosts[tier]
             const savingsPercent = calculateSavingsPercent(costs.monthly, costs.yearly)
-            const monthlyPrice = formatEuroFromCents(costs.monthly)
-            const yearlyPrice = formatEuroFromCents(costs.yearly)
+            const monthlyPrice = formatEuroFromCents(costs.monthly, locale)
+            const yearlyPrice = formatEuroFromCents(costs.yearly, locale)
 
             return (
               <button
@@ -121,7 +121,7 @@ export function OnboardingPlanSelector({
                   </div>
                   {isSelected ? (
                     <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                      <Check className="h-3.5 w-3.5" />
+                      <Check className="h-3.5 w-3.5" aria-hidden />
                     </span>
                   ) : null}
                 </div>
@@ -183,7 +183,7 @@ export function OnboardingPlanSelector({
             {uiText.onboarding.planSelection.costOverviewLabel}
           </p>
           <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
-            <Sparkles className="h-3.5 w-3.5" />
+            <Sparkles className="h-3.5 w-3.5" aria-hidden />
             {selectedPlanTier === "starter"
               ? uiText.onboarding.planSelection.starterLabel
               : uiText.onboarding.planSelection.professionalLabel}

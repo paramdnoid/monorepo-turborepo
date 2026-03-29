@@ -4,13 +4,17 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "inputs": ["$TURBO_DEFAULT$", ".env*"]
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
     },
     "lint": {
       "dependsOn": ["^lint"]
     },
     "check-types": {
       "dependsOn": ["^check-types"]
+    },
+    "test": {
+      "dependsOn": ["^test"]
     },
     "dev": {
       "cache": false,
@@ -20,6 +24,19 @@
       "dependsOn": ["^build"],
       "cache": false,
       "passThroughEnv": ["PLAYWRIGHT_*"]
+    },
+    "//#lint:design-guardrails": {
+      "cache": false,
+      "inputs": [
+        "$TURBO_ROOT$/check-design-guardrails.mjs",
+        "$TURBO_ROOT$/packages/turborepo-starter/src/content.ts",
+        "$TURBO_ROOT$/apps/web/app/layout.tsx",
+        "$TURBO_ROOT$/apps/web/app/page.tsx",
+        "$TURBO_ROOT$/apps/docs/app/page.tsx",
+        "$TURBO_ROOT$/apps/native/global.css",
+        "$TURBO_ROOT$/apps/native/src/NativeTurborepoApp.tsx",
+        "$TURBO_ROOT$/apps/native/src/WebShell.tsx"
+      ]
     }
   }
 }

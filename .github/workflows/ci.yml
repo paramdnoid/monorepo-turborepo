@@ -43,7 +43,7 @@ jobs:
           fi
 
       - name: Design guardrails
-        run: pnpm lint:design-guardrails
+        run: pnpm exec turbo run lint:design-guardrails
 
       # PRs: install Chromium only if turbo would run @repo/playwright-web#e2e (saves time when web/UI unchanged).
       - name: Plan Playwright E2E

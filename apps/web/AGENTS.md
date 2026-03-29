@@ -8,8 +8,8 @@
 
 | Path | Role |
 | ---- | ---- |
-| [`app/layout.tsx`](app/layout.tsx) | Root layout: Geist, `<Providers>` (`@repo/ui/providers`), `LocaleProvider`, `generateMetadata` |
-| [`app/page.tsx`](app/page.tsx) | Landing: marketing sections, JSON-LD, `@repo/brand`, `getUiText` / `getServerLocale` |
+| [`app/layout.tsx`](app/layout.tsx) | Root layout: Geist, `@repo/brand/logo` (icons/metadata), `<Providers>`, `LocaleProvider`, `generateMetadata` |
+| [`app/page.tsx`](app/page.tsx) | Landing: marketing sections, JSON-LD, `getUiText` / `getServerLocale` |
 | [`app/onboarding/`](app/onboarding/) | Onboarding wizard (server page + client components) |
 | [`app/legal/`](app/legal/) | Imprint, privacy, terms (`layout` + `SiteFooter` / `LegalHeader`) |
 | [`app/api/onboarding/`](app/api/onboarding/) | `register`, `complete-billing` route handlers |

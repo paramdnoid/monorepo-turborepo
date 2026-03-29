@@ -51,7 +51,7 @@ export function OnboardingStepActions({
             variant="outline"
             className="h-9 gap-2 sm:w-auto"
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-4 w-4" aria-hidden />
             {uiText.onboarding.actions.back}
           </Button>
         ) : (
@@ -69,7 +69,7 @@ export function OnboardingStepActions({
             className="h-9 w-full gap-2 sm:flex-1"
           >
             {uiText.onboarding.actions.continue}
-            <ArrowRight className="ml-1" />
+            <ArrowRight className="ml-1" aria-hidden />
           </Button>
         ) : (
           <Button
@@ -82,13 +82,13 @@ export function OnboardingStepActions({
           >
             {isSubmitting ? (
               <>
-                <Loader2 className="ml-1 h-4 w-4 animate-spin" />
+                <Loader2 className="ml-1 h-4 w-4 animate-spin" aria-hidden />
                 {finishingLabel}
               </>
             ) : (
               <>
                 {finishLabel}
-                <Check className="ml-1 h-4 w-4" />
+                <Check className="ml-1 h-4 w-4" aria-hidden />
               </>
             )}
           </Button>

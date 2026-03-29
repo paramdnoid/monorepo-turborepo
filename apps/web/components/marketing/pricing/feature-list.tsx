@@ -22,7 +22,7 @@ export function FeatureList({
     <ul ref={ref} className="space-y-2.5">
       {previousTierName && (
         <li className="flex items-center gap-2.5 pb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          <Minus className="h-3 w-3 shrink-0" strokeWidth={2} />
+          <Minus className="h-3 w-3 shrink-0" strokeWidth={2} aria-hidden />
           {uiText.landingSections.pricing.featureListFromPrefix} {previousTierName}
         </li>
       )}
@@ -34,7 +34,7 @@ export function FeatureList({
                 accent ? "bg-primary text-white" : "bg-muted text-muted-foreground"
               }`}
             >
-              <Check className="h-2.5 w-2.5" strokeWidth={3} />
+              <Check className="h-2.5 w-2.5" strokeWidth={3} aria-hidden />
             </div>
             <span className="text-sm leading-relaxed text-foreground/80">
               {feature.label}

@@ -4,10 +4,11 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
-    "lint": "turbo run lint && pnpm lint:design-guardrails",
+    "lint": "turbo run lint && turbo run lint:design-guardrails",
     "lint:design-guardrails": "node ./check-design-guardrails.mjs",
     "format": "prettier --write \"**/*.{ts,tsx,md}\" \"apps/native/**/*.{js,mjs}\"",
     "check-types": "turbo run check-types",
+    "test": "turbo run test",
     "e2e": "turbo run e2e"
   },
   "devDependencies": {

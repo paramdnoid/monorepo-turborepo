@@ -119,7 +119,10 @@ export function PricingCard({
           >
             <Link href={ctaHref || "/onboarding"}>
               {plan.ctaText ?? uiText.landingSections.pricing.ctaDefaultPopular}
-              <ArrowRight className="ml-1.5 h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+              <ArrowRight
+                className="ml-1.5 h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5"
+                aria-hidden
+              />
             </Link>
           </Button>
         ) : (

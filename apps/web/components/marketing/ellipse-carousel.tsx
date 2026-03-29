@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, type MotionValue, useReducedMotion, useTransform } from "framer-motion";
+import { motion, type MotionValue, useTransform } from "framer-motion";
 import { memo, type ReactNode, useMemo } from "react";
 
 const TWO_PI = Math.PI * 2;
@@ -11,22 +11,15 @@ export function EllipseCarousel({ children, containerHeight }: { children: React
 
 export type DepthConfig = {
   scaleRange: [number, number];
-  blurMax: number;
-  brightnessRange: [number, number];
   opacityRange: [number, number];
-  shadowSpreadMax: number;
-  shadowAlphaMax: number;
 };
 
 const DEFAULT_DEPTH: DepthConfig = {
   scaleRange: [0.6, 1.0],
-  blurMax: 2.5,
-  brightnessRange: [0.6, 1.0],
   opacityRange: [0.55, 1.0],
-  shadowSpreadMax: 30,
-  shadowAlphaMax: 0.25,
 };
 
+/** Depth via transform + opacity only (compositor-friendly; no animated filter/box-shadow). */
 function computeCardStyles(
   rotation: number,
   angleStep: number,
@@ -38,18 +31,12 @@ function computeCardStyles(
   const angle = angleStep * index + rotation;
   const cos = Math.cos(angle);
   const t = (1 + cos) / 2;
-  const brightness = depth.brightnessRange[0] + t * (depth.brightnessRange[1] - depth.brightnessRange[0]);
-  const blur = (1 - t) * depth.blurMax;
-  const spread = Math.round(t * depth.shadowSpreadMax);
-  const alpha = (t * depth.shadowAlphaMax).toFixed(2);
   return {
     x: Math.sin(angle) * radiusX,
     y: -cos * radiusY,
     scale: depth.scaleRange[0] + t * (depth.scaleRange[1] - depth.scaleRange[0]),
     zIndex: Math.round(t * 100),
-    filter: `brightness(${brightness}) blur(${blur}px)`,
     opacity: depth.opacityRange[0] + t * (depth.opacityRange[1] - depth.opacityRange[0]),
-    boxShadow: `0 ${spread}px ${spread * 2}px rgba(0,0,0,${alpha})`,
   };
 }
 
@@ -80,27 +67,15 @@ export const EllipseCard = memo(function EllipseCard({
   ariaLabel?: string;
   isActive?: boolean;
 }) {
-  const prefersReducedMotion = useReducedMotion();
-  const effectiveDepth = useMemo(() => {
-    if (prefersReducedMotion !== true) return depth;
-    return {
-      ...depth,
-      blurMax: 0,
-      brightnessRange: [1, 1] as [number, number],
-    };
-  }, [depth, prefersReducedMotion]);
-
   const angleStep = TWO_PI / totalCount;
   const styles = useTransform(rotation, (r) =>
-    computeCardStyles(r, angleStep, index, radiusX, radiusY, effectiveDepth),
+    computeCardStyles(r, angleStep, index, radiusX, radiusY, depth),
   );
   const x = useTransform(styles, (s) => s.x);
   const y = useTransform(styles, (s) => s.y);
   const scale = useTransform(styles, (s) => s.scale);
   const zIndex = useTransform(styles, (s) => s.zIndex);
-  const filter = useTransform(styles, (s) => s.filter);
   const opacity = useTransform(styles, (s) => s.opacity);
-  const boxShadow = useTransform(styles, (s) => s.boxShadow);
 
   const staticStyles = useMemo(
     () => ({
@@ -110,17 +85,17 @@ export const EllipseCard = memo(function EllipseCard({
       width: cardWidth,
       marginLeft: -(cardWidth / 2),
       marginTop: -(cardHeight / 2),
-      willChange: prefersReducedMotion === true ? "transform, opacity" : "transform, filter, opacity",
+      willChange: "transform, opacity",
     }),
-    [cardWidth, cardHeight, prefersReducedMotion],
+    [cardWidth, cardHeight],
   );
 
   return (
     <motion.button
       type="button"
-      style={{ x, y, scale, zIndex, filter, opacity, boxShadow, ...staticStyles }}
+      style={{ x, y, scale, zIndex, opacity, ...staticStyles }}
       onClick={onClick}
-      className="cursor-pointer rounded-2xl text-left"
+      className="cursor-pointer rounded-2xl text-left shadow-lg shadow-black/15 ring-1 ring-black/5 dark:shadow-black/40 dark:ring-white/10"
       aria-label={ariaLabel}
       aria-pressed={isActive}
     >

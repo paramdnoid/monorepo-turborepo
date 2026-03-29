@@ -105,6 +105,7 @@ Run from the repository root:
 | Dev all        | `pnpm dev`         | `pnpm exec turbo dev --filter=web` (runs all apps with a `dev` script: `web`, `docs`, `native` / Metro) |
 | Lint all       | `pnpm lint`        | `pnpm exec turbo lint --filter=native`                                                                  |
 | Type-check all | `pnpm check-types` | `pnpm exec turbo check-types --filter=docs`                                                             |
+| Test (Jest)    | `pnpm test`        | `pnpm exec turbo test --filter=native`                                                                  |
 | Format         | `pnpm format`      | —                                                                                                       |
 
 **Format script (verbatim):**
@@ -115,7 +116,7 @@ prettier --write "**/*.{ts,tsx,md}" "apps/native/**/*.{js,mjs}"
 
 (Defined in root [`package.json`](package.json).)
 
-`pnpm lint` also runs `lint:design-guardrails` from [`check-design-guardrails.mjs`](check-design-guardrails.mjs) after workspace linting.
+`pnpm lint` also runs the root Turbo task `lint:design-guardrails` ([`check-design-guardrails.mjs`](check-design-guardrails.mjs)) after workspace linting.
 
 ## Local verification (same as CI)
 
@@ -144,9 +145,9 @@ Never commit secrets. Use `.env.example` (committed) for placeholder names only;
 
 ## Tests and CI
 
-There is **no** root test script yet. When you add one, wire it through `turbo.json` and document it here.
+Root script **`pnpm test`** runs `turbo run test` (see [`turbo.json`](turbo.json)); packages without a `test` script are skipped. Today only **`native`** defines Jest (`apps/native`).
 
-**CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml) on `main` and pull requests): installs dependencies with `pnpm install --frozen-lockfile`, runs **`pnpm lint`**, **`pnpm check-types`**, and **`pnpm build`** on Node 22. This matches Next.js and shared packages; it does **not** run iOS/Android native compilation for `apps/native`. Run simulator/device builds locally when needed.
+**CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml) on `main` and pull requests): installs dependencies with `pnpm install --frozen-lockfile`, runs **`pnpm lint`**, **`pnpm check-types`**, and **`pnpm build`** on Node 22. It does **not** run **`pnpm test`** or iOS/Android native compilation. Run tests and device builds locally when needed.
 
 ## Code Conventions
 
