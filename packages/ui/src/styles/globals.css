@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "@repo/tailwind-config";
 @import "./theme-tokens.css";
 @source "../../../apps/web/**/*.{ts,tsx}";
 @source "../../../apps/docs/**/*.{ts,tsx}";
