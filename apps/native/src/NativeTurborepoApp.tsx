@@ -8,7 +8,7 @@ import {
   deployHrefWeb,
   description,
   docsHref,
-  step1CodePath,
+  step1CodePathWeb,
   step2Text,
   templatesHref,
   title,
@@ -61,7 +61,7 @@ export function NativeTurborepoApp() {
               <View className="gap-2">
                 <Text className="text-left font-mono text-sm leading-6 text-muted-foreground">
                   1. Bearbeite{' '}
-                  <Code className="text-foreground">{step1CodePath}</Code>
+                  <Code className="text-foreground">{step1CodePathWeb}</Code>
                 </Text>
                 <Text className="text-left font-mono text-sm leading-6 text-muted-foreground">
                   2. {step2Text}

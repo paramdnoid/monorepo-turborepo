@@ -7,6 +7,7 @@ const TARGETS = {
       "templatesHref",
       "turborepoSiteHref",
       "alertMessage",
+      "step1CodePathWeb",
       "step2Text",
       "title",
       "description",

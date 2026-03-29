@@ -8,7 +8,7 @@
 
 | Path                                 | Role                                                            |
 | ------------------------------------ | --------------------------------------------------------------- |
-| [`app/layout.tsx`](app/layout.tsx)   | Root layout, fonts, `<Providers>` from `@repo/ui/providers`     |
+| [`app/layout.tsx`](app/layout.tsx)   | Root layout: Geist from `@repo/fonts/geist`, `<Providers>` from `@repo/ui/providers` |
 | [`app/page.tsx`](app/page.tsx)       | Home route — imports shared copy from `@repo/turborepo-starter` |
 | [`app/globals.css`](app/globals.css) | Imports shared styles from `@repo/ui`                           |
 | [`.env.example`](.env.example)       | Document env vars; copy to `.env.local` for overrides           |
@@ -16,6 +16,7 @@
 ## Dependencies (workspace)
 
 - `@repo/ui` — components and global CSS
+- `@repo/fonts` — shared Geist Sans / Geist Mono (`@repo/fonts/geist`) for `next/font` CSS variables
 - `@repo/turborepo-starter` — shared starter strings and URLs for the home page (single source of truth)
 
 ## Commands

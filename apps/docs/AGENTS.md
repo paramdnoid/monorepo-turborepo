@@ -8,7 +8,7 @@
 
 | Path                                 | Role                                                                                                    |
 | ------------------------------------ | ------------------------------------------------------------------------------------------------------- |
-| [`app/layout.tsx`](app/layout.tsx)   | Root layout, `@repo/ui` providers                                                                       |
+| [`app/layout.tsx`](app/layout.tsx)   | Root layout: Geist from `@repo/fonts/geist`, `@repo/ui` providers                                     |
 | [`app/page.tsx`](app/page.tsx)       | Home route — imports shared copy/URLs from `@repo/turborepo-starter` (`deployHrefDocs` for docs target) |
 | [`app/globals.css`](app/globals.css) | Imports shared styles from `@repo/ui`                                                                   |
 | [`.env.example`](.env.example)       | Document env vars; copy to `.env.local` for overrides                                                   |
@@ -16,6 +16,7 @@
 ## Dependencies (workspace)
 
 - `@repo/ui` — components and global CSS
+- `@repo/fonts` — shared Geist Sans / Geist Mono (`@repo/fonts/geist`) for `next/font` CSS variables
 - `@repo/turborepo-starter` — shared starter copy/URLs (`deployHrefDocs`, `docsHref`, `templatesHref`, ...)
 
 **Copy consistency:** Keep shared starter copy in [`@repo/turborepo-starter`](../../packages/turborepo-starter); only app-specific values (like docs deploy target) should diverge via dedicated exports.

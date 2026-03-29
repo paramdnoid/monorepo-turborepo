@@ -9,9 +9,6 @@ const deployHrefBase =
 export const deployHrefWeb = `${deployHrefBase}&root-directory=apps%2Fweb`;
 export const deployHrefDocs = `${deployHrefBase}&root-directory=apps%2Fdocs`;
 
-/** Backward-compatible alias for existing imports (web/native). */
-export const deployHref = deployHrefWeb;
-
 export const docsHref = "https://turborepo.dev/docs?utm_source";
 
 export const templatesHref =
@@ -26,9 +23,6 @@ export const description = "Monorepo mit Next.js, Tailwind und shadcn/ui";
 
 export const step1CodePathWeb = "apps/web/app/page.tsx";
 export const step1CodePathDocs = "apps/docs/app/page.tsx";
-
-/** Backward-compatible alias used by native and web starter screens. */
-export const step1CodePath = step1CodePathWeb;
 
 export const step2Text = "Speichern — Änderungen erscheinen sofort.";
 

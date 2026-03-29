@@ -6,7 +6,7 @@ import {
   deployHrefWeb,
   description,
   docsHref,
-  step1CodePath,
+  step1CodePathWeb,
   step2Text,
   templatesHref,
   title,
@@ -61,7 +61,7 @@ export default function Home() {
             <ol className="list-inside list-decimal space-y-2 text-left text-muted-foreground">
               <li>
                 Bearbeite{" "}
-                <Code className="text-foreground">{step1CodePath}</Code>
+                <Code className="text-foreground">{step1CodePathWeb}</Code>
               </li>
               <li>{step2Text}</li>
             </ol>

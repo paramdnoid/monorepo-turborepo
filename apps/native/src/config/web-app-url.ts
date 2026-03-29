@@ -7,14 +7,14 @@ const DEV_PORT = 3000;
  * Set to your machine’s LAN IP (e.g. `"192.168.1.42"`) when testing on a **physical** device
  * so the phone can reach the dev server. Leave `undefined` for iOS Simulator / Android Emulator.
  */
-export const WEB_APP_HOST_OVERRIDE: string | undefined = undefined;
+const WEB_APP_HOST_OVERRIDE: string | undefined = undefined;
 
 /**
  * Production URL for the embedded WebView app.
  *
  * MUST be `https://...` (no trailing slash required). Keep `undefined` in development.
  */
-export const WEB_APP_PROD_URL: string | undefined = undefined;
+const WEB_APP_PROD_URL: string | undefined = undefined;
 
 function trimTrailingSlash(url: string): string {
   return url.endsWith('/') ? url.slice(0, -1) : url;

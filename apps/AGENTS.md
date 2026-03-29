@@ -34,12 +34,13 @@ Shared rules for both Next apps: same stack and conventions; only ports and pack
 
 ```
 app/
-  layout.tsx      → Root layout: fonts, `<Providers>` from @repo/ui, children
+  layout.tsx      → Root layout: Geist via `@repo/fonts/geist`, `<Providers>` from @repo/ui, children
   page.tsx        → Homepage / entry route
   globals.css     → Imports shared tokens/styles from @repo/ui (see below)
-  fonts/          → Local font files (Geist Sans, Geist Mono)
 public/           → Static assets (favicon, SVGs, etc.)
 ```
+
+Shared Geist Sans / Geist Mono (`.woff` + `next/font/local`) live in **[`packages/fonts`](../packages/fonts)** — import `geistSans` and `geistMono` from `@repo/fonts/geist` in `layout.tsx`; do not add per-app `app/fonts/` copies.
 
 `app/globals.css` pulls in design tokens and base styles via:
 
@@ -47,7 +48,7 @@ public/           → Static assets (favicon, SVGs, etc.)
 
 (Adjust relative path if the file layout changes.)
 
-**Dependencies:** `@repo/ui`, `next`, `react`, `react-dom`, Tailwind v4 (`tailwindcss`, `@tailwindcss/postcss`). Both **`web`** and **`docs`** use `@repo/turborepo-starter` for shared starter copy (with app-specific deploy targets).
+**Dependencies:** `@repo/ui`, `@repo/fonts`, `next`, `react`, `react-dom`, Tailwind v4 (`tailwindcss`, `@tailwindcss/postcss`). Both **`web`** and **`docs`** use `@repo/turborepo-starter` for shared starter copy (with app-specific deploy targets).
 
 **Configuration:** ESLint `@repo/eslint-config/next-js`; TypeScript extends `@repo/typescript-config/nextjs.json`; Next.js ESM config.
 
