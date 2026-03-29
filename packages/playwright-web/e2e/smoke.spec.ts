@@ -1,8 +1,10 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("web smoke", () => {
-  test("home shows starter title", async ({ page }) => {
+  test("home loads with primary brand chrome", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByText("Turborepo Starter")).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: /ZunftGewerk home/i }),
+    ).toBeVisible();
   });
 });
