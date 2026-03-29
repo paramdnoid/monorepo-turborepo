@@ -44,9 +44,7 @@ Shared Geist Sans / Geist Mono (`.woff` + `next/font/local`) live in **[`package
 
 `app/globals.css` pulls in design tokens and base styles via:
 
-`@import "../../../packages/ui/src/styles/globals.css";`
-
-(Adjust relative path if the file layout changes.)
+`@import "@repo/ui/styles/globals.css";`
 
 **Dependencies:** `@repo/ui`, `@repo/fonts`, `next`, `react`, `react-dom`, Tailwind v4 (`tailwindcss`, `@tailwindcss/postcss`). Both **`web`** and **`docs`** use `@repo/turborepo-starter` for shared starter copy (with app-specific deploy targets).
 

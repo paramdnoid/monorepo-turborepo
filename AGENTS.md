@@ -176,7 +176,7 @@ Root script **`pnpm test`** runs `turbo run test` (see [`turbo.json`](turbo.json
 
 1. Add the package under `packages/<name>/` with a `package.json` (`name` like `@repo/...` or app-style).
 2. Register the path in [`pnpm-workspace.yaml`](pnpm-workspace.yaml) if it is not already covered by `packages/*`.
-3. Reference it from other packages with `"workspace:*"` or `workspace:^`.
+3. Reference it from other packages with `"workspace:*"`.
 4. If the package should participate in `lint`, `check-types`, or `build`, add those scripts and confirm [`turbo.json`](turbo.json) tasks behave as expected (dependencies are `^lint`, `^check-types`, `^build` where applicable).
 5. Add an **`AGENTS.md`** in the new package and link it from this file’s **Where to Look Next** / **Agent navigation** tables.
 
