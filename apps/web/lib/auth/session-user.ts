@@ -7,6 +7,7 @@ import type { TradeId } from "@/lib/trades/trade-types"
 type AccessTokenClaims = {
   name?: string
   email?: string
+  email_verified?: boolean
   preferred_username?: string
   given_name?: string
   family_name?: string
@@ -115,4 +116,36 @@ export async function getAuthSessionUser(): Promise<AuthSessionUser> {
       tenantId: mapTenantId(claims),
     },
   }
+}
+
+/** OIDC `email_verified` aus dem Access-Token (z. B. Keycloak). */
+export async function getAuthSessionEmailVerified(): Promise<boolean> {
+  const token = await getServerAccessToken()
+  const claims = token ? decodeJwtPayload(token) : null
+  return Boolean(claims?.email_verified)
+}
+
+const emailShape = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+function resolveSessionEmail(claims: AccessTokenClaims | null): string | null {
+  if (!claims) return null
+  const fromEmail = claims.email?.trim()
+  if (fromEmail && emailShape.test(fromEmail)) {
+    return fromEmail.toLowerCase()
+  }
+  const preferred = claims.preferred_username?.trim()
+  if (preferred && emailShape.test(preferred)) {
+    return preferred.toLowerCase()
+  }
+  return null
+}
+
+/** Echte Login-E-Mail und Mandanten-ID fuer Stripe (keine Platzhalter-Strings). */
+export async function getAuthSessionStripeResumeContext(): Promise<{
+  email: string | null
+  tenantId: string | null
+}> {
+  const token = await getServerAccessToken()
+  const claims = token ? decodeJwtPayload(token) : null
+  return { email: resolveSessionEmail(claims), tenantId: mapTenantId(claims) }
 }

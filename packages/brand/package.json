@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./logo": "./assets/logo.png"
+    "./logo": "./assets/logo.png",
+    "./logo-path": "./logo-path.ts"
   }
 }

@@ -153,6 +153,7 @@ const uiTextDe = {
       planTitle: "Tarif und Abrechnung",
       profileAndTradeTitle: "Betriebsdaten und Gewerk",
       credentialsTitle: "Zugangsdaten",
+      verifyEmailTitle: "E-Mail bestaetigen",
       checkoutTitle: "Checkout",
     },
     account: {
@@ -231,9 +232,10 @@ const uiTextDe = {
         "Die Zahlungsdaten werden sicher von Stripe verarbeitet und nicht auf unseren Servern gespeichert.",
       missingPublishableKey:
         "Stripe Checkout konnte nicht geladen werden. Bitte NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY setzen.",
-      backToCredentials: "Zurueck zu Zugangsdaten",
-      confirmPayment: "Zahlungsmethode speichern",
-      confirmingPayment: "Zahlungsmethode wird gespeichert…",
+      backToCredentials: "Zurueck: Zugangsdaten",
+      backToVerify: "Zurueck: E-Mail",
+      confirmPayment: "Zahlung speichern",
+      confirmingPayment: "Wird gespeichert…",
     },
     actions: {
       cancel: "Zum Dashboard",
@@ -265,6 +267,11 @@ const uiTextDe = {
         "Tarif und Abrechnung sind gesetzt. Du kannst mit den Betriebsdaten fortfahren.",
       verificationEmailHint:
         "Wir haben dir eine Bestaetigungsmail gesendet. Bitte oeffne den Link in der E-Mail, um deine Adresse zu verifizieren.",
+      verifyPendingHint:
+        "Bitte oeffne den Link in der E-Mail. Wir pruefen automatisch, ob deine Adresse bestaetigt ist.",
+      verifyReadyHint:
+        "E-Mail ist bestaetigt. Du kannst mit dem Checkout fortfahren.",
+      continueToCheckout: "Zum Checkout",
     },
   },
   dashboard: {
@@ -1531,6 +1538,21 @@ const uiTextDe = {
       signupSubject: "Bitte E-Mail bestaetigen — ZunftGewerk",
       signupBody:
         "Hallo {firstName},\n\nbitte bestaetige deine E-Mail-Adresse fuer dein ZunftGewerk-Konto, indem du den folgenden Link oeffnest:\n\n{link}\n\nWenn du dich nicht registriert hast, kannst du diese Nachricht ignorieren.",
+      signupHtmlKicker: "Konto",
+      signupHtmlHeading: "E-Mail bestaetigen",
+      signupHtmlGreeting: "Hallo {firstName},",
+      signupHtmlIntro:
+        "bitte bestaetige deine E-Mail-Adresse fuer dein ZunftGewerk-Konto. Klicke auf die Schaltflaeche unten, um deine Registrierung abzuschliessen.",
+      signupHtmlButton: "E-Mail-Adresse bestaetigen",
+      signupHtmlLinkFallback:
+        "Falls die Schaltflaeche nicht funktioniert, kopiere diesen Link in die Adresszeile deines Browsers:",
+      signupHtmlFooter:
+        "Wenn du dich nicht registriert hast, kannst du diese Nachricht ignorieren.",
+      signupHtmlImprintHeading: "Impressum",
+      signupHtmlImprintLines:
+        "ZunftGewerk KG\nHaus der Demokratie und Menschenrechte\nGreifswalder Strasse 4\n10405 Berlin\nDeutschland",
+      signupHtmlImprintLinkLabel: "Vollstaendiges Impressum",
+      signupHtmlLogoAlt: "ZunftGewerk",
       bannerOk: "E-Mail-Adresse bestaetigt. Danke!",
       bannerInvalid: "Bestaetigungslink ist ungueltig oder abgelaufen.",
       bannerConfig: "Bestaetigung ist derzeit nicht moeglich. Bitte spaeter erneut versuchen.",
@@ -1740,6 +1762,7 @@ const uiTextEnOverrides: DeepPartial<typeof uiTextDe> = {
       planTitle: "Plan and billing",
       profileAndTradeTitle: "Business profile and trade",
       credentialsTitle: "Credentials",
+      verifyEmailTitle: "Confirm email",
       checkoutTitle: "Checkout",
     },
     account: {
@@ -1814,6 +1837,7 @@ const uiTextEnOverrides: DeepPartial<typeof uiTextDe> = {
       missingPublishableKey:
         "Stripe checkout could not be loaded. Please set NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY.",
       backToCredentials: "Back to credentials",
+      backToVerify: "Back to email confirmation",
       confirmPayment: "Save payment method",
       confirmingPayment: "Saving payment method…",
       paymentMethodUnavailable: "This payment method is currently not available.",
@@ -1845,6 +1869,10 @@ const uiTextEnOverrides: DeepPartial<typeof uiTextDe> = {
       planReadyHint: "Plan and billing are set. You can continue with company details.",
       verificationEmailHint:
         "We sent you a confirmation email. Open the link in the message to verify your address.",
+      verifyPendingHint:
+        "Open the link in the email. We automatically check when your address is confirmed.",
+      verifyReadyHint: "Your email is confirmed. You can continue to checkout.",
+      continueToCheckout: "Continue to checkout",
     },
   },
   dashboard: {
@@ -3124,6 +3152,20 @@ const uiTextEnOverrides: DeepPartial<typeof uiTextDe> = {
       signupSubject: "Please confirm your email — ZunftGewerk",
       signupBody:
         "Hello {firstName},\n\nplease confirm your email address for your ZunftGewerk account by opening this link:\n\n{link}\n\nIf you did not register, you can ignore this message.",
+      signupHtmlKicker: "Account",
+      signupHtmlHeading: "Confirm your email",
+      signupHtmlGreeting: "Hello {firstName},",
+      signupHtmlIntro:
+        "Please confirm your email address for your ZunftGewerk account. Click the button below to complete your registration.",
+      signupHtmlButton: "Confirm email address",
+      signupHtmlLinkFallback:
+        "If the button does not work, copy this link into your browser's address bar:",
+      signupHtmlFooter: "If you did not register, you can ignore this message.",
+      signupHtmlImprintHeading: "Legal notice",
+      signupHtmlImprintLines:
+        "ZunftGewerk KG\nHaus der Demokratie und Menschenrechte\nGreifswalder Strasse 4\n10405 Berlin\nGermany",
+      signupHtmlImprintLinkLabel: "Full imprint",
+      signupHtmlLogoAlt: "ZunftGewerk",
       bannerOk: "Email address confirmed. Thank you!",
       bannerInvalid: "Confirmation link is invalid or has expired.",
       bannerConfig: "Confirmation is currently unavailable. Please try again later.",

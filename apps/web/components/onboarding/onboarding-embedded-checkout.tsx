@@ -27,6 +27,8 @@ type OnboardingEmbeddedCheckoutProps = {
   clientSecret: string
   onBack: () => void
   onConfirm: (setupIntentId: string) => Promise<void>
+  /** Defaults to `checkout.backToCredentials`. */
+  backButtonLabel?: string
 }
 
 type CheckoutPaymentMethod = "card" | "sepa_debit"
@@ -38,6 +40,7 @@ function OnboardingPaymentForm({
   clientSecret,
   onBack,
   onConfirm,
+  backButtonLabel,
 }: OnboardingEmbeddedCheckoutProps) {
   const stripe = useStripe()
   const elements = useElements()
@@ -337,28 +340,34 @@ function OnboardingPaymentForm({
         <span className="block h-px w-full bg-border/75" />
       </div>
 
-      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center">
-        <Button type="button" variant="outline" className="h-9 gap-2 sm:w-auto" onClick={onBack}>
-          <ArrowLeft className="h-4 w-4" aria-hidden />
-          {uiText.onboarding.checkout.backToCredentials}
+      <div className="flex w-full min-w-0 flex-col-reverse gap-2 sm:flex-row sm:items-stretch">
+        <Button
+          type="button"
+          variant="outline"
+          className="h-auto min-h-9 w-full min-w-0 shrink gap-2 whitespace-normal py-2 text-center leading-snug sm:flex-1"
+          onClick={onBack}
+        >
+          <ArrowLeft className="h-4 w-4 shrink-0 self-center" aria-hidden />
+          <span className="min-w-0 text-balance">
+            {backButtonLabel ?? uiText.onboarding.checkout.backToCredentials}
+          </span>
         </Button>
         <Button
           type="button"
-          
-          className="h-9 w-full gap-2 sm:flex-1"
+          className="h-auto min-h-9 w-full min-w-0 shrink gap-2 whitespace-normal py-2 text-center leading-snug sm:flex-1"
           onClick={handleSubmit}
           disabled={!stripe || !elements || isSubmitting}
           aria-busy={isSubmitting}
         >
           {isSubmitting ? (
             <>
-              <Loader2 className="ml-1 h-4 w-4 animate-spin" aria-hidden />
-              {uiText.onboarding.checkout.confirmingPayment}
+              <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
+              <span className="min-w-0 text-balance">{uiText.onboarding.checkout.confirmingPayment}</span>
             </>
           ) : (
             <>
-              {uiText.onboarding.checkout.confirmPayment}
-              <Check className="ml-1 h-4 w-4" aria-hidden />
+              <span className="min-w-0 text-balance">{uiText.onboarding.checkout.confirmPayment}</span>
+              <Check className="h-4 w-4 shrink-0" aria-hidden />
             </>
           )}
         </Button>
@@ -371,6 +380,7 @@ export function OnboardingEmbeddedCheckout({
   clientSecret,
   onBack,
   onConfirm,
+  backButtonLabel,
 }: OnboardingEmbeddedCheckoutProps) {
   const options: StripeElementsOptions = useMemo(
     () => ({
@@ -391,7 +401,7 @@ export function OnboardingEmbeddedCheckout({
           </p>
         </header>
         <Button type="button" variant="outline" className="h-9" onClick={onBack}>
-          {uiText.onboarding.checkout.backToCredentials}
+          {backButtonLabel ?? uiText.onboarding.checkout.backToCredentials}
         </Button>
       </section>
     )
@@ -399,7 +409,12 @@ export function OnboardingEmbeddedCheckout({
 
   return (
     <Elements stripe={stripePromise} options={options}>
-      <OnboardingPaymentForm clientSecret={clientSecret} onBack={onBack} onConfirm={onConfirm} />
+      <OnboardingPaymentForm
+        clientSecret={clientSecret}
+        onBack={onBack}
+        onConfirm={onConfirm}
+        backButtonLabel={backButtonLabel}
+      />
     </Elements>
   )
 }

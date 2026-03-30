@@ -1,10 +1,14 @@
 /**
  * Legt eine Beispiel-Organisation an (idempotent per tenant_id).
  * Nutzung: DATABASE_URL=... SEED_TENANT_ID=my-tenant pnpm --filter @repo/db exec tsx scripts/seed-organization.ts
+ * (ohne DATABASE_URL: lädt wie die API `apps/api/.env` und `.env.local`)
  */
 import { eq } from "drizzle-orm";
 
+import { loadApiEnv } from "../load-api-env.js";
 import { createDb, createPool, organizations } from "../src/index.js";
+
+loadApiEnv();
 
 const tenantId = process.env.SEED_TENANT_ID?.trim() || "local-dev-tenant";
 const name = process.env.SEED_ORG_NAME?.trim() || "Local Dev GmbH";

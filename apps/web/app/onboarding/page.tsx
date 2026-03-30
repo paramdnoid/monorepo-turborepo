@@ -3,7 +3,7 @@ import { Suspense } from "react"
 
 import { OnboardingTradeStep } from "@/components/onboarding/onboarding-trade-step"
 import { getUiText } from "@/content/ui-text"
-import { getAuthSessionUser } from "@/lib/auth/session-user"
+import { getAuthSessionEmailVerified, getAuthSessionUser } from "@/lib/auth/session-user"
 import { getServerLocale } from "@/lib/i18n/server-locale"
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -47,6 +47,7 @@ function normalizeEmailPrefill(email: string) {
 
 export default async function OnboardingPage() {
   const user = await getAuthSessionUser()
+  const initialEmailVerified = await getAuthSessionEmailVerified()
   const { firstName, lastName } = normalizeNamePrefill(user.name)
 
   return (
@@ -55,6 +56,7 @@ export default async function OnboardingPage() {
         initialFirstName={firstName}
         initialLastName={lastName}
         initialEmail={normalizeEmailPrefill(user.email)}
+        initialEmailVerified={initialEmailVerified}
       />
     </Suspense>
   )

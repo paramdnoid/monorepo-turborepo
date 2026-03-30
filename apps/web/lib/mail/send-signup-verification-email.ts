@@ -3,16 +3,14 @@ import "server-only";
 import type { Locale } from "@/lib/i18n/locale";
 import { getUiText } from "@/content/ui-text";
 
+import {
+  buildEmailVerificationHtml,
+  EMAIL_VERIFICATION_LOGO_CID,
+  resolveBrandLogoPathForMail,
+} from "./email-verification-html";
+import { getPublicSiteOrigin } from "./public-site-origin";
 import { createSmtpTransport, isSmtpConfigured } from "./smtp-transport";
 import { isEmailVerificationSecretConfigured, signEmailVerificationToken } from "./verification-token";
-
-function publicSiteOrigin(): string {
-  const raw =
-    process.env.MAIL_BRAND_ORIGIN?.trim() ||
-    process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
-    "http://localhost:3000";
-  return raw.replace(/\/+$/, "");
-}
 
 export type SendSignupVerificationEmailInput = {
   locale: Locale;
@@ -40,12 +38,32 @@ export async function sendSignupVerificationEmail(
     return false;
   }
 
-  const verifyUrl = `${publicSiteOrigin()}/api/auth/verify-email?token=${encodeURIComponent(token)}`;
+  const origin = getPublicSiteOrigin();
+  const verifyUrl = `${origin}/api/auth/verify-email?token=${encodeURIComponent(token)}`;
+  const imprintUrl = `${origin}/legal/imprint`;
   const t = getUiText(input.locale);
-  const subject = t.api.emailVerification.signupSubject;
-  const body = t.api.emailVerification.signupBody
-    .replace("{firstName}", input.firstName.trim() || "…")
-    .replace("{link}", verifyUrl);
+  const ev = t.api.emailVerification;
+  const subject = ev.signupSubject;
+  const firstName = input.firstName.trim() || "…";
+  const bodyPlain =
+    ev.signupBody.replace("{firstName}", firstName).replace("{link}", verifyUrl) +
+    "\n\n---\n" +
+    ev.signupHtmlImprintHeading +
+    "\n" +
+    ev.signupHtmlImprintLines +
+    "\n" +
+    imprintUrl;
+
+  const logoPath = resolveBrandLogoPathForMail();
+  const html = buildEmailVerificationHtml({
+    locale: input.locale,
+    t: ev,
+    brandTagline: t.branding.tagline,
+    firstName: input.firstName,
+    verifyUrl,
+    imprintUrl,
+    includeLogo: Boolean(logoPath),
+  });
 
   const from =
     process.env.MAIL_FROM?.trim() || process.env.SMTP_USER?.trim() || "noreply@localhost";
@@ -57,7 +75,17 @@ export async function sendSignupVerificationEmail(
       from: fromName ? `"${fromName}" <${from}>` : from,
       to: input.to,
       subject,
-      text: body,
+      text: bodyPlain,
+      html,
+      attachments: logoPath
+        ? [
+            {
+              filename: "logo.png",
+              path: logoPath,
+              cid: EMAIL_VERIFICATION_LOGO_CID,
+            },
+          ]
+        : undefined,
     });
     return true;
   } catch (error) {

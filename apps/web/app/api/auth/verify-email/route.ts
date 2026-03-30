@@ -15,9 +15,16 @@ function baseOrigin(): string {
   return raw.replace(/\/+$/, "");
 }
 
-function redirectWithStatus(status: "ok" | "invalid" | "config"): NextResponse {
+function redirectWithStatus(status: "invalid" | "config"): NextResponse {
   const u = new URL("/", baseOrigin());
   u.searchParams.set("emailVerify", status);
+  return NextResponse.redirect(u);
+}
+
+function redirectAfterVerifiedOk(): NextResponse {
+  const u = new URL("/onboarding", baseOrigin());
+  u.searchParams.set("step", "4");
+  u.searchParams.set("emailVerify", "ok");
   return NextResponse.redirect(u);
 }
 
@@ -51,5 +58,5 @@ export async function GET(request: Request) {
     return redirectWithStatus("invalid");
   }
 
-  return redirectWithStatus("ok");
+  return redirectAfterVerifiedOk();
 }
