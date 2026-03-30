@@ -6,7 +6,7 @@ import { getUiText } from "@/content/ui-text";
 import { AUTH_COOKIE_NAME } from "@/lib/auth/constants";
 import { getRequestLocale } from "@/lib/i18n/request-locale";
 
-const signUpPayloadSchema = z
+export const signUpPayloadSchema = z
   .object({
     companyName: z.string().trim().min(1).max(160),
     firstName: z.string().trim().min(1).max(120),
@@ -77,7 +77,7 @@ function normalizeBaseUrl(url: string) {
   return url.replace(/\/+$/, "");
 }
 
-function isOnboardingBrowserRequest(request: Request) {
+export function isOnboardingBrowserRequest(request: Request) {
   const requestUrl = new URL(request.url);
   const origin = request.headers.get("origin");
   const referer = request.headers.get("referer");
@@ -95,7 +95,7 @@ function isOnboardingBrowserRequest(request: Request) {
   return refererUrl.pathname.startsWith("/onboarding");
 }
 
-function createTenantId(companyName: string, tradeSlug: string) {
+export function createTenantId(companyName: string, tradeSlug: string) {
   const normalizedCompany = companyName
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
@@ -110,11 +110,14 @@ function createTenantId(companyName: string, tradeSlug: string) {
   return [normalizedCompany || "tenant", normalizedTrade || "trade", suffix].join("-");
 }
 
-function stripeBillingEnabled() {
+export function stripeBillingEnabled() {
   return (process.env.FEATURE_STRIPE_BILLING ?? "false").toLowerCase() === "true";
 }
 
-function resolveStripePriceId(planTier: SignUpPayload["planTier"], billingCycle: SignUpPayload["billingCycle"]) {
+export function resolveStripePriceId(
+  planTier: SignUpPayload["planTier"],
+  billingCycle: SignUpPayload["billingCycle"],
+) {
   if (planTier === "starter" && billingCycle === "monthly") {
     return process.env.STRIPE_PRICE_STARTER_MONTHLY ?? null;
   }

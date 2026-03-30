@@ -1,4 +1,4 @@
-import { DEFAULT_TRADE_ID, TRADE_IDS, type KnownTradeId } from "@/lib/trades/trade-types"
+import { DEFAULT_TRADE_ID, TRADE_IDS, type KnownTradeId } from "./trade-types";
 
 const TRADE_SYNONYMS: Record<string, KnownTradeId> = {
   kaminfeger: "kaminfeger",
