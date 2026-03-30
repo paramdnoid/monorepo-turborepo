@@ -21,7 +21,7 @@ export function SectionContainer({
   as?: "div" | "main" | "section" | "nav" | "footer" | "header";
 }) {
   return (
-    <Tag className={cn("mx-auto px-4 sm:px-6 lg:px-8", widthClasses[width], className)}>
+    <Tag className={cn("mx-auto px-4 sm:px-6 md:px-8", widthClasses[width], className)}>
       {children}
     </Tag>
   );
