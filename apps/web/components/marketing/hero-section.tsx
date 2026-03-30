@@ -60,7 +60,7 @@ export function HeroSection() {
               <FadeIn delay={0.2}>
                 <h1
                   id="hero-heading"
-                  className="hero-title-brutal hero-text-gloss text-balance text-[1.9rem] leading-[0.94] sm:text-[2.35rem] sm:leading-[0.92] md:text-[2.75rem] lg:text-[3.1rem] lg:leading-[0.9]"
+                  className="hero-title-brutal hero-text-gloss text-balance text-[1.8rem] leading-[0.94] sm:text-[2.35rem] sm:leading-[0.92] md:text-[2.75rem] lg:text-[3.1rem] lg:leading-[0.9]"
                 >
                   {/* Zwei Zeilen: erste Zeile gesamt, zweite Highlight — kein Umbruch mitten in Zeile 1 ab sm */}
                   <span className="block sm:whitespace-nowrap">
