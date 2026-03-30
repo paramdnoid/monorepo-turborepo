@@ -5,6 +5,7 @@
   "exports": {
     "./utils": "./src/utils.ts",
     "./use-mobile": "./src/use-mobile.ts",
+    "./next-themes": "./src/next-themes.ts",
     "./*": "./src/*.tsx",
     "./styles/*": "./src/styles/*"
   },

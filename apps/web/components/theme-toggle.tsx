@@ -1,8 +1,8 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 import { MonitorIcon, MoonIcon, SunIcon } from "lucide-react";
-import { useTheme } from "next-themes";
+import { useTheme } from "@repo/ui/next-themes";
 
 import { useAppLocale } from "@/components/locale-provider";
 import { Button } from "@repo/ui/button";
@@ -15,12 +15,13 @@ type ThemeToggleProps = {
 
 const themeOrder = ["light", "dark", "system"] as const;
 
-const subscribeToNothing = () => () => {};
-
 export function ThemeToggle({ className }: ThemeToggleProps) {
   const locale = useAppLocale();
   const uiText = getUiText(locale);
-  const mounted = useSyncExternalStore(subscribeToNothing, () => true, () => false);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const { theme, setTheme } = useTheme();
   const activeTheme = themeOrder.includes((theme ?? "light") as (typeof themeOrder)[number])
     ? ((theme ?? "light") as (typeof themeOrder)[number])

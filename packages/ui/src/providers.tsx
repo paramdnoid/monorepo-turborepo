@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { ThemeProvider } from "next-themes";
+import { ThemeProvider } from "./next-themes";
 import { Toaster } from "@repo/ui/sonner";
 import { TooltipProvider } from "@repo/ui/tooltip";
 

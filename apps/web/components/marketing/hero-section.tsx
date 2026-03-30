@@ -51,7 +51,7 @@ export function HeroSection() {
               <FadeIn delay={0.1}>
                 <Badge
                   variant="secondary"
-                  className="enterprise-kicker mb-6 px-3.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] sm:text-[11px]"
+                  className="enterprise-kicker mb-8 px-3.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] sm:mb-9 sm:text-[11px] lg:mb-10"
                 >
                   <Sparkles className="h-3 w-3 text-primary" aria-hidden />
                   {text.badge}
@@ -60,19 +60,19 @@ export function HeroSection() {
               <FadeIn delay={0.2}>
                 <h1
                   id="hero-heading"
-                  className="hero-title-brutal hero-text-gloss text-balance text-[2.05rem] leading-[0.92] sm:text-[2.45rem] md:text-[2.85rem] lg:text-[3.2rem] lg:leading-[0.9]"
+                  className="hero-title-brutal hero-text-gloss text-balance text-[1.9rem] leading-[0.94] sm:text-[2.35rem] sm:leading-[0.92] md:text-[2.75rem] lg:text-[3.1rem] lg:leading-[0.9]"
                 >
                   {/* Zwei Zeilen: erste Zeile gesamt, zweite Highlight — kein Umbruch mitten in Zeile 1 ab sm */}
                   <span className="block sm:whitespace-nowrap">
                     {text.headingPrefix}
                   </span>
-                  <span className="mt-1 block sm:mt-1.5">
+                  <span className="mt-1.5 block sm:mt-2">
                     <GradientText>{text.headingHighlight}</GradientText>
                   </span>
                 </h1>
               </FadeIn>
               <FadeIn delay={0.35}>
-                <p className="mx-auto mb-9 mt-5 max-w-[46ch] text-[0.97rem] leading-relaxed text-muted-foreground md:mx-0">
+                <p className="mx-auto mb-10 mt-7 max-w-[46ch] text-[0.97rem] leading-relaxed text-muted-foreground sm:mb-11 sm:mt-8 md:mx-0">
                   {text.description}
                 </p>
               </FadeIn>
@@ -98,7 +98,7 @@ export function HeroSection() {
                 </div>
               </FadeIn>
               <FadeIn delay={0.65}>
-                <div className="mt-8 flex flex-wrap items-center justify-center gap-x-3 gap-y-2.5 text-[10px] font-medium uppercase tracking-[0.06em] text-muted-foreground sm:text-[11px] md:justify-start">
+                <div className="mt-11 flex flex-wrap items-center justify-center gap-x-3 gap-y-2.5 text-[10px] font-medium uppercase tracking-[0.06em] text-muted-foreground sm:mt-12 sm:text-[11px] md:justify-start">
                   <span className="flex items-center gap-2">
                     <ShieldCheck
                       className="h-4 w-4 shrink-0 text-primary"
@@ -142,7 +142,7 @@ export function HeroSection() {
                 </div>
               </FadeIn>
               <FadeIn delay={0.75}>
-                <div className="mt-10 grid max-w-xl gap-3 sm:grid-cols-2 md:max-w-2xl min-[900px]:max-w-none">
+                <div className="mt-14 grid max-w-xl gap-3 sm:grid-cols-2 md:max-w-2xl min-[900px]:max-w-none">
                   <div className="hero-metric-card px-4 py-2.5 text-left sm:py-3">
                     <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                       {text.metricTempoLabel}
