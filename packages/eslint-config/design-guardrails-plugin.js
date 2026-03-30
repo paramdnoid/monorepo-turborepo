@@ -1,17 +1,65 @@
-const TARGETS = {};
+const TARGETS = {
+  webLanding: {
+    pathSuffix: "/apps/web/app/page.tsx",
+    requiredImportSpecs: [
+      { source: "@/content/ui-text", names: ["getUiText"] },
+      { source: "@/lib/i18n/server-locale", names: ["getServerLocale"] },
+    ],
+    forbiddenImportSources: ["@repo/turborepo-starter"],
+    forbiddenStrings: [
+      "Monorepo with Turborepo",
+      "turborepo.dev?utm_source=create-turbo",
+      "Hello from @repo/ui",
+    ],
+    forbidVariableNames: [
+      "deployHrefWeb",
+      "deployHrefDocs",
+      "docsHref",
+      "templatesHref",
+      "turborepoSiteHref",
+      "title",
+      "description",
+      "alertMessage",
+    ],
+  },
+  docsPage: {
+    pathSuffix: "/apps/docs/app/page.tsx",
+    requiredImportSpecs: [
+      { source: "@web/content/ui-text", names: ["getUiText"] },
+      { source: "@web/content/faqs", names: ["getFaqs"] },
+    ],
+    forbiddenImportSources: ["@repo/turborepo-starter"],
+    forbidVariableNames: [
+      "deployHrefWeb",
+      "deployHrefDocs",
+      "docsHref",
+      "templatesHref",
+      "turborepoSiteHref",
+      "title",
+      "description",
+      "alertMessage",
+    ],
+  },
+};
 
 function normalizeFilename(filename) {
   return String(filename).replaceAll("\\", "/");
 }
 
-function getTarget(filename) {
+function getTargetByFilename(filename) {
   const normalized = normalizeFilename(filename);
   for (const [name, target] of Object.entries(TARGETS)) {
     if (normalized.endsWith(target.pathSuffix)) {
-      return name;
+      return { name, config: target };
     }
   }
   return null;
+}
+
+function readImportName(specifier) {
+  if (specifier.type !== "ImportSpecifier") return null;
+  if (!specifier.imported || specifier.imported.type !== "Identifier") return null;
+  return specifier.imported.name;
 }
 
 export const designGuardrailsPlugin = {
@@ -21,19 +69,28 @@ export const designGuardrailsPlugin = {
         type: "problem",
         docs: {
           description:
-            "Enforce shared starter-content imports and prevent inline drift in starter pages.",
+            "Enforce architecture contracts for web/docs entry pages and prevent starter-template regressions.",
         },
         schema: [],
       },
       create(context) {
-        const targetName = getTarget(context.filename ?? context.getFilename());
-        if (!targetName) {
+        const target = getTargetByFilename(context.filename ?? context.getFilename());
+        if (!target) {
           return {};
         }
 
-        const target = TARGETS[targetName];
-        const importedNames = new Set();
-        let hasStarterImport = false;
+        const targetName = target.name;
+        const targetConfig = target.config;
+        const forbiddenImportSources = targetConfig.forbiddenImportSources ?? [];
+        const forbiddenStrings = targetConfig.forbiddenStrings ?? [];
+        const forbidVariableNames = targetConfig.forbidVariableNames ?? [];
+        const requiredImportSpecs = targetConfig.requiredImportSpecs ?? [];
+        const requiredStrings = targetConfig.requiredStrings ?? [];
+
+        /** @type {Map<string, Set<string>>} */
+        const importedNamesBySource = new Map();
+        const forbiddenImportNodes = [];
+        const literalValues = new Set();
         let programNode = null;
 
         return {
@@ -41,59 +98,83 @@ export const designGuardrailsPlugin = {
             programNode = node;
           },
           ImportDeclaration(node) {
-            if (node.source?.value !== "@repo/turborepo-starter") {
-              return;
+            const source = node.source?.value;
+            if (typeof source !== "string") return;
+
+            if (forbiddenImportSources.includes(source)) {
+              forbiddenImportNodes.push(node);
             }
-            hasStarterImport = true;
+
+            const importedNames =
+              importedNamesBySource.get(source) ?? new Set();
             for (const specifier of node.specifiers) {
-              if (specifier.type === "ImportSpecifier") {
-                importedNames.add(specifier.imported.name);
+              const importName = readImportName(specifier);
+              if (importName) {
+                importedNames.add(importName);
               }
             }
+            importedNamesBySource.set(source, importedNames);
           },
           VariableDeclarator(node) {
             if (
               node.id?.type === "Identifier" &&
-              target.forbidVariableNames.includes(node.id.name)
+              forbidVariableNames.includes(node.id.name)
             ) {
               context.report({
                 node,
-                message: `Do not define local '${node.id.name}' in ${targetName} starter page; use @repo/turborepo-starter exports.`,
+                message: `Lokale Variable '${node.id.name}' ist in ${targetName} nicht erlaubt (Template-Regression verhindern).`,
               });
             }
           },
           Literal(node) {
-            if (typeof node.value !== "string") {
-              return;
+            if (typeof node.value === "string") {
+              literalValues.add(node.value);
+              if (forbiddenStrings.includes(node.value)) {
+                context.report({
+                  node,
+                  message:
+                    "Verbotener Starter-Template-String gefunden. Bitte aktuellen Produkt-Content verwenden.",
+                });
+              }
             }
-            if (!target.forbiddenStrings.includes(node.value)) {
-              return;
-            }
-            context.report({
-              node,
-              message:
-                "Inline starter copy/link detected. Import shared values from @repo/turborepo-starter.",
-            });
           },
           "Program:exit"() {
-            if (!programNode) {
-              return;
-            }
+            if (!programNode) return;
 
-            if (!hasStarterImport) {
+            for (const node of forbiddenImportNodes) {
               context.report({
-                node: programNode,
-                message:
-                  "Starter page must import shared values from @repo/turborepo-starter.",
+                node,
+                message: `Import von verbotener Quelle '${node.source.value}' in ${targetName}.`,
               });
-              return;
             }
 
-            for (const requiredImport of target.requiredImports) {
-              if (!importedNames.has(requiredImport)) {
+            for (const requiredImport of requiredImportSpecs) {
+              const importedNames =
+                importedNamesBySource.get(requiredImport.source) ?? new Set();
+
+              if (importedNames.size === 0) {
                 context.report({
                   node: programNode,
-                  message: `Missing required @repo/turborepo-starter import '${requiredImport}' for ${targetName} starter page.`,
+                  message: `Fehlender Pflicht-Import aus '${requiredImport.source}' in ${targetName}.`,
+                });
+                continue;
+              }
+
+              for (const requiredName of requiredImport.names) {
+                if (!importedNames.has(requiredName)) {
+                  context.report({
+                    node: programNode,
+                    message: `Fehlender Importname '${requiredName}' aus '${requiredImport.source}' in ${targetName}.`,
+                  });
+                }
+              }
+            }
+
+            for (const requiredString of requiredStrings) {
+              if (!literalValues.has(requiredString)) {
+                context.report({
+                  node: programNode,
+                  message: `Pflicht-String '${requiredString}' fehlt in ${targetName}.`,
                 });
               }
             }
