@@ -5,7 +5,7 @@ import { getUiText } from "@/content/ui-text";
 import { getServerAccessToken } from "@/lib/auth/server-token";
 import { getRequestLocale } from "@/lib/i18n/request-locale";
 
-const completeBillingSchema = z.object({
+export const completeBillingSchema = z.object({
   setupIntentId: z.string().trim().min(1),
 });
 
@@ -24,7 +24,7 @@ type StripeSubscriptionsListResponse = {
   }>;
 };
 
-function isOnboardingBrowserRequest(request: Request) {
+export function isOnboardingBrowserRequest(request: Request) {
   const requestUrl = new URL(request.url);
   const origin = request.headers.get("origin");
   const referer = request.headers.get("referer");
@@ -42,11 +42,13 @@ function isOnboardingBrowserRequest(request: Request) {
   return refererUrl.pathname.startsWith("/onboarding");
 }
 
-function stripeBillingEnabled() {
+export function stripeBillingEnabled() {
   return (process.env.FEATURE_STRIPE_BILLING ?? "false").toLowerCase() === "true";
 }
 
-function resolveSetupIntentPaymentMethodId(paymentMethod: StripeSetupIntentDetails["payment_method"]) {
+export function resolveSetupIntentPaymentMethodId(
+  paymentMethod: StripeSetupIntentDetails["payment_method"],
+) {
   if (!paymentMethod) return null;
   if (typeof paymentMethod === "string") return paymentMethod;
   return paymentMethod.id ?? null;
