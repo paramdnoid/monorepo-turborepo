@@ -1,0 +1,15 @@
+# Lokales Keycloak (nur Entwicklung). Start:
+#   docker compose -f docker-compose.keycloak.yml up -d
+# Admin: http://localhost:8080/ (Benutzer/Passwort siehe environment)
+# Siehe: apps/api/KEYCLOAK-E2E-RUNBOOK.md — Abschnitt „Lokales Keycloak (Docker)“
+
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0.8
+    command: start-dev
+    ports:
+      - "8080:8080"
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HTTP_ENABLED: "true"

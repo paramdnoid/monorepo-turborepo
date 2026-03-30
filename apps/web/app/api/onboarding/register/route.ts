@@ -66,12 +66,6 @@ const KEYCLOAK_BASE_URL =
   process.env.KEYCLOAK_BASE_URL ??
   "http://localhost:8081";
 const KEYCLOAK_REALM = process.env.AUTH_KEYCLOAK_REALM ?? "zgwerk";
-const KEYCLOAK_ADMIN_REALM = process.env.AUTH_KEYCLOAK_ADMIN_REALM ?? "master";
-const KEYCLOAK_ADMIN_CLIENT_ID = process.env.AUTH_KEYCLOAK_ADMIN_CLIENT_ID ?? "admin-cli";
-const KEYCLOAK_ADMIN_USERNAME = process.env.AUTH_KEYCLOAK_ADMIN_USERNAME;
-const KEYCLOAK_ADMIN_PASSWORD = process.env.AUTH_KEYCLOAK_ADMIN_PASSWORD;
-const DEFAULT_LOCAL_ADMIN_USERNAME = "admin";
-const DEFAULT_LOCAL_ADMIN_PASSWORD = "admin";
 
 function normalizeBaseUrl(url: string) {
   return url.replace(/\/+$/, "");
@@ -107,11 +101,17 @@ export function createTenantId(companyName: string, tradeSlug: string) {
     .replace(/(^-|-$)/g, "")
     .slice(0, 16);
   const suffix = crypto.randomUUID().slice(0, 8);
-  return [normalizedCompany || "tenant", normalizedTrade || "trade", suffix].join("-");
+  return [
+    normalizedCompany || "tenant",
+    normalizedTrade || "trade",
+    suffix,
+  ].join("-");
 }
 
 export function stripeBillingEnabled() {
-  return (process.env.FEATURE_STRIPE_BILLING ?? "false").toLowerCase() === "true";
+  return (
+    (process.env.FEATURE_STRIPE_BILLING ?? "false").toLowerCase() === "true"
+  );
 }
 
 export function resolveStripePriceId(
@@ -133,7 +133,10 @@ export function resolveStripePriceId(
   return null;
 }
 
-async function createStripeBillingSetup(payload: SignUpPayload, tenantId: string) {
+async function createStripeBillingSetup(
+  payload: SignUpPayload,
+  tenantId: string,
+) {
   if (!stripeBillingEnabled()) {
     return { type: "disabled" as const };
   }
@@ -148,67 +151,82 @@ async function createStripeBillingSetup(payload: SignUpPayload, tenantId: string
     return { type: "error" as const };
   }
 
-  const customerPayload = new URLSearchParams();
-  customerPayload.set("email", payload.email);
-  customerPayload.set("name", `${payload.firstName} ${payload.lastName}`.trim());
-  customerPayload.set("metadata[tenant_id]", tenantId);
-  customerPayload.set("metadata[trade_slug]", payload.tradeSlug);
-  customerPayload.set("metadata[plan_tier]", payload.planTier);
-  customerPayload.set("metadata[billing_cycle]", payload.billingCycle);
+  try {
+    const customerPayload = new URLSearchParams();
+    customerPayload.set("email", payload.email);
+    customerPayload.set(
+      "name",
+      `${payload.firstName} ${payload.lastName}`.trim(),
+    );
+    customerPayload.set("metadata[tenant_id]", tenantId);
+    customerPayload.set("metadata[trade_slug]", payload.tradeSlug);
+    customerPayload.set("metadata[plan_tier]", payload.planTier);
+    customerPayload.set("metadata[billing_cycle]", payload.billingCycle);
 
-  const customerResponse = await fetch("https://api.stripe.com/v1/customers", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${stripeSecretKey}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: customerPayload.toString(),
-    cache: "no-store",
-  });
+    const customerResponse = await fetch(
+      "https://api.stripe.com/v1/customers",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${stripeSecretKey}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: customerPayload.toString(),
+        cache: "no-store",
+      },
+    );
 
-  if (!customerResponse.ok) {
+    if (!customerResponse.ok) {
+      return { type: "error" as const };
+    }
+
+    const customer = (await customerResponse.json()) as StripeCustomerResponse;
+    if (!customer.id) {
+      return { type: "error" as const };
+    }
+
+    const setupIntentPayload = new URLSearchParams();
+    setupIntentPayload.set("customer", customer.id);
+    setupIntentPayload.set("payment_method_types[0]", "card");
+    setupIntentPayload.set("usage", "off_session");
+    setupIntentPayload.set("metadata[tenant_id]", tenantId);
+    setupIntentPayload.set("metadata[trade_slug]", payload.tradeSlug);
+    setupIntentPayload.set("metadata[plan_tier]", payload.planTier);
+    setupIntentPayload.set("metadata[billing_cycle]", payload.billingCycle);
+    setupIntentPayload.set("metadata[price_id]", priceId);
+
+    const setupIntentResponse = await fetch(
+      "https://api.stripe.com/v1/setup_intents",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${stripeSecretKey}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: setupIntentPayload.toString(),
+        cache: "no-store",
+      },
+    );
+
+    if (!setupIntentResponse.ok) {
+      return { type: "error" as const };
+    }
+
+    const setupIntent =
+      (await setupIntentResponse.json()) as StripeSetupIntentResponse;
+    if (!setupIntent.client_secret || !setupIntent.id) {
+      return { type: "error" as const };
+    }
+
+    return {
+      type: "ok" as const,
+      setupIntentId: setupIntent.id,
+      setupIntentClientSecret: setupIntent.client_secret,
+    };
+  } catch (error) {
+    console.error("[createStripeBillingSetup]", error);
     return { type: "error" as const };
   }
-
-  const customer = (await customerResponse.json()) as StripeCustomerResponse;
-  if (!customer.id) {
-    return { type: "error" as const };
-  }
-
-  const setupIntentPayload = new URLSearchParams();
-  setupIntentPayload.set("customer", customer.id);
-  setupIntentPayload.set("payment_method_types[0]", "card");
-  setupIntentPayload.set("usage", "off_session");
-  setupIntentPayload.set("metadata[tenant_id]", tenantId);
-  setupIntentPayload.set("metadata[trade_slug]", payload.tradeSlug);
-  setupIntentPayload.set("metadata[plan_tier]", payload.planTier);
-  setupIntentPayload.set("metadata[billing_cycle]", payload.billingCycle);
-  setupIntentPayload.set("metadata[price_id]", priceId);
-
-  const setupIntentResponse = await fetch("https://api.stripe.com/v1/setup_intents", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${stripeSecretKey}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: setupIntentPayload.toString(),
-    cache: "no-store",
-  });
-
-  if (!setupIntentResponse.ok) {
-    return { type: "error" as const };
-  }
-
-  const setupIntent = (await setupIntentResponse.json()) as StripeSetupIntentResponse;
-  if (!setupIntent.client_secret || !setupIntent.id) {
-    return { type: "error" as const };
-  }
-
-  return {
-    type: "ok" as const,
-    setupIntentId: setupIntent.id,
-    setupIntentClientSecret: setupIntent.client_secret,
-  };
 }
 
 async function requestAccessToken(params: URLSearchParams) {
@@ -222,47 +240,17 @@ async function requestAccessToken(params: URLSearchParams) {
   });
 }
 
-async function getAdminToken() {
-  if (
-    process.env.NODE_ENV === "production" &&
-    (!KEYCLOAK_ADMIN_USERNAME || !KEYCLOAK_ADMIN_PASSWORD)
-  ) {
-    return null;
-  }
-
-  const adminUsername = KEYCLOAK_ADMIN_USERNAME ?? DEFAULT_LOCAL_ADMIN_USERNAME;
-  const adminPassword = KEYCLOAK_ADMIN_PASSWORD ?? DEFAULT_LOCAL_ADMIN_PASSWORD;
-
-  const tokenEndpoint = `${normalizeBaseUrl(KEYCLOAK_BASE_URL)}/realms/${encodeURIComponent(KEYCLOAK_ADMIN_REALM)}/protocol/openid-connect/token`;
-  const response = await fetch(tokenEndpoint, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: new URLSearchParams({
-      grant_type: "password",
-      client_id: KEYCLOAK_ADMIN_CLIENT_ID,
-      username: adminUsername,
-      password: adminPassword,
-    }).toString(),
-    cache: "no-store",
-  });
-
-  if (!response.ok) {
-    return null;
-  }
-
-  const tokenPayload = (await response.json()) as TokenResponse;
-  return tokenPayload.access_token ?? null;
-}
-
 function extractCreatedUserId(location: string | null) {
   if (!location) return null;
   const segments = location.split("/");
   return segments.at(-1) || null;
 }
 
-async function createKeycloakUser(adminToken: string, payload: SignUpPayload, tenantId: string) {
+async function createKeycloakUser(
+  adminToken: string,
+  payload: SignUpPayload,
+  tenantId: string,
+) {
   const usersEndpoint = `${normalizeBaseUrl(KEYCLOAK_BASE_URL)}/admin/realms/${encodeURIComponent(KEYCLOAK_REALM)}/users`;
 
   const response = await fetch(usersEndpoint, {
@@ -429,86 +417,185 @@ export async function POST(request: Request) {
   try {
     rawPayload = await request.json();
   } catch {
-    return NextResponse.json({ error: text.api.auth.invalidBody }, { status: 400 });
+    return NextResponse.json(
+      { error: text.api.auth.invalidBody },
+      { status: 400 },
+    );
   }
 
   const parsedPayload = signUpPayloadSchema.safeParse(rawPayload);
   if (!parsedPayload.success) {
-    return NextResponse.json({ error: text.api.onboarding.invalidRegistrationData }, { status: 400 });
+    return NextResponse.json(
+      { error: text.api.onboarding.invalidRegistrationData },
+      { status: 400 },
+    );
   }
 
-  const adminToken = await getAdminToken();
-  if (!adminToken) {
-    return NextResponse.json({ error: text.api.onboarding.registrationUnavailable }, { status: 503 });
-  }
-
-  const tenantId = createTenantId(parsedPayload.data.companyName, parsedPayload.data.tradeSlug);
-  const createdUser = await createKeycloakUser(adminToken, parsedPayload.data, tenantId);
-
+  let adminToken: string | null = null;
   let userIdToRollback: string | null = null;
-  let tenantIdForCheckout = tenantId;
-  let userSession = null as Awaited<ReturnType<typeof issueUserSession>>;
+  let keycloakUserIdForEmailVerification: string | null = null;
 
-  if (createdUser.type === "ok") {
-    userIdToRollback = createdUser.userId;
-
-    const roleAssigned = await assignApiUserRole(adminToken, createdUser.userId);
-    if (!roleAssigned) {
-      await deleteKeycloakUser(adminToken, createdUser.userId);
-      return NextResponse.json({ error: text.api.onboarding.registrationFailed }, { status: 502 });
-    }
-  } else if (createdUser.type === "duplicate") {
-    const existingUser = await findKeycloakUserByEmail(adminToken, parsedPayload.data.email);
-    userSession = await issueUserSession(parsedPayload.data.email, parsedPayload.data.password);
-
-    if (!existingUser || !userSession) {
+  try {
+    const { getKeycloakAdminToken } = await import("@/lib/auth/keycloak-admin");
+    adminToken = await getKeycloakAdminToken();
+    if (!adminToken) {
       return NextResponse.json(
-        { error: text.api.onboarding.emailAlreadyExists, code: "EMAIL_ALREADY_EXISTS" },
-        { status: 409 },
+        { error: text.api.onboarding.registrationUnavailable },
+        { status: 503 },
       );
     }
 
-    tenantIdForCheckout = existingUser.tenantId ?? tenantIdForCheckout;
-  } else {
-    return NextResponse.json({ error: text.api.onboarding.registrationFailed }, { status: 502 });
-  }
+    const tenantId = createTenantId(
+      parsedPayload.data.companyName,
+      parsedPayload.data.tradeSlug,
+    );
+    const createdUser = await createKeycloakUser(
+      adminToken,
+      parsedPayload.data,
+      tenantId,
+    );
 
-  userSession =
-    userSession ?? (await issueUserSession(parsedPayload.data.email, parsedPayload.data.password));
-  if (!userSession) {
-    if (userIdToRollback) {
-      await deleteKeycloakUser(adminToken, userIdToRollback);
+    let tenantIdForCheckout = tenantId;
+    let userSession = null as Awaited<ReturnType<typeof issueUserSession>>;
+
+    if (createdUser.type === "ok") {
+      userIdToRollback = createdUser.userId;
+      keycloakUserIdForEmailVerification = createdUser.userId;
+
+      const roleAssigned = await assignApiUserRole(
+        adminToken,
+        createdUser.userId,
+      );
+      if (!roleAssigned) {
+        await deleteKeycloakUser(adminToken, createdUser.userId);
+        return NextResponse.json(
+          { error: text.api.onboarding.registrationFailed },
+          { status: 502 },
+        );
+      }
+    } else if (createdUser.type === "duplicate") {
+      const existingUser = await findKeycloakUserByEmail(
+        adminToken,
+        parsedPayload.data.email,
+      );
+      userSession = await issueUserSession(
+        parsedPayload.data.email,
+        parsedPayload.data.password,
+      );
+
+      if (!existingUser || !userSession) {
+        return NextResponse.json(
+          {
+            error: text.api.onboarding.emailAlreadyExists,
+            code: "EMAIL_ALREADY_EXISTS",
+          },
+          { status: 409 },
+        );
+      }
+
+      tenantIdForCheckout = existingUser.tenantId ?? tenantIdForCheckout;
+    } else {
+      return NextResponse.json(
+        { error: text.api.onboarding.registrationFailed },
+        { status: 502 },
+      );
+    }
+
+    const { tryProvisionOrganizationAfterSignup } =
+      await import("@/lib/provision-organization");
+    const provision = await tryProvisionOrganizationAfterSignup({
+      tenantId: tenantIdForCheckout,
+      companyName: parsedPayload.data.companyName,
+      tradeSlug: parsedPayload.data.tradeSlug,
+    });
+    if (!provision.ok) {
+      if (userIdToRollback) {
+        await deleteKeycloakUser(adminToken, userIdToRollback);
+      }
+      return NextResponse.json(
+        { error: text.api.onboarding.registrationFailed, code: provision.code },
+        { status: 502 },
+      );
+    }
+
+    userSession =
+      userSession ??
+      (await issueUserSession(
+        parsedPayload.data.email,
+        parsedPayload.data.password,
+      ));
+    if (!userSession) {
+      if (userIdToRollback) {
+        await deleteKeycloakUser(adminToken, userIdToRollback);
+      }
+      return NextResponse.json(
+        { error: text.api.onboarding.registrationAutoSigninFailed },
+        { status: 502 },
+      );
+    }
+
+    const stripeBillingSetup = await createStripeBillingSetup(
+      parsedPayload.data,
+      tenantIdForCheckout,
+    );
+    if (stripeBillingSetup.type === "error") {
+      if (userIdToRollback) {
+        await deleteKeycloakUser(adminToken, userIdToRollback);
+      }
+      return NextResponse.json(
+        { error: text.api.onboarding.registrationFailed },
+        { status: 502 },
+      );
+    }
+
+    const cookieStore = await cookies();
+    cookieStore.set(AUTH_COOKIE_NAME, userSession.accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: Math.max(60, userSession.expiresIn),
+    });
+
+    let verificationEmailSent = false;
+    if (keycloakUserIdForEmailVerification) {
+      const { sendSignupVerificationEmail } =
+        await import("@/lib/mail/send-signup-verification-email");
+      verificationEmailSent = await sendSignupVerificationEmail({
+        locale: getRequestLocale(request),
+        to: parsedPayload.data.email,
+        firstName: parsedPayload.data.firstName,
+        keycloakUserId: keycloakUserIdForEmailVerification,
+      });
+    }
+
+    return NextResponse.json({
+      ok: true,
+      verificationEmailSent,
+      setupIntentClientSecret:
+        stripeBillingSetup.type === "ok"
+          ? stripeBillingSetup.setupIntentClientSecret
+          : undefined,
+      setupIntentId:
+        stripeBillingSetup.type === "ok"
+          ? stripeBillingSetup.setupIntentId
+          : undefined,
+    });
+  } catch (error) {
+    console.error("[api/onboarding/register]", error);
+    if (userIdToRollback && adminToken) {
+      try {
+        await deleteKeycloakUser(adminToken, userIdToRollback);
+      } catch (rollbackError) {
+        console.error("[api/onboarding/register] rollback failed", rollbackError);
+      }
     }
     return NextResponse.json(
-      { error: text.api.onboarding.registrationAutoSigninFailed },
+      {
+        error: text.api.onboarding.registrationFailed,
+        code: "UNEXPECTED",
+      },
       { status: 502 },
     );
   }
-
-  const stripeBillingSetup = await createStripeBillingSetup(parsedPayload.data, tenantIdForCheckout);
-  if (stripeBillingSetup.type === "error") {
-    if (userIdToRollback) {
-      await deleteKeycloakUser(adminToken, userIdToRollback);
-    }
-    return NextResponse.json(
-      { error: text.api.onboarding.registrationFailed },
-      { status: 502 },
-    );
-  }
-
-  const cookieStore = await cookies();
-  cookieStore.set(AUTH_COOKIE_NAME, userSession.accessToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: Math.max(60, userSession.expiresIn),
-  });
-
-  return NextResponse.json({
-    ok: true,
-    setupIntentClientSecret:
-      stripeBillingSetup.type === "ok" ? stripeBillingSetup.setupIntentClientSecret : undefined,
-    setupIntentId: stripeBillingSetup.type === "ok" ? stripeBillingSetup.setupIntentId : undefined,
-  });
 }

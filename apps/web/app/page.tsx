@@ -4,6 +4,7 @@ import { CtaSection } from "@/components/marketing/cta-section";
 import { FeaturesSection } from "@/components/marketing/features-section";
 import { HeroSection } from "@/components/marketing/hero-section";
 import { HowItWorksSection } from "@/components/marketing/how-it-works-section";
+import { EmailVerifyQueryBanner } from "@/components/marketing/email-verify-query-banner";
 import { LandingScrollbarToggle } from "@/components/marketing/landing-scrollbar-toggle";
 import { PricingSection } from "@/components/marketing/pricing-section";
 import { TradesSection } from "@/components/marketing/trades-section";
@@ -11,7 +12,14 @@ import { getFaqs } from "@/content/faqs";
 import { getUiText } from "@/content/ui-text";
 import { getServerLocale } from "@/lib/i18n/server-locale";
 
-export default async function LandingPage() {
+type LandingPageProps = {
+  searchParams?: Promise<{ emailVerify?: string }>;
+};
+
+export default async function LandingPage({ searchParams }: LandingPageProps) {
+  const resolvedSearch = searchParams ? await searchParams : {};
+  const emailVerifyStatus = resolvedSearch.emailVerify;
+
   const locale = await getServerLocale();
   const ui = getUiText(locale);
   const faqs = getFaqs(locale);
@@ -42,6 +50,7 @@ export default async function LandingPage() {
 
   return (
     <div className="min-h-screen">
+      <EmailVerifyQueryBanner status={emailVerifyStatus} />
       <LandingScrollbarToggle />
       <SiteHeader />
       <main id="main-content" tabIndex={-1}>

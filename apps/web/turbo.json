@@ -35,8 +35,12 @@
         "AUTH_KEYCLOAK_ADMIN_PASSWORD",
         "OPENROUTESERVICE_BASE_URL",
         "OPENROUTESERVICE_API_KEY",
-        "ADDRESS_API_TIMEOUT_MS"
+        "ADDRESS_API_TIMEOUT_MS",
+        "DATABASE_URL"
       ]
+    },
+    "lint": {
+      "env": ["DATABASE_URL"]
     }
   }
 }

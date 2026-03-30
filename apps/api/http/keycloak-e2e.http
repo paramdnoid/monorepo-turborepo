@@ -1,0 +1,36 @@
+### ZunftGewerk API — Keycloak E2E (REST Client / IntelliJ HTTP)
+#
+# Token beschaffen (Beispiele — Realm/Client anpassen):
+#
+# Password-Grant (nur lokal / Dev-Clients):
+#   curl -sS -X POST "$KEYCLOAK/realms/zgwerk/protocol/openid-connect/token" \
+#     -d grant_type=password -d client_id=<public-client-id> \
+#     -d username=<user> -d password=<pw> | jq -r .access_token
+#
+# Dann: @accessToken ersetzen oder Umgebungsvariable in deinem Client nutzen.
+
+@base = http://127.0.0.1:4000
+@accessToken = REPLACE_ME
+
+### Liveness (Loadbalancer)
+GET {{base}}/health
+
+### Readiness (DB erreichbar — ohne Auth)
+GET {{base}}/ready
+
+### DB-Health (Detail)
+GET {{base}}/v1/health/db
+
+### Authentifiziert — Mandant muss in `organizations` existieren
+GET {{base}}/v1/me
+Authorization: Bearer {{accessToken}}
+
+### Sync (leerer Batch)
+POST {{base}}/v1/sync
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "deviceId": "550e8400-e29b-41d4-a716-446655440000",
+  "mutations": []
+}

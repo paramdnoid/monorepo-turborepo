@@ -76,6 +76,7 @@ export function OnboardingTradeStep({
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [checkoutClientSecret, setCheckoutClientSecret] = useState<string | null>(null)
+  const [verificationEmailSent, setVerificationEmailSent] = useState(false)
   const [accountValues, setAccountValues] = useState<OnboardingAccountValues>({
     companyName: "",
     firstName: initialFirstName,
@@ -263,8 +264,14 @@ export function OnboardingTradeStep({
       }
 
       const payload = (await response.json().catch(() => null)) as
-        | { setupIntentClientSecret?: string }
+        | {
+            setupIntentClientSecret?: string
+            verificationEmailSent?: boolean
+          }
         | null
+      if (payload?.verificationEmailSent) {
+        setVerificationEmailSent(true)
+      }
       if (payload?.setupIntentClientSecret) {
         setCheckoutClientSecret(payload.setupIntentClientSecret)
         setCurrentStep(4)
@@ -357,7 +364,16 @@ export function OnboardingTradeStep({
                 onChange={handleAccountChange}
               />
             ) : checkoutClientSecret ? (
-              <OnboardingEmbeddedCheckout
+              <>
+                {verificationEmailSent ? (
+                  <p
+                    className="text-muted-foreground border-border/60 mb-3 rounded-lg border border-dashed px-3 py-2 text-sm leading-relaxed"
+                    role="status"
+                  >
+                    {uiText.onboarding.actions.verificationEmailHint}
+                  </p>
+                ) : null}
+                <OnboardingEmbeddedCheckout
                 clientSecret={checkoutClientSecret}
                 onBack={() => {
                   setSubmitError(null)
@@ -385,6 +401,7 @@ export function OnboardingTradeStep({
                   router.refresh()
                 }}
               />
+              </>
             ) : null}
           </div>
 

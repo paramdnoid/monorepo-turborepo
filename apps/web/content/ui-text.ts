@@ -263,6 +263,8 @@ const uiTextDe = {
         "Alle Pflichtangaben sind vorhanden. Du kannst das Onboarding abschliessen.",
       planReadyHint:
         "Tarif und Abrechnung sind gesetzt. Du kannst mit den Betriebsdaten fortfahren.",
+      verificationEmailHint:
+        "Wir haben dir eine Bestaetigungsmail gesendet. Bitte oeffne den Link in der E-Mail, um deine Adresse zu verifizieren.",
     },
   },
   dashboard: {
@@ -1525,6 +1527,14 @@ const uiTextDe = {
       invalidCredentials: "E-Mail oder Passwort sind ungueltig.",
       tokenResponseIncomplete: "Token-Antwort unvollstaendig.",
     },
+    emailVerification: {
+      signupSubject: "Bitte E-Mail bestaetigen — ZunftGewerk",
+      signupBody:
+        "Hallo {firstName},\n\nbitte bestaetige deine E-Mail-Adresse fuer dein ZunftGewerk-Konto, indem du den folgenden Link oeffnest:\n\n{link}\n\nWenn du dich nicht registriert hast, kannst du diese Nachricht ignorieren.",
+      bannerOk: "E-Mail-Adresse bestaetigt. Danke!",
+      bannerInvalid: "Bestaetigungslink ist ungueltig oder abgelaufen.",
+      bannerConfig: "Bestaetigung ist derzeit nicht moeglich. Bitte spaeter erneut versuchen.",
+    },
     onboarding: {
       registrationRestricted: "Registrierung ist nur ueber das Onboarding-Formular erlaubt.",
       invalidRegistrationData: "Ungueltige Registrierungsdaten.",
@@ -1833,6 +1843,8 @@ const uiTextEnOverrides: DeepPartial<typeof uiTextDe> = {
       credentialsReadyHint:
         "All required fields are present. You can complete onboarding.",
       planReadyHint: "Plan and billing are set. You can continue with company details.",
+      verificationEmailHint:
+        "We sent you a confirmation email. Open the link in the message to verify your address.",
     },
   },
   dashboard: {
@@ -3107,6 +3119,14 @@ const uiTextEnOverrides: DeepPartial<typeof uiTextDe> = {
       credentialsRequired: "Email and password are required.",
       invalidCredentials: "Email or password is invalid.",
       tokenResponseIncomplete: "Token response is incomplete.",
+    },
+    emailVerification: {
+      signupSubject: "Please confirm your email — ZunftGewerk",
+      signupBody:
+        "Hello {firstName},\n\nplease confirm your email address for your ZunftGewerk account by opening this link:\n\n{link}\n\nIf you did not register, you can ignore this message.",
+      bannerOk: "Email address confirmed. Thank you!",
+      bannerInvalid: "Confirmation link is invalid or has expired.",
+      bannerConfig: "Confirmation is currently unavailable. Please try again later.",
     },
     onboarding: {
       registrationRestricted: "Registration is only allowed via the onboarding form.",

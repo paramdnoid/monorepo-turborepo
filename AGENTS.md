@@ -4,7 +4,7 @@ This file provides context for AI coding agents working in this repository. **St
 
 ## Project Overview
 
-Turborepo monorepo containing two Next.js applications, one React Native application, and eight shared internal packages under `packages/`. Root package name: `my-turborepo`. Uses pnpm workspaces for dependency management and Turborepo for orchestrating builds and tasks across packages.
+Turborepo monorepo containing two Next.js applications, one HTTP API (`apps/api`), one React Native application, and ten shared internal packages under `packages/`. Root package name: `my-turborepo`. Uses pnpm workspaces for dependency management and Turborepo for orchestrating builds and tasks across packages.
 
 **Bootstrap:** clone the repo, then run `pnpm install` once at the repository root to install all workspace dependencies.
 
@@ -20,6 +20,9 @@ Turborepo **`--filter`** values must match each package’s **`name`** in its `p
 | `web`                     | `apps/web`                   | Primary Next.js app                                       |
 | `docs`                    | `apps/docs`                  | Documentation Next.js app                                 |
 | `native`                  | `apps/native`                | React Native app                                          |
+| `api`                     | `apps/api`                   | Hono HTTP API (PostgreSQL / Drizzle)                      |
+| `@repo/api-contracts`     | `packages/api-contracts`     | Shared Zod schemas & types (trades, sync batches)         |
+| `@repo/db`                | `packages/db`                | Drizzle schema & PostgreSQL client                        |
 | `@repo/ui`                | `packages/ui`                | Shared UI library                                         |
 | `@repo/fonts`             | `packages/fonts`             | Shared Geist fonts (`next/font/local`) for Next apps      |
 | `@repo/turborepo-starter` | `packages/turborepo-starter` | Shared starter copy / URLs                                |
@@ -61,7 +64,8 @@ More specific agent context lives next to the code:
 
 | Location                                                                       | Purpose                                                    |
 | ------------------------------------------------------------------------------ | ---------------------------------------------------------- |
-| [`apps/AGENTS.md`](apps/AGENTS.md)                                             | All apps: Next.js (`web`, `docs`) + RN (`native`)          |
+| [`apps/AGENTS.md`](apps/AGENTS.md)                                             | All apps: Next.js (`web`, `docs`), API (`api`), RN (`native`) |
+| [`apps/api/AGENTS.md`](apps/api/AGENTS.md)                                     | Hono HTTP API, PostgreSQL / Drizzle                        |
 | [`apps/web/AGENTS.md`](apps/web/AGENTS.md)                                     | Primary web app (port 3000)                                |
 | [`apps/docs/AGENTS.md`](apps/docs/AGENTS.md)                                   | Documentation site (port 3001)                             |
 | [`apps/native/AGENTS.md`](apps/native/AGENTS.md)                               | React Native mobile app                                    |
@@ -80,8 +84,11 @@ More specific agent context lives next to the code:
 apps/
   web/                 → Next.js application (primary web app, port 3000)
   docs/                → Next.js application (documentation site, port 3001)
+  api/                 → Hono HTTP API (default port 4000)
   native/              → React Native application (bundle id / project: nativeapp)
 packages/
+  api-contracts/     → Shared Zod types & API contracts (@repo/api-contracts)
+  db/                  → Drizzle schema & PostgreSQL client (@repo/db)
   ui/                  → Shared React component library (@repo/ui)
   fonts/               → Shared Geist font files and `next/font/local` exports (@repo/fonts)
   turborepo-starter/   → Shared starter copy and URLs (@repo/turborepo-starter; web + native)

@@ -1,11 +1,26 @@
 {
   "$schema": "https://turborepo.dev/schema.json",
   "ui": "tui",
+  "globalEnv": [
+    "AUTH_EMAIL_VERIFICATION_SECRET",
+    "AUTH_PASSWORD_RESET_SECRET",
+    "EMAIL_FROM_NAME",
+    "MAIL_BRAND_ORIGIN",
+    "MAIL_FROM",
+    "NEXT_PUBLIC_SITE_URL",
+    "SMTP_AUTH",
+    "SMTP_HOST",
+    "SMTP_PASS",
+    "SMTP_PORT",
+    "SMTP_SSL",
+    "SMTP_STARTTLS",
+    "SMTP_USER"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$"],
-      "outputs": [".next/**", "!.next/cache/**"]
+      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
     },
     "lint": {
       "dependsOn": ["^lint"]

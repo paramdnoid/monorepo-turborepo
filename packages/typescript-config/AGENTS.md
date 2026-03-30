@@ -11,6 +11,7 @@ Shared **`tsconfig` JSON bases** (no `package.json` `exports`; consumers referen
 | [`base.json`](./base.json)                   | Strict shared defaults (`strict`, `target`, `moduleResolution`, etc.)     |
 | [`nextjs.json`](./nextjs.json)               | Extends `base.json` — Next.js App Router (`next` plugin, `jsx: preserve`) |
 | [`react-library.json`](./react-library.json) | Extends `base.json` — React libraries (`jsx: react-jsx`)                  |
+| [`node-library.json`](./node-library.json)   | Extends `base.json` — Node-only libs (`lib: ES2022`, kein DOM)            |
 
 ## Who extends what
 

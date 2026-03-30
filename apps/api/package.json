@@ -1,0 +1,38 @@
+{
+  "name": "api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "lint": "eslint . --max-warnings 0",
+    "check-types": "tsc --noEmit",
+    "test": "tsx --test \"src/**/*.test.ts\"",
+    "smoke:http": "tsx scripts/http-smoke-mock.mts",
+    "e2e:keycloak": "tsx scripts/e2e-keycloak.mts",
+    "verify:runbook-prereqs": "bash scripts/verify-runbook-prereqs.sh",
+    "runbook:phase1": "bash scripts/runbook-phase1.sh",
+    "check:auth-env": "tsx scripts/check-auth-env.mts",
+    "token:local": "bash scripts/keycloak-local-token.sh"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.19.9",
+    "@repo/api-contracts": "workspace:*",
+    "@repo/db": "workspace:*",
+    "dotenv": "^17.3.1",
+    "drizzle-orm": "^0.45.1",
+    "hono": "^4.11.7",
+    "jose": "^6.2.2",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@repo/eslint-config": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
+    "@types/node": "^22.15.3",
+    "eslint": "^9.39.1",
+    "tsx": "^4.21.0",
+    "typescript": "5.9.2"
+  }
+}

@@ -1,0 +1,14 @@
+# Nur PostgreSQL für lokale API-/DB-Entwicklung.
+# Start: docker compose -f docker-compose.postgres.yml up -d
+# DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/zunftgewerk
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: zunftgewerk

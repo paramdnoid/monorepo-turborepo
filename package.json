@@ -9,7 +9,8 @@
     "format": "prettier --write \"**/*.{ts,tsx,md}\" \"apps/native/**/*.{js,mjs}\"",
     "check-types": "turbo run check-types",
     "test": "turbo run test",
-    "e2e": "turbo run e2e"
+    "e2e": "turbo run e2e",
+    "keycloak:bootstrap": "node scripts/keycloak-bootstrap.mjs"
   },
   "devDependencies": {
     "prettier": "^3.7.4",

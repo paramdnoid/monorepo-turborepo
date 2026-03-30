@@ -1,0 +1,11 @@
+{
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      "outputs": ["dist/**"]
+    },
+    "lint": {
+      "env": ["DATABASE_URL", "SEED_TENANT_ID", "SEED_ORG_NAME", "SEED_TRADE_SLUG"]
+    }
+  }
+}

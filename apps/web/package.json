@@ -12,7 +12,9 @@
     "test": "tsx --test \"lib/**/*.test.ts\" \"app/**/*.test.ts\""
   },
   "dependencies": {
+    "@repo/api-contracts": "workspace:*",
     "@repo/brand": "workspace:*",
+    "@repo/db": "workspace:*",
     "@repo/fonts": "workspace:*",
     "@repo/turborepo-starter": "workspace:*",
     "@repo/ui": "workspace:*",
@@ -23,6 +25,7 @@
     "lucide-react": "^1.7.0",
     "next": "16.2.0",
     "next-themes": "^0.4.6",
+    "nodemailer": "^8.0.4",
     "radix-ui": "^1.4.3",
     "react": "19.2.3",
     "react-dom": "19.2.3",
@@ -35,6 +38,7 @@
     "@repo/typescript-config": "workspace:*",
     "@tailwindcss/postcss": "^4.2.2",
     "@types/node": "^22.15.3",
+    "@types/nodemailer": "^7.0.11",
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",
     "eslint": "^9.39.1",
