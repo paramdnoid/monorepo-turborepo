@@ -1,61 +1,86 @@
 # my-turborepo
 
-A [Turborepo](https://turborepo.dev) monorepo with two [Next.js](https://nextjs.org/) apps ([App Router](https://nextjs.org/docs/app)), a [React Native](https://reactnative.dev/) app, four shared internal packages under `packages/` (UI, starter copy, ESLint and TypeScript configs).
+Monorepo mit [Turborepo](https://turborepo.dev), zwei [Next.js](https://nextjs.org/) Apps, einer [React Native](https://reactnative.dev/) App und mehreren internen Shared-Packages.
 
-**Coding agents and conventions:** see [`AGENTS.md`](./AGENTS.md) for commands, stack details, and package-specific notes (`apps/AGENTS.md`, `packages/ui/AGENTS.md`, etc.).
+## Apps und Packages (Kurzüberblick)
 
-## Requirements
+### Apps
 
-- [Node.js](https://nodejs.org/) 22.11 or newer (required for the React Native app; see root `package.json` `engines`)
-- [pnpm](https://pnpm.io/) 9 (see `packageManager` in [`package.json`](./package.json))
+- `apps/web` (`web`) – primäre Produkt-/Marketingseite auf Port **3000**
+- `apps/docs` (`docs`) – Dokumentationsseite auf Port **3001**
+- `apps/native` (`native`) – React-Native App (WebView-first, optional NativeWind-UI)
+
+### Shared Packages
+
+- `@repo/ui` – gemeinsame UI-Komponenten + globale Styles
+- `@repo/fonts` – Geist-Fonts für Next.js
+- `@repo/brand` – zentrales Brand-Logo
+- `@repo/turborepo-starter` – shared Starter-Copy/URLs
+- `@repo/eslint-config` – ESLint Flat Configs
+- `@repo/typescript-config` – `tsconfig`-Basen
+- `@repo/tailwind-config` – Tailwind/PostCSS Shared Config
+- `@repo/playwright-web` – Playwright-E2E für `web`
+
+## Voraussetzungen
+
+- Node.js **>= 22.11.0**
+- pnpm **9**
 
 ## Setup
 
-From the repository root:
+Vom Repo-Root:
 
 ```sh
 pnpm install
 ```
 
-## Scripts (root)
+## Wichtige Root-Skripte
 
-| Script             | Description                                                                                         |
-| ------------------ | --------------------------------------------------------------------------------------------------- |
-| `pnpm dev`         | Run all `dev` tasks via Turborepo                                                                   |
-| `pnpm build`       | Build all packages and apps                                                                         |
-| `pnpm lint`        | Lint across the workspace + design guardrails (`check-design-guardrails.mjs`)                       |
-| `pnpm check-types` | Type-check across the workspace                                                                     |
-| `pnpm format`      | Format `*.ts`, `*.tsx`, `*.md` (repo-wide) and `apps/native` `*.js` / `*.mjs` configs with Prettier |
+| Script             | Beschreibung                                                                    |
+| ------------------ | ------------------------------------------------------------------------------- |
+| `pnpm dev`         | Startet alle `dev`-Tasks via Turborepo                                         |
+| `pnpm build`       | Baut alle Build-Targets                                                         |
+| `pnpm lint`        | Lint über Workspace + Design-Guardrails                                         |
+| `pnpm check-types` | Type-Checks über Workspace                                                      |
+| `pnpm test`        | Führt verfügbare Test-Tasks aus (aktuell v. a. `apps/native`)                  |
+| `pnpm e2e`         | Führt E2E-Tests aus (Playwright-Package, falls betroffen/konfiguriert)         |
+| `pnpm format`      | Formatiert TypeScript/Markdown und RN-Konfig-Dateien gemäß Root-Prettier-Setup |
 
-Scoped runs (examples):
+## Gefilterte Turbo-Beispiele
 
 ```sh
 pnpm exec turbo dev --filter=web
+pnpm exec turbo dev --filter=docs
+pnpm exec turbo dev --filter=native
+
+pnpm exec turbo lint --filter=@repo/ui
+pnpm exec turbo check-types --filter=web
 pnpm exec turbo build --filter=docs
 ```
 
-## What’s inside
+## Architekturhinweise
 
-| Path                         | Description                                                                   |
-| ---------------------------- | ----------------------------------------------------------------------------- |
-| `apps/web`                   | Primary Next.js app (port **3000**)                                           |
-| `apps/docs`                  | Documentation Next.js app (port **3001**)                                     |
-| `packages/ui`                | Shared React components and styles (`@repo/ui`)                               |
-| `packages/turborepo-starter` | Shared starter copy and URLs (`@repo/turborepo-starter`; web + docs + native) |
-| `packages/eslint-config`     | Shared ESLint flat configs (`@repo/eslint-config`)                            |
-| `packages/typescript-config` | Shared `tsconfig` bases (`@repo/typescript-config`)                           |
+- Next.js Apps (`web`, `docs`) nutzen `@repo/ui`, `@repo/fonts` und `@repo/brand`.
+- `apps/docs` nutzt für Produktinhalte gezielt Module aus `apps/web/content` (`@web/...`-Alias).
+- `apps/native` läuft standardmäßig als WebView auf die `web`-App; Native-UI ist per Feature-Flag möglich.
 
-**Stack:** Next.js 16, React 19, TypeScript 5.9, Tailwind CSS 4, ESLint 9, Turborepo 2.8.
+## Umgebungsvariablen
 
-## Environment variables
-
-See `.env.example` under each app (`apps/web`, `apps/docs`). Copy to `.env.local` for local overrides; never commit secrets.
+- Beispielwerte liegen unter `apps/web/.env.example`.
+- Keine Secrets committen; lokale Werte in `.env.local` bzw. Secret-Store halten.
 
 ## CI
 
-GitHub Actions runs `pnpm lint`, `pnpm check-types`, and `pnpm build` on pushes and pull requests to `main` (see [`.github/workflows/ci.yml`](./.github/workflows/ci.yml)).
+Siehe [`.github/workflows/ci.yml`](./.github/workflows/ci.yml):
 
-## Learn more
+- `lint`, `check-types`, `build` (bei PRs über `--affected`)
+- separater Design-Guardrail-Check
+- bedingte Playwright-E2E-Ausführung
 
-- [Turborepo documentation](https://turborepo.dev/docs)
-- [pnpm workspaces](https://pnpm.io/workspaces)
+## Weitere Orientierung
+
+- Agent-/Repo-Konventionen: [`AGENTS.md`](./AGENTS.md)
+- App-spezifische Hinweise:
+  - [`apps/web/AGENTS.md`](./apps/web/AGENTS.md)
+  - [`apps/docs/AGENTS.md`](./apps/docs/AGENTS.md)
+  - [`apps/native/AGENTS.md`](./apps/native/AGENTS.md)

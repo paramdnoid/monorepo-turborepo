@@ -9,7 +9,7 @@
 | Path                                 | Role                                                                                                    |
 | ------------------------------------ | ------------------------------------------------------------------------------------------------------- |
 | [`app/layout.tsx`](app/layout.tsx)   | Root layout: Geist from `@repo/fonts/geist`, `@repo/ui` providers                                     |
-| [`app/page.tsx`](app/page.tsx)       | Home route — imports shared copy/URLs from `@repo/turborepo-starter` (`deployHrefDocs` for docs target) |
+| [`app/page.tsx`](app/page.tsx)       | Home route — rendert Dokumentation basierend auf `apps/web/content` (`@web/*`-Alias)                  |
 | [`app/globals.css`](app/globals.css) | Imports shared styles from `@repo/ui`                                                                   |
 | [`.env.example`](.env.example)       | Document env vars; copy to `.env.local` for overrides                                                   |
 
@@ -17,9 +17,9 @@
 
 - `@repo/ui` — components and global CSS
 - `@repo/fonts` — shared Geist Sans / Geist Mono (`@repo/fonts/geist`) for `next/font` CSS variables
-- `@repo/turborepo-starter` — shared starter copy/URLs (`deployHrefDocs`, `docsHref`, `templatesHref`, ...)
+- `@repo/turborepo-starter` — legacy starter copy/URLs (Dependency vorhanden, aber zentrale Inhaltsquelle ist aktuell `@web/content/*`)
 
-**Copy consistency:** Keep shared starter copy in [`@repo/turborepo-starter`](../../packages/turborepo-starter); only app-specific values (like docs deploy target) should diverge via dedicated exports.
+**Copy consistency:** Dokumentationsinhalte (`FAQ`, Feature-/Gewerke-Texte, Branding) werden in `docs` bewusst aus `apps/web/content` wiederverwendet, damit Website und Doku nicht auseinanderlaufen.
 
 ## Commands
 

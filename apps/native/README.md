@@ -1,97 +1,68 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# `native` (React Native App)
 
-# Getting Started
+React-Native-Anwendung (Paketname `native`, Projekt-/Bundle-Name `nativeapp`) im Turborepo-Monorepo.
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+## Betriebsmodi
 
-## Step 1: Start Metro
+Die App hat zwei Modi:
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+- **WebView-Modus (Standard):**
+  - `USE_WEBVIEW = true` in `src/config/features.ts`
+  - lädt die Next.js-`web`-App (Port 3000) in einer `react-native-webview`
+  - nutzt denselben DOM-/`@repo/ui`-Pfad wie der Browser
+- **Native-UI-Modus:**
+  - `USE_WEBVIEW = false`
+  - rendert NativeWind + lokale `components/ui`
+  - gemeinsame Design-Tokens über `global.css` + `packages/ui/src/styles/theme-tokens.css`
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+## Wichtige Dateien
+
+- `App.tsx` – Umschalten WebView vs Native UI
+- `src/WebShell.tsx` – WebView-Container, Origin-Whitelist, Fehler-/Ladezustand
+- `src/NativeTurborepoApp.tsx` – Native Starter-UI
+- `src/config/features.ts` – Feature-Flags
+- `src/config/web-app-url.ts` – URL-Auflösung (`localhost`, `10.0.2.2`, Host-Override)
+
+## Kommandos (vom Repo-Root)
 
 ```sh
-# Using npm
-npm start
-
-# OR using Yarn
-yarn start
+pnpm exec turbo dev --filter=native
+pnpm exec turbo lint --filter=native
+pnpm exec turbo check-types --filter=native
+pnpm exec turbo test --filter=native
 ```
 
-## Step 2: Build and run your app
+Direkt im Ordner `apps/native`:
 
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
+```sh
+pnpm dev
+pnpm android
+pnpm ios
+pnpm test
+```
+
+## Mobile Builds
 
 ### Android
 
 ```sh
-# Using npm
-npm run android
-
-# OR using Yarn
-yarn android
+cd apps/native
+pnpm android
 ```
 
 ### iOS
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
-
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
-
 ```sh
+cd apps/native/ios
 bundle install
-```
-
-Then, and every time you update your native dependencies, run:
-
-```sh
 bundle exec pod install
+cd ..
+pnpm ios
 ```
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
+## Hinweise
 
-```sh
-# Using npm
-npm run ios
-
-# OR using Yarn
-yarn ios
-```
-
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
-
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
-
-## Step 3: Modify your app
-
-Now that you have successfully run the app, let's make changes!
-
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
-
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
-
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
-
-## Congratulations! :tada:
-
-You've successfully run and modified your React Native App. :partying_face:
-
-### Now what?
-
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
-
-# Troubleshooting
-
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
-
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+- Für **WebView-Modus** muss die `web`-App auf Port 3000 erreichbar sein.
+- Auf echten Geräten ggf. `WEB_APP_HOST_OVERRIDE` setzen.
+- In Produktion verlangt der WebView-Modus eine gültige `https://`-`WEB_APP_PROD_URL`.
+- CI baut keine nativen iOS-/Android-Binaries; lokale Builds bleiben Entwickleraufgabe.
