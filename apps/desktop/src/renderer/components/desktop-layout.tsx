@@ -37,7 +37,7 @@ export function DesktopLayout() {
   return (
     <SidebarProvider>
       <Sidebar collapsible="icon" variant="inset">
-        <SidebarHeader className="border-b border-sidebar-border">
+        <SidebarHeader className="border-sidebar-border">
           <SidebarBrand />
         </SidebarHeader>
         <SidebarContent>

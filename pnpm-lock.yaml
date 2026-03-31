@@ -85,6 +85,9 @@ importers:
       '@repo/electron':
         specifier: workspace:*
         version: link:../../packages/electron
+      '@repo/fonts':
+        specifier: workspace:*
+        version: link:../../packages/fonts
       '@repo/tailwind-config':
         specifier: workspace:*
         version: link:../../packages/tailwind-config

@@ -4,10 +4,16 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./geist": "./src/geist.ts"
+    "./geist": "./src/geist.ts",
+    "./geist-static.css": "./src/geist-static.css"
   },
   "peerDependencies": {
     "next": "^16.2.0"
+  },
+  "peerDependenciesMeta": {
+    "next": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "next": "16.2.0"

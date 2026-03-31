@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { Providers } from "@repo/ui/providers";
+import "@repo/fonts/geist-static.css";
 import { DesktopLayout } from "./components/desktop-layout";
 import "./globals.css";
 

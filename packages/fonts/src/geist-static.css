@@ -1,0 +1,23 @@
+/* Non-Next consumers (Vite/Electron): loads Geist binaries and sets --font-geist-* for @repo/ui/theme-tokens */
+
+@font-face {
+  font-family: "Geist Sans";
+  src: url("./fonts/GeistVF.woff") format("woff");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Geist Mono";
+  src: url("./fonts/GeistMonoVF.woff") format("woff");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* Match next/font: variable is the primary family; theme-tokens adds ui-sans-serif / system-ui */
+  --font-geist-sans: "Geist Sans";
+  --font-geist-mono: "Geist Mono";
+}

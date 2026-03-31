@@ -22,8 +22,8 @@ function loadRenderer(win: BrowserWindow): void {
 function createWindow(): void {
   const win = new BrowserWindow({
     icon: appIconPath,
-    width: 960,
-    height: 640,
+    width: 1280,
+    height: 720,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
