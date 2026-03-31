@@ -1,5 +1,5 @@
 {
-  "name": "Basic",
-  "description": "Basic monorepo example with two Next.js applications",
+  "name": "zgwerkrepo",
+  "description": "Turborepo monorepo: Next.js (web), Hono API, Electron desktop, Expo mobile, shared packages",
   "maintainedByCoreTeam": true
 }

@@ -110,7 +110,7 @@ packages/
 - **Monorepo Tool:** Turborepo 2.9.x (see root `package.json`)
 - **Web:** Next.js 16.2 (App Router), React 19.2, Tailwind CSS 4.2
 - **Language:** TypeScript 5.9.x (strict mode, strictNullChecks enabled) in shared packages and Next apps
-- **Linting:** ESLint v9 (flat config) in Next apps, `@repo/ui`, and `@repo/eslint-config`
+- **Linting:** ESLint v9 (flat config) in apps/packages that define `lint`; Konfiguration **`eslint.config.mjs`** pro Paket, gemeinsame Regeln in `@repo/eslint-config` (`base`, `next-js`, `react-internal`, `react-native`)
 - **Formatting:** Prettier (root); see **Commands** below for the exact `format` script
 
 ## Commands
@@ -137,7 +137,7 @@ prettier --write "**/*.{ts,tsx,md}"
 
 **`pnpm dev`:** runs `turbo run dev` for **every** workspace package that defines a `dev` script — **`web`**, **`api`**, and **`desktop`** — which starts many parallel processes. For everyday work, prefer **`pnpm exec turbo run dev --filter=<name>`** for a single app.
 
-`pnpm lint` also runs the root Turbo task `lint:design-guardrails` ([`check-design-guardrails.mjs`](check-design-guardrails.mjs)) after workspace linting.
+`pnpm lint` also runs the root Turbo task `lint:design-guardrails` ([`scripts/check-design-guardrails.mjs`](scripts/check-design-guardrails.mjs)) after workspace linting.
 
 ## Local verification (aligned with CI)
 
@@ -177,7 +177,7 @@ Packages that define **`test`:**
 ## Code Conventions
 
 - **ESM modules** — Next.js apps and `@repo/eslint-config` set `"type": "module"`; `@repo/ui` and `@repo/typescript-config` omit it (still consumed as ESM by the toolchain). Check `package.json` when adding packages.
-- **ESLint v9 flat config** — shared configs live in `@repo/eslint-config` with exports for `base`, `next-js`, and `react-internal`.
+- **ESLint v9 flat config** — shared configs live in `@repo/eslint-config` with exports for `base`, `next-js`, `react-internal`, and `react-native`; apps use **`eslint.config.mjs`** at the package root.
 - **TypeScript strict mode** — `strict: true` and `strictNullChecks: true` are enabled in packages and Next apps as configured.
 - **React JSX transform** — do not import React for JSX where the automatic JSX transform is configured.
 - **Prettier** — use the root `format` script.

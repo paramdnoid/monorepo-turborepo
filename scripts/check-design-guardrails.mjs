@@ -3,7 +3,8 @@ import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 
-const rootDir = path.dirname(fileURLToPath(import.meta.url));
+const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+const rootDir = path.resolve(scriptDir, "..");
 
 /** @type {Array<{file: string; reason: string; mustInclude?: string[]; mustNotInclude?: string[]}>} */
 const checks = [

@@ -58,7 +58,7 @@
     "//#lint:design-guardrails": {
       "cache": false,
       "inputs": [
-        "$TURBO_ROOT$/check-design-guardrails.mjs",
+        "$TURBO_ROOT$/scripts/check-design-guardrails.mjs",
         "$TURBO_ROOT$/apps/web/app/layout.tsx",
         "$TURBO_ROOT$/apps/web/app/page.tsx"
       ]

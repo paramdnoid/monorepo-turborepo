@@ -19,6 +19,17 @@ Monorepo mit [Turborepo](https://turborepo.dev), einer [Next.js](https://nextjs.
 - `@repo/tailwind-config` – Tailwind/PostCSS Shared Config
 - `@repo/playwright-web` – Playwright-E2E für `web`
 
+## Repository-Layout
+
+| Pfad | Rolle |
+| ---- | ----- |
+| `apps/` | Apps (`web`, `api`, `desktop`, `mobile`) |
+| `packages/` | Interne Packages (`@repo/*`) |
+| `scripts/` | Root-Hilfsskripte (z. B. Design-Guardrails, Keycloak-Bootstrap) |
+| `.agents/skills-lock.json` | optional: Skill-Install-Metadaten (Cursor/Codex) |
+| `turbo.json` / `pnpm-workspace.yaml` | Turborepo und pnpm-Workspaces |
+| `prettier.config.mjs` | Prettier (wird von `pnpm format` genutzt) |
+
 ## Voraussetzungen
 
 - Node.js **>= 22.11.0**

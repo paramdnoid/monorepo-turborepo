@@ -20,6 +20,8 @@ Vom Repo-Root (nach `pnpm install`):
 
 ```sh
 pnpm --filter mobile start
+pnpm exec turbo run lint --filter=mobile
+pnpm exec turbo run check-types --filter=mobile
 ```
 
 (`mobile` definiert kein `dev`-Script; Root-`pnpm dev` startet weiterhin `web`, `api`, `desktop`.)
@@ -29,7 +31,9 @@ pnpm --filter mobile start
 | Pfad           | Rolle                          |
 | -------------- | ------------------------------ |
 | [`App.tsx`](App.tsx) | App-Einstieg                   |
+| [`eslint.config.mjs`](eslint.config.mjs) | `@repo/eslint-config/react-native` |
 | [`app.json`](app.json) | Expo-Konfiguration             |
+| [`turbo.json`](turbo.json) | `extends` Root, Tag **`app`** (Boundaries) |
 | [`.npmrc`](.npmrc) | `node-linker=hoisted` (pnpm/Metro) |
 
 ## Monorepo

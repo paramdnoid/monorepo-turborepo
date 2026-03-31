@@ -5,7 +5,7 @@
     "build": "turbo run build",
     "dev": "turbo run dev",
     "lint": "turbo run lint && turbo run lint:design-guardrails",
-    "lint:design-guardrails": "node ./check-design-guardrails.mjs",
+    "lint:design-guardrails": "node ./scripts/check-design-guardrails.mjs",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types",
     "test": "turbo run test",
