@@ -9,11 +9,11 @@ Shared React component library (`@repo/ui`).
 The workspace package name is **`@repo/ui`** (not the folder `ui` alone). From the repo root:
 
 ```sh
-pnpm exec turbo lint --filter=@repo/ui
-pnpm exec turbo check-types --filter=@repo/ui
+pnpm exec turbo run lint --filter=@repo/ui
+pnpm exec turbo run check-types --filter=@repo/ui
 ```
 
-(`build` is only defined for Next apps; this package has no `build` script.) The `generate:component` script uses the repo’s `turbo` CLI (declared in this package’s `devDependencies`).
+This package has **no** `build` script — consumers compile it when they build Next.js or other apps. The `generate:component` script uses the repo’s `turbo` CLI (declared in this package’s `devDependencies`).
 
 ## Overview
 

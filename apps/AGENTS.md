@@ -6,33 +6,35 @@ Context for applications under `apps/`: **Next.js** sites (`web`, `docs`), the *
 
 ## Apps at a glance
 
-| Package  | Stack           | Role                        | Port / notes          | Turbo `--filter` |
-| -------- | --------------- | --------------------------- | --------------------- | ---------------- |
-| `web`    | Next.js 16.2    | Primary web application     | 3000                  | `web`            |
-| `docs`   | Next.js 16.2    | Documentation site          | 3001                  | `docs`           |
-| `native` | RN + NativeWind | Mobile app (`nativeapp` id) | Metro (no fixed port) | `native`         |
-| `api`    | Hono + Drizzle  | Backend HTTP API            | 4000 (default `PORT`) | `api`            |
-| `desktop`| Electron + TS   | Desktop shell (IPC)         | — (native window)     | `desktop`        |
+| Package   | Stack           | Role                        | Port / notes          | Turbo `--filter` |
+| --------- | --------------- | --------------------------- | --------------------- | ---------------- |
+| `web`     | Next.js 16.2    | Primary web application     | 3000                  | `web`            |
+| `docs`    | Next.js 16.2    | Documentation site          | 3001                  | `docs`           |
+| `native`  | RN + NativeWind | Mobile app (`nativeapp` id) | Metro (no fixed port) | `native`         |
+| `api`     | Hono + Drizzle  | Backend HTTP API            | 4000 (default `PORT`) | `api`            |
+| `desktop` | Electron + TS   | Desktop shell (IPC)         | — (native window)     | `desktop`        |
 
-Use **`pnpm exec turbo <task> --filter=<name>`** with the filter column value (see root [`AGENTS.md`](../AGENTS.md) for the full workspace name table).
+Use **`pnpm exec turbo run <task> --filter=<name>`** with the filter column value (see root [`AGENTS.md`](../AGENTS.md) for the full workspace name table).
+
+**Root `pnpm dev`:** runs `turbo run dev` for **all** apps that define `dev` — `web`, `docs`, `native`, `api`, and `desktop` — in parallel. Prefer a single filter for everyday work; details in root [`AGENTS.md`](../AGENTS.md) (**Commands**).
 
 ## Choosing an app
 
-| Goal                                          | Where to work                                         |
-| --------------------------------------------- | ----------------------------------------------------- |
-| User-facing product / main Next experience    | **`web`** — [`web/AGENTS.md`](web/AGENTS.md)          |
-| Separate docs/marketing Next site (port 3001) | **`docs`** — [`docs/AGENTS.md`](docs/AGENTS.md)       |
-| iOS/Android, WebView shell, Metro, native UI  | **`native`** — [`native/AGENTS.md`](native/AGENTS.md) |
-| Backend API, Health, DB, Sync-Endpunkte       | **`api`** — [`api/AGENTS.md`](api/AGENTS.md)          |
-| Desktop-Fenster, Main/Preload, lokale IPC   | **`desktop`** — [`desktop/AGENTS.md`](desktop/AGENTS.md) |
+| Goal                                          | Where to work                                            |
+| --------------------------------------------- | -------------------------------------------------------- |
+| User-facing product / main Next experience    | **`web`** — [`web/AGENTS.md`](web/AGENTS.md)             |
+| Separate docs/marketing Next site (port 3001) | **`docs`** — [`docs/AGENTS.md`](docs/AGENTS.md)          |
+| iOS/Android, WebView shell, Metro, native UI  | **`native`** — [`native/AGENTS.md`](native/AGENTS.md)    |
+| Backend API, Health, DB, Sync-Endpunkte       | **`api`** — [`api/AGENTS.md`](api/AGENTS.md)             |
+| Desktop-Fenster, Main/Preload, lokale IPC     | **`desktop`** — [`desktop/AGENTS.md`](desktop/AGENTS.md) |
 
 ## Next.js (`web`, `docs`)
 
 Shared rules for both Next apps: same stack and conventions; only ports and package names differ.
 
 - **Framework:** Next.js 16.2 with App Router (`app/` directory)
-- **Build:** `pnpm build` → outputs to `.next/`
-- **Type-check:** `pnpm check-types` runs `next typegen` then `tsc --noEmit`
+- **Build:** from the repo root, `pnpm exec turbo run build --filter=web` (or `--filter=docs`), or root `pnpm build` to run `build` across the workspace; from inside `apps/web` or `apps/docs`, `pnpm build` runs `next build` and outputs to `.next/`.
+- **Type-check:** from the repo root, `pnpm exec turbo run check-types --filter=web` (or `docs`); from the app directory, `pnpm check-types` runs `next typegen` then `tsc --noEmit`.
 
 **Structure (typical):**
 

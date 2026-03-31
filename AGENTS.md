@@ -21,7 +21,7 @@ Turborepo **`--filter`** values must match each package’s **`name`** in its `p
 | `docs`                    | `apps/docs`                  | Documentation Next.js app                                 |
 | `native`                  | `apps/native`                | React Native app                                          |
 | `api`                     | `apps/api`                   | Hono HTTP API (PostgreSQL / Drizzle)                      |
-| `desktop`                 | `apps/desktop`               | Electron desktop app (TypeScript)                       |
+| `desktop`                 | `apps/desktop`               | Electron desktop app (TypeScript)                         |
 | `@repo/api-contracts`     | `packages/api-contracts`     | Shared Zod schemas & types (trades, sync batches)         |
 | `@repo/db`                | `packages/db`                | Drizzle schema & PostgreSQL client                        |
 | `@repo/ui`                | `packages/ui`                | Shared UI library                                         |
@@ -37,51 +37,55 @@ Turborepo **`--filter`** values must match each package’s **`name`** in its `p
 **Examples:**
 
 ```sh
-pnpm exec turbo dev --filter=web
-pnpm exec turbo build --filter=docs
-pnpm exec turbo lint --filter=@repo/ui
-pnpm exec turbo check-types --filter=native
+pnpm exec turbo run dev --filter=web
+pnpm exec turbo run build --filter=docs
+pnpm exec turbo run lint --filter=@repo/ui
+pnpm exec turbo run check-types --filter=native
 ```
 
 ## Agent navigation (what to open for which task)
 
-| If you are…                                     | Read                                                                                   |
-| ----------------------------------------------- | -------------------------------------------------------------------------------------- |
-| Choosing or comparing apps                      | [`apps/AGENTS.md`](apps/AGENTS.md)                                                     |
-| Desktop (Electron)                            | [`apps/desktop/AGENTS.md`](apps/desktop/AGENTS.md); shared IPC/types [`packages/electron/AGENTS.md`](packages/electron/AGENTS.md) |
-| Primary product / marketing site (Next)         | [`apps/web/AGENTS.md`](apps/web/AGENTS.md)                                             |
-| Docs site (Next)                                | [`apps/docs/AGENTS.md`](apps/docs/AGENTS.md)                                           |
-| Mobile: WebView, Metro, iOS/Android, NativeWind | [`apps/native/AGENTS.md`](apps/native/AGENTS.md)                                       |
-| Shared React components, tokens, `globals.css`  | [`packages/ui/AGENTS.md`](packages/ui/AGENTS.md)                                       |
-| Shared local fonts (Geist) for Next.js layouts  | [`packages/fonts/AGENTS.md`](packages/fonts/AGENTS.md)                                 |
-| Starter screen copy and URLs (web + native)     | [`packages/turborepo-starter/AGENTS.md`](packages/turborepo-starter/AGENTS.md)         |
-| Shared logo / app icon source (PNG)             | [`packages/brand/AGENTS.md`](packages/brand/AGENTS.md)                                 |
-| ESLint rules shared across Next + UI            | [`packages/eslint-config/AGENTS.md`](packages/eslint-config/AGENTS.md)                 |
-| `tsconfig` bases for Next and libraries         | [`packages/typescript-config/AGENTS.md`](packages/typescript-config/AGENTS.md)         |
-| Shared Tailwind / PostCSS wiring                | [`packages/tailwind-config/`](packages/tailwind-config/) (`exports` in `package.json`) |
-| Web E2E (Playwright)                            | [`packages/playwright-web/`](packages/playwright-web/)                                 |
+| If you are…                                     | Read                                                                                                                              |
+| ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Choosing or comparing apps                      | [`apps/AGENTS.md`](apps/AGENTS.md)                                                                                                |
+| Desktop (Electron)                              | [`apps/desktop/AGENTS.md`](apps/desktop/AGENTS.md); shared IPC/types [`packages/electron/AGENTS.md`](packages/electron/AGENTS.md) |
+| Primary product / marketing site (Next)         | [`apps/web/AGENTS.md`](apps/web/AGENTS.md)                                                                                        |
+| Docs site (Next)                                | [`apps/docs/AGENTS.md`](apps/docs/AGENTS.md)                                                                                      |
+| Mobile: WebView, Metro, iOS/Android, NativeWind | [`apps/native/AGENTS.md`](apps/native/AGENTS.md)                                                                                  |
+| Shared React components, tokens, `globals.css`  | [`packages/ui/AGENTS.md`](packages/ui/AGENTS.md)                                                                                  |
+| Shared local fonts (Geist) for Next.js layouts  | [`packages/fonts/AGENTS.md`](packages/fonts/AGENTS.md)                                                                            |
+| Starter screen copy and URLs (web + native)     | [`packages/turborepo-starter/AGENTS.md`](packages/turborepo-starter/AGENTS.md)                                                    |
+| Shared logo / app icon source (PNG)             | [`packages/brand/AGENTS.md`](packages/brand/AGENTS.md)                                                                            |
+| Shared Zod API contracts (trades, sync)         | [`packages/api-contracts/AGENTS.md`](packages/api-contracts/AGENTS.md)                                                            |
+| Drizzle schema / PostgreSQL client              | [`packages/db/AGENTS.md`](packages/db/AGENTS.md)                                                                                  |
+| ESLint rules shared across Next + UI            | [`packages/eslint-config/AGENTS.md`](packages/eslint-config/AGENTS.md)                                                            |
+| `tsconfig` bases for Next and libraries         | [`packages/typescript-config/AGENTS.md`](packages/typescript-config/AGENTS.md)                                                    |
+| Shared Tailwind / PostCSS wiring                | [`packages/tailwind-config/AGENTS.md`](packages/tailwind-config/AGENTS.md)                                                        |
+| Web E2E (Playwright)                            | [`packages/playwright-web/AGENTS.md`](packages/playwright-web/AGENTS.md)                                                          |
 
 ## Where to Look Next
 
 More specific agent context lives next to the code:
 
-| Location                                                                       | Purpose                                                    |
-| ------------------------------------------------------------------------------ | ---------------------------------------------------------- |
+| Location                                                                       | Purpose                                                                             |
+| ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------- |
 | [`apps/AGENTS.md`](apps/AGENTS.md)                                             | All apps: Next.js (`web`, `docs`), API (`api`), Electron (`desktop`), RN (`native`) |
-| [`apps/desktop/AGENTS.md`](apps/desktop/AGENTS.md)                             | Electron desktop app                                       |
-| [`packages/electron/AGENTS.md`](packages/electron/AGENTS.md)                   | Shared `@repo/electron` IPC / desktop API types            |
-| [`apps/api/AGENTS.md`](apps/api/AGENTS.md)                                     | Hono HTTP API, PostgreSQL / Drizzle                        |
-| [`apps/web/AGENTS.md`](apps/web/AGENTS.md)                                     | Primary web app (port 3000)                                |
-| [`apps/docs/AGENTS.md`](apps/docs/AGENTS.md)                                   | Documentation site (port 3001)                             |
-| [`apps/native/AGENTS.md`](apps/native/AGENTS.md)                               | React Native mobile app                                    |
-| [`packages/ui/AGENTS.md`](packages/ui/AGENTS.md)                               | Shared `@repo/ui` component library                        |
-| [`packages/fonts/AGENTS.md`](packages/fonts/AGENTS.md)                         | Shared Geist typography (`@repo/fonts`) for `web` / `docs` |
-| [`packages/turborepo-starter/AGENTS.md`](packages/turborepo-starter/AGENTS.md) | Shared starter copy (`@repo/turborepo-starter`)            |
-| [`packages/brand/AGENTS.md`](packages/brand/AGENTS.md)                         | Shared logo / favicon (`@repo/brand`)                      |
-| [`packages/eslint-config/AGENTS.md`](packages/eslint-config/AGENTS.md)         | Shared ESLint configs (`@repo/eslint-config`)              |
-| [`packages/typescript-config/AGENTS.md`](packages/typescript-config/AGENTS.md) | Shared TypeScript bases (`@repo/typescript-config`)        |
-| [`packages/tailwind-config/`](packages/tailwind-config/)                       | Shared styles + PostCSS (`@repo/tailwind-config`)          |
-| [`packages/playwright-web/`](packages/playwright-web/)                         | Playwright smoke/E2E for `web` (`@repo/playwright-web`)    |
+| [`apps/desktop/AGENTS.md`](apps/desktop/AGENTS.md)                             | Electron desktop app                                                                |
+| [`packages/electron/AGENTS.md`](packages/electron/AGENTS.md)                   | Shared `@repo/electron` IPC / desktop API types                                     |
+| [`apps/api/AGENTS.md`](apps/api/AGENTS.md)                                     | Hono HTTP API, PostgreSQL / Drizzle                                                 |
+| [`apps/web/AGENTS.md`](apps/web/AGENTS.md)                                     | Primary web app (port 3000)                                                         |
+| [`apps/docs/AGENTS.md`](apps/docs/AGENTS.md)                                   | Documentation site (port 3001)                                                      |
+| [`apps/native/AGENTS.md`](apps/native/AGENTS.md)                               | React Native mobile app                                                             |
+| [`packages/ui/AGENTS.md`](packages/ui/AGENTS.md)                               | Shared `@repo/ui` component library                                                 |
+| [`packages/fonts/AGENTS.md`](packages/fonts/AGENTS.md)                         | Shared Geist typography (`@repo/fonts`) for `web` / `docs`                          |
+| [`packages/turborepo-starter/AGENTS.md`](packages/turborepo-starter/AGENTS.md) | Shared starter copy (`@repo/turborepo-starter`)                                     |
+| [`packages/brand/AGENTS.md`](packages/brand/AGENTS.md)                         | Shared logo / favicon (`@repo/brand`)                                               |
+| [`packages/api-contracts/AGENTS.md`](packages/api-contracts/AGENTS.md)         | Shared Zod contracts (`@repo/api-contracts`)                                        |
+| [`packages/db/AGENTS.md`](packages/db/AGENTS.md)                               | Drizzle schema & client (`@repo/db`)                                                |
+| [`packages/eslint-config/AGENTS.md`](packages/eslint-config/AGENTS.md)         | Shared ESLint configs (`@repo/eslint-config`)                                       |
+| [`packages/typescript-config/AGENTS.md`](packages/typescript-config/AGENTS.md) | Shared TypeScript bases (`@repo/typescript-config`)                                 |
+| [`packages/tailwind-config/AGENTS.md`](packages/tailwind-config/AGENTS.md)     | Shared styles + PostCSS (`@repo/tailwind-config`)                                   |
+| [`packages/playwright-web/AGENTS.md`](packages/playwright-web/AGENTS.md)       | Playwright smoke/E2E for `web` (`@repo/playwright-web`)                             |
 
 ## Monorepo Structure
 
@@ -121,14 +125,15 @@ packages/
 
 Run from the repository root:
 
-| Task           | Command            | Filtered example                                                                                        |
-| -------------- | ------------------ | ------------------------------------------------------------------------------------------------------- |
-| Build all      | `pnpm build`       | `pnpm exec turbo build --filter=web`                                                                    |
-| Dev all        | `pnpm dev`         | `pnpm exec turbo dev --filter=web` (runs all apps with a `dev` script: `web`, `docs`, `native` / Metro) |
-| Lint all       | `pnpm lint`        | `pnpm exec turbo lint --filter=native`                                                                  |
-| Type-check all | `pnpm check-types` | `pnpm exec turbo check-types --filter=docs`                                                             |
-| Test (Jest)    | `pnpm test`        | `pnpm exec turbo test --filter=native`                                                                  |
-| Format         | `pnpm format`      | —                                                                                                       |
+| Task               | Command                   | Filtered example                                                            |
+| ------------------ | ------------------------- | --------------------------------------------------------------------------- |
+| Build all          | `pnpm build`              | `pnpm exec turbo run build --filter=web`                                    |
+| Dev all            | `pnpm dev`                | `pnpm exec turbo run dev --filter=web` (see note below)                     |
+| Lint all           | `pnpm lint`               | `pnpm exec turbo run lint --filter=native`                                  |
+| Type-check all     | `pnpm check-types`        | `pnpm exec turbo run check-types --filter=docs`                             |
+| Test               | `pnpm test`               | `pnpm exec turbo run test --filter=native` (see **Tests and CI**)           |
+| Format             | `pnpm format`             | —                                                                           |
+| Keycloak bootstrap | `pnpm keycloak:bootstrap` | — (local Keycloak realm/client setup; see `scripts/keycloak-bootstrap.mjs`) |
 
 **Format script (verbatim):**
 
@@ -137,6 +142,8 @@ prettier --write "**/*.{ts,tsx,md}" "apps/native/**/*.{js,mjs}"
 ```
 
 (Defined in root [`package.json`](package.json).)
+
+**`pnpm dev`:** runs `turbo run dev` for **every** workspace package that defines a `dev` script — **`web`**, **`docs`**, **`native`**, **`api`**, and **`desktop`** — which starts many parallel processes. For everyday work, prefer **`pnpm exec turbo run dev --filter=<name>`** for a single app.
 
 `pnpm lint` also runs the root Turbo task `lint:design-guardrails` ([`check-design-guardrails.mjs`](check-design-guardrails.mjs)) after workspace linting.
 
@@ -169,9 +176,14 @@ Never commit secrets. Use `.env.example` (committed) for placeholder names only;
 
 ## Tests and CI
 
-Root script **`pnpm test`** runs `turbo run test` (see [`turbo.json`](turbo.json)); packages without a `test` script are skipped. Today only **`native`** defines Jest (`apps/native`).
+Root script **`pnpm test`** runs `turbo run test` (see [`turbo.json`](turbo.json)); packages without a `test` script are skipped.
 
-**CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml) on `main` and pull requests): installs with `pnpm install --frozen-lockfile` on Node 22, then runs **`turbo run lint`**, **`check-types`**, and **`build`** (pull requests: **`--affected`**), then **`turbo run lint:design-guardrails`**, then **Playwright E2E** when the dry-run plan includes `@repo/playwright-web#e2e` (pull requests: **`e2e --affected`**). It does **not** run **`pnpm test`** (Jest) or compile iOS/Android binaries. Run Jest and device builds locally when needed.
+Packages that define **`test`:**
+
+- **`native`** — Jest (`apps/native`)
+- **`web`**, **`api`**, **`@repo/db`**, **`@repo/api-contracts`** — Node’s test runner via **`tsx --test`** (see each package’s `package.json` script)
+
+**CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml) on `main` and pull requests): installs with `pnpm install --frozen-lockfile` on Node 22, then runs **`turbo run lint`**, **`check-types`**, and **`build`** (pull requests: **`--affected`**), then **`turbo run lint:design-guardrails`**, then **Playwright E2E** when the dry-run plan includes `@repo/playwright-web#e2e` (pull requests: **`e2e --affected`**). It does **not** run **`pnpm test`** or compile iOS/Android binaries. Run unit tests and device builds locally when needed.
 
 ## Code Conventions
 
