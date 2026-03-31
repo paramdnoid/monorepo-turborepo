@@ -1,9 +1,13 @@
 import { IPC_CHANNELS } from "@repo/electron";
 import { app, BrowserWindow, ipcMain } from "electron";
+import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+const require = createRequire(import.meta.url);
+const appIconPath = require.resolve("@repo/brand/logo-desktop");
 
 const rendererUrl = process.env.DESKTOP_RENDERER_URL;
 
@@ -17,6 +21,7 @@ function loadRenderer(win: BrowserWindow): void {
 
 function createWindow(): void {
   const win = new BrowserWindow({
+    icon: appIconPath,
     width: 960,
     height: 640,
     webPreferences: {
@@ -30,6 +35,9 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
+  if (process.platform === "darwin") {
+    app.dock.setIcon(appIconPath);
+  }
   ipcMain.handle(IPC_CHANNELS.ping, () => "pong");
   createWindow();
 

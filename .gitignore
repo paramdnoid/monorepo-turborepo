@@ -30,6 +30,9 @@ out/
 build
 dist
 
+# Electron (electron-builder)
+apps/desktop/release
+
 
 # Debug
 npm-debug.log*
