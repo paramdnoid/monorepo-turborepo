@@ -36,7 +36,7 @@ End-to-End mit echtem Keycloak: [`../api/KEYCLOAK-E2E-RUNBOOK.md`](../api/KEYCLO
 
 ## Dependencies (workspace)
 
-- `@repo/ui`, `@repo/fonts`, `@repo/brand`, `@repo/turborepo-starter` (not required on the homepage; docs/native still use it)
+- `@repo/ui`, `@repo/fonts`, `@repo/brand`
 - `@repo/db`, `@repo/api-contracts` — serverseitig: Mandanten-Provision nach Registrierung (gleiche DB wie `apps/api`)
 - Direct: `zod`, Stripe packages, `lucide-react`, `framer-motion`, `radix-ui`, `next-themes`, `class-variance-authority`, `server-only`
 
@@ -45,10 +45,10 @@ End-to-End mit echtem Keycloak: [`../api/KEYCLOAK-E2E-RUNBOOK.md`](../api/KEYCLO
 From repo root (Turbo package name is **`web`**):
 
 ```sh
-pnpm exec turbo dev --filter=web
-pnpm exec turbo build --filter=web
-pnpm exec turbo lint --filter=web
-pnpm exec turbo check-types --filter=web
+pnpm exec turbo run dev --filter=web
+pnpm exec turbo run build --filter=web
+pnpm exec turbo run lint --filter=web
+pnpm exec turbo run check-types --filter=web
 ```
 
 Shared Next.js structure: **[`../AGENTS.md`](../AGENTS.md)**. Monorepo-wide: **[`../../AGENTS.md`](../../AGENTS.md)**.

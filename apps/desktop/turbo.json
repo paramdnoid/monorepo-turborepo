@@ -1,6 +1,12 @@
 {
   "extends": ["//"],
+  "tags": ["app"],
   "tasks": {
+    "dev": {
+      "dependsOn": ["^build"],
+      "cache": false,
+      "persistent": true
+    },
     "build": {
       "outputs": ["dist/**"]
     }

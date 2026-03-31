@@ -1,6 +1,20 @@
 {
   "$schema": "https://turborepo.dev/schema.json",
   "ui": "tui",
+  "boundaries": {
+    "tags": {
+      "pkg": {
+        "dependencies": {
+          "deny": ["app"]
+        }
+      },
+      "app": {
+        "dependencies": {
+          "deny": ["app"]
+        }
+      }
+    }
+  },
   "globalEnv": [
     "DESKTOP_RENDERER_URL",
     "AUTH_EMAIL_VERIFICATION_SECRET",
@@ -45,13 +59,8 @@
       "cache": false,
       "inputs": [
         "$TURBO_ROOT$/check-design-guardrails.mjs",
-        "$TURBO_ROOT$/packages/turborepo-starter/src/content.ts",
         "$TURBO_ROOT$/apps/web/app/layout.tsx",
-        "$TURBO_ROOT$/apps/web/app/page.tsx",
-        "$TURBO_ROOT$/apps/docs/app/page.tsx",
-        "$TURBO_ROOT$/apps/native/global.css",
-        "$TURBO_ROOT$/apps/native/src/NativeTurborepoApp.tsx",
-        "$TURBO_ROOT$/apps/native/src/WebShell.tsx"
+        "$TURBO_ROOT$/apps/web/app/page.tsx"
       ]
     }
   }

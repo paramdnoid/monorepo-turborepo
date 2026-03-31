@@ -8,7 +8,6 @@ import { EmailVerifyQueryBanner } from "@/components/marketing/email-verify-quer
 import { LandingScrollbarToggle } from "@/components/marketing/landing-scrollbar-toggle";
 import { PricingSection } from "@/components/marketing/pricing-section";
 import { TradesSection } from "@/components/marketing/trades-section";
-import { getFaqs } from "@/content/faqs";
 import { getUiText } from "@/content/ui-text";
 import { getServerLocale } from "@/lib/i18n/server-locale";
 
@@ -22,7 +21,6 @@ export default async function LandingPage({ searchParams }: LandingPageProps) {
 
   const locale = await getServerLocale();
   const ui = getUiText(locale);
-  const faqs = getFaqs(locale);
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://example.com";
 
@@ -35,17 +33,6 @@ export default async function LandingPage({ searchParams }: LandingPageProps) {
     description: ui.landing.footer.brandDescription,
     url: siteUrl,
     inLanguage: locale,
-  };
-
-  const faqJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    inLanguage: locale,
-    mainEntity: faqs.map((faq) => ({
-      "@type": "Question",
-      name: faq.question,
-      acceptedAnswer: { "@type": "Answer", text: faq.answer },
-    })),
   };
 
   return (
@@ -67,12 +54,6 @@ export default async function LandingPage({ searchParams }: LandingPageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{
           __html: JSON.stringify(softwareJsonLd).replace(/</g, "\\u003c"),
-        }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(faqJsonLd).replace(/</g, "\\u003c"),
         }}
       />
     </div>

@@ -18,18 +18,15 @@ Shared **`tsconfig` JSON bases** (no `package.json` `exports`; consumers referen
 | Consumer                                                       | Extends                                      |
 | -------------------------------------------------------------- | -------------------------------------------- |
 | [`apps/web/tsconfig.json`](../../apps/web/tsconfig.json)       | `@repo/typescript-config/nextjs.json`        |
-| [`apps/docs/tsconfig.json`](../../apps/docs/tsconfig.json)     | `@repo/typescript-config/nextjs.json`        |
 | [`packages/ui/tsconfig.json`](../../packages/ui/tsconfig.json) | `@repo/typescript-config/react-library.json` |
-
-**React Native** uses `@react-native/typescript-config` — see [`apps/native/AGENTS.md`](../../apps/native/AGENTS.md).
 
 ## Tasks
 
 Type-check is run from consumers, e.g.:
 
 ```sh
-pnpm exec turbo check-types --filter=web
-pnpm exec turbo check-types --filter=@repo/ui
+pnpm exec turbo run check-types --filter=web
+pnpm exec turbo run check-types --filter=@repo/ui
 ```
 
 ## Monorepo context

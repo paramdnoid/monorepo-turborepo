@@ -22,10 +22,10 @@ Primäre Next.js-App (Port **3000**) für Produkt-Landing, Onboarding und rechtl
 Vom Repo-Root:
 
 ```bash
-pnpm exec turbo dev --filter=web
-pnpm exec turbo lint --filter=web
-pnpm exec turbo check-types --filter=web
-pnpm exec turbo build --filter=web
+pnpm exec turbo run dev --filter=web
+pnpm exec turbo run lint --filter=web
+pnpm exec turbo run check-types --filter=web
+pnpm exec turbo run build --filter=web
 ```
 
 Im Verzeichnis `apps/web`:

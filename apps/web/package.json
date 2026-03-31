@@ -16,7 +16,6 @@
     "@repo/brand": "workspace:*",
     "@repo/db": "workspace:*",
     "@repo/fonts": "workspace:*",
-    "@repo/turborepo-starter": "workspace:*",
     "@repo/ui": "workspace:*",
     "@stripe/react-stripe-js": "^3.7.0",
     "@stripe/stripe-js": "^5.10.0",

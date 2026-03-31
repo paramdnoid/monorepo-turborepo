@@ -8,6 +8,8 @@
 
 ## Befehle
 
+Vom **Repository-Root** (empfohlen — Turbo führt `^build` aus, u. a. **`@repo/electron`**):
+
 ```sh
 pnpm exec turbo run dev --filter=desktop
 pnpm exec turbo run build --filter=desktop
@@ -15,7 +17,9 @@ pnpm exec turbo run lint --filter=desktop
 pnpm exec turbo run check-types --filter=desktop
 ```
 
-`dev`: baut `@repo/electron`, kompiliert Main/Preload, startet **Vite** auf Port **5173**, `tsc --watch` und Electron mit `DESKTOP_RENDERER_URL=http://localhost:5173`. Produktion: `vite build` → `dist/renderer/`, Main/Preload → `dist/*.js`.
+**Turborepo:** In [`turbo.json`](turbo.json) ist für `desktop` **`dev` → `dependsOn: ["^build"]`** gesetzt. Ein `turbo run dev --filter=desktop` baut damit zuerst die Workspace-Abhängigkeiten (inkl. `@repo/electron`), danach läuft das `dev`-Script: einmal **`tsc`** (Main/Preload), dann **Vite** auf Port **5173**, **`tsc --watch`**, **`wait-on`**, Electron mit `DESKTOP_RENDERER_URL=http://localhost:5173`. **Produktion:** `vite build` → `dist/renderer/`, Main/Preload → `dist/*.js`.
+
+**Nur innerhalb `apps/desktop`:** `pnpm dev` / `pnpm build` rufen **kein** Turbo-`^build` auf — **`@repo/electron`** ist dann ggf. nicht gebaut. Entweder Root-Befehle wie oben oder zuerst `pnpm exec turbo run build --filter=@repo/electron`. Die Scripts **`start`**, **`dist`** und **`dist:dir`** rufen weiterhin explizit **`@repo/electron`** auf, falls du ohne Turbo-Pipeline arbeitest.
 
 ## Pfade
 
@@ -25,7 +29,7 @@ pnpm exec turbo run check-types --filter=desktop
 | `src/preload.ts`                          | `contextBridge` → `window.desktop`                           |
 | `src/renderer/`                           | React-Einstieg, `globals.css`, **DesktopLayout** (Sidebar)   |
 | `vite.config.ts`                          | Vite (Root `src/renderer`, Alias `@` → `src/renderer`)       |
-| `components.json`                         | shadcn-CLI-Aliases (wie `web`/`docs`)                        |
+| `components.json`                         | shadcn-CLI-Aliases (wie `web`)                             |
 | `dist/main.js`, `dist/preload.js`         | Ausgabe `tsc`                                                |
 | `dist/renderer/`                          | Ausgabe `vite build` (`index.html`, Assets)                  |
 

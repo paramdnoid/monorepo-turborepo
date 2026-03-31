@@ -5,7 +5,6 @@ import { Menu } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { BrandLogo } from "@/components/brand-logo";
-import { FaqDialog } from "@/components/marketing/faq-dialog";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { SectionContainer } from "@/components/marketing/section-container";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -97,16 +96,6 @@ export function SiteHeader() {
                 {link.label}
               </a>
             ))}
-            <FaqDialog>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-auto px-0 text-[11px] font-semibold uppercase tracking-[0.11em] text-muted-foreground hover:bg-transparent hover:text-foreground"
-              >
-                {uiText.landing.header.faqLabel}
-              </Button>
-            </FaqDialog>
           </nav>
 
           <div className="hidden items-center gap-2 lg:flex lg:justify-self-end">
@@ -168,15 +157,6 @@ export function SiteHeader() {
                     {link.label}
                   </a>
                 ))}
-                <FaqDialog>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="h-10 justify-start rounded-lg border border-border/75 bg-background/75 px-3 text-sm font-semibold uppercase tracking-[0.08em] text-foreground/95 shadow-sm hover:border-primary/45 hover:bg-background/95"
-                  >
-                    {uiText.landing.header.faqLabel}
-                  </Button>
-                </FaqDialog>
               </nav>
 
               <div className="mt-auto grid gap-2 pt-2">

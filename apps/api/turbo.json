@@ -1,5 +1,6 @@
 {
   "extends": ["//"],
+  "tags": ["app"],
   "tasks": {
     "dev": {
       "dependsOn": ["^build"],

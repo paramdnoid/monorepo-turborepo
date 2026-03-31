@@ -1,9 +1,7 @@
 import Link from "next/link";
 
 import { BrandLogo } from "@/components/brand-logo";
-import { FaqDialog } from "@/components/marketing/faq-dialog";
 import { SectionContainer } from "@/components/marketing/section-container";
-import { Button } from "@repo/ui/button";
 import { Separator } from "@repo/ui/separator";
 import { uiText } from "@/content/ui-text";
 
@@ -39,16 +37,9 @@ export function SiteFooter() {
                 </li>
               ))}
               <li>
-                <FaqDialog>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-auto px-0 text-sm font-normal text-muted-foreground hover:bg-transparent hover:text-foreground"
-                  >
-                    {uiText.landing.footer.faqLabel}
-                  </Button>
-                </FaqDialog>
+                <Link href="/legal/faq" className="transition-colors hover:text-foreground">
+                  {uiText.landing.footer.faqLabel}
+                </Link>
               </li>
             </ul>
           </nav>

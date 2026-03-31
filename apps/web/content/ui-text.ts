@@ -8,6 +8,7 @@ const uiTextDe = {
         { href: "#features", label: "Features" },
         { href: "#how-it-works", label: "So funktionierts" },
         { href: "#pricing", label: "Preise" },
+        { href: "/legal/faq", label: "FAQ" },
       ],
       faqLabel: "FAQ",
       signInDesktop: "ANMELDEN",
@@ -1195,7 +1196,7 @@ const uiTextDe = {
     tocAriaLabel: "Inhaltsverzeichnis",
     tocHeading: "Inhalt",
     homeCta: "Zur Startseite",
-    tabs: { imprint: "Impressum", privacy: "Datenschutz", terms: "AGB" },
+    tabs: { imprint: "Impressum", privacy: "Datenschutz", terms: "AGB", faq: "FAQ" },
     imprint: {
       metaTitle: "Impressum - ZunftGewerk",
       metaDescription: "Rechtliche Angaben gemaess TMG und MStV.",
@@ -1377,6 +1378,14 @@ const uiTextDe = {
   <li>Sollten einzelne Bestimmungen dieser AGB unwirksam sein oder werden, bleibt die Wirksamkeit der uebrigen Bestimmungen unberuehrt.</li>
 </ol>
 <p>Stand: Maerz 2026</p>`,
+    },
+    faq: {
+      metaTitle: "FAQ - ZunftGewerk",
+      metaDescription:
+        "Ausfuehrliche Antworten zu ZunftGewerk: Produkt, Datenschutz, Tarife, Clients, Zahlungen, Schnittstellen und Support.",
+      pageTitle: "Haeufig gestellte Fragen",
+      pageIntro:
+        "Hier finden Sie ausfuehrliche Antworten zu unserer Plattform. Die Liste wird regelmaessig ergaenzt.",
     },
   },
   landingSections: {
@@ -1620,6 +1629,7 @@ const uiTextEnOverrides: DeepPartial<typeof uiTextDe> = {
         { href: "#features", label: "Features" },
         { href: "#how-it-works", label: "How it works" },
         { href: "#pricing", label: "Pricing" },
+        { href: "/legal/faq", label: "FAQ" },
       ],
       faqLabel: "FAQ",
       signInDesktop: "SIGN IN",
@@ -2810,7 +2820,7 @@ const uiTextEnOverrides: DeepPartial<typeof uiTextDe> = {
     tocAriaLabel: "Table of contents",
     tocHeading: "Contents",
     homeCta: "Back to home",
-    tabs: { imprint: "Imprint", privacy: "Privacy", terms: "Terms" },
+    tabs: { imprint: "Imprint", privacy: "Privacy", terms: "Terms", faq: "FAQ" },
     imprint: {
       metaTitle: "Imprint - ZunftGewerk",
       metaDescription: "Legal information according to German TMG and MStV.",
@@ -2992,6 +3002,13 @@ const uiTextEnOverrides: DeepPartial<typeof uiTextDe> = {
   <li>If any provision of these Terms is or becomes invalid, the validity of the remaining provisions remains unaffected.</li>
 </ol>
 <p>Last updated: March 2026</p>`,
+    },
+    faq: {
+      metaTitle: "FAQ - ZunftGewerk",
+      metaDescription:
+        "In-depth answers about ZunftGewerk: product, privacy, plans, clients, billing, integrations, and support.",
+      pageTitle: "Frequently asked questions",
+      pageIntro: "Detailed answers about our platform. This page is updated regularly.",
     },
   },
   landingSections: {

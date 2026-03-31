@@ -13,6 +13,7 @@ const legalPages = [
   { href: "/legal/imprint", label: uiText.legal.tabs.imprint },
   { href: "/legal/privacy", label: uiText.legal.tabs.privacy },
   { href: "/legal/terms", label: uiText.legal.tabs.terms },
+  { href: "/legal/faq", label: uiText.legal.tabs.faq },
 ] as const
 
 export function LegalHeader() {

@@ -4,16 +4,13 @@
 
 ## Purpose
 
-[`@repo/fonts`](./package.json) holds **Geist Sans** and **Geist Mono** (variable `.woff` files) and exports ready-to-use `next/font/local` instances from [`src/geist.ts`](./src/geist.ts) (`geistSans`, `geistMono` with CSS variables `--font-geist-sans` and `--font-geist-mono`). Those variables are consumed by [`packages/ui/src/styles/theme-tokens.css`](../ui/src/styles/theme-tokens.css) and Tailwind in `web` / `docs`.
+[`@repo/fonts`](./package.json) holds **Geist Sans** and **Geist Mono** (variable `.woff` files) and exports ready-to-use `next/font/local` instances from [`src/geist.ts`](./src/geist.ts) (`geistSans`, `geistMono` with CSS variables `--font-geist-sans` and `--font-geist-mono`). Those variables are consumed by [`packages/ui/src/styles/theme-tokens.css`](../ui/src/styles/theme-tokens.css) and Tailwind in `web`.
 
 ## Consumers
 
-| App    | Usage                                                                                 |
-| ------ | ------------------------------------------------------------------------------------- |
-| `web`  | [`apps/web/app/layout.tsx`](../../apps/web/app/layout.tsx) imports `@repo/fonts/geist` |
-| `docs` | [`apps/docs/app/layout.tsx`](../../apps/docs/app/layout.tsx) imports `@repo/fonts/geist` |
-
-**Not used** by `apps/native` (no `next/font`); native uses fallbacks in its own `global.css`.
+| App   | Usage                                                                                    |
+| ----- | ---------------------------------------------------------------------------------------- |
+| `web` | [`apps/web/app/layout.tsx`](../../apps/web/app/layout.tsx) imports `@repo/fonts/geist` |
 
 ## Package details
 

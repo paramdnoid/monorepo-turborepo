@@ -4,7 +4,6 @@ const nextConfig = {
     "@repo/ui",
     "@repo/fonts",
     "@repo/brand",
-    "@repo/turborepo-starter",
   ],
 };
 

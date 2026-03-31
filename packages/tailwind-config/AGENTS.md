@@ -4,7 +4,7 @@
 
 ## Purpose
 
-**`@repo/tailwind-config`** provides shared **CSS** and **PostCSS** configuration for Next.js apps, `@repo/ui`, and `apps/native` (via Tailwind/NativeWind). It is a **style/config** package: there are **no** `scripts` in `package.json`, so Turbo does not run `lint` / `check-types` / `build` here — validation happens in dependents (`web`, `docs`, `@repo/ui`, `native`, `desktop`, etc.).
+**`@repo/tailwind-config`** provides shared **CSS** and **PostCSS** configuration for Next.js apps and `@repo/ui`. It is a **style/config** package: there are **no** `scripts` in `package.json`, so Turbo does not run `lint` / `check-types` / `build` here — validation happens in dependents (`web`, `@repo/ui`, `desktop`, etc.).
 
 ## Exports
 
@@ -15,7 +15,7 @@ See [`package.json`](./package.json) `exports`:
 
 ## Consumers
 
-Typically referenced from **`@repo/ui`**, Next apps, and **`apps/native`** / **`apps/desktop`** as a dev/workspace dependency.
+Typically referenced from **`@repo/ui`**, Next apps, and **`apps/desktop`** as a dev/workspace dependency.
 
 ## Monorepo
 

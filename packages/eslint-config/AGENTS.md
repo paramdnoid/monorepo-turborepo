@@ -9,19 +9,16 @@ Shared **ESLint v9 flat configs** for the monorepo (`@repo/eslint-config`). Entr
 | Export                               | File                       | Used by                                                                                        |
 | ------------------------------------ | -------------------------- | ---------------------------------------------------------------------------------------------- |
 | `@repo/eslint-config/base`           | `base.js`                  | Rarely imported directly; building block                                                       |
-| `@repo/eslint-config/next-js`        | `next.js` (`nextJsConfig`) | [`apps/web`](../../apps/web/eslint.config.js), [`apps/docs`](../../apps/docs/eslint.config.js) |
+| `@repo/eslint-config/next-js`        | `next.js` (`nextJsConfig`) | [`apps/web`](../../apps/web/eslint.config.js) |
 | `@repo/eslint-config/react-internal` | `react-internal.js`        | [`packages/ui`](../../packages/ui/eslint.config.mjs)                                           |
 
 `next.js` also wires a local custom plugin from [`design-guardrails-plugin.js`](./design-guardrails-plugin.js) that enforces starter-page content contracts for:
 
 - [`apps/web/app/page.tsx`](../../apps/web/app/page.tsx)
-- [`apps/docs/app/page.tsx`](../../apps/docs/app/page.tsx)
-
-**React Native** (`apps/native`) does **not** use this package — it uses `@react-native/eslint-config` (see [`apps/native/AGENTS.md`](../../apps/native/AGENTS.md)).
 
 ## Tasks
 
-This package has **no** `lint` script; ESLint is validated when you run `pnpm lint` from the repo root (consumers such as `web`, `docs`, `@repo/ui` load these configs).
+This package has **no** `lint` script; ESLint is validated when you run `pnpm lint` from the repo root (consumers such as `web`, `@repo/ui` load these configs).
 
 ## Further reading
 

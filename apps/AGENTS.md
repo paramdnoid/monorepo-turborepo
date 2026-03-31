@@ -1,40 +1,34 @@
 # AGENTS.md — apps
 
-**Read this when:** you work under `apps/` and need to know which application to edit or how Next.js apps relate to React Native.
+**Read this when:** you work under `apps/` and need to know which application to edit.
 
-Context for applications under `apps/`: **Next.js** sites (`web`, `docs`), the **Hono** API (`api`), **Electron** (`desktop`), and the **React Native** app (`native`).
+Context for applications under `apps/`: **Next.js** (`web`), the **Hono** API (`api`), and **Electron** (`desktop`).
 
 ## Apps at a glance
 
 | Package   | Stack           | Role                        | Port / notes          | Turbo `--filter` |
 | --------- | --------------- | --------------------------- | --------------------- | ---------------- |
 | `web`     | Next.js 16.2    | Primary web application     | 3000                  | `web`            |
-| `docs`    | Next.js 16.2    | Documentation site          | 3001                  | `docs`           |
-| `native`  | RN + NativeWind | Mobile app (`nativeapp` id) | Metro (no fixed port) | `native`         |
 | `api`     | Hono + Drizzle  | Backend HTTP API            | 4000 (default `PORT`) | `api`            |
 | `desktop` | Electron + TS   | Desktop shell (IPC)         | — (native window)     | `desktop`        |
 
-Use **`pnpm exec turbo run <task> --filter=<name>`** with the filter column value (see root [`AGENTS.md`](../AGENTS.md) for the full workspace name table).
+Use **`pnpm exec turbo run <task> --filter=<name>`** with the filter column value (see root [`AGENTS.md`](../AGENTS.md) for the full workspace name table). In scripts and CI, always **`turbo run`**, not the `turbo <task>` shorthand.
 
-**Root `pnpm dev`:** runs `turbo run dev` for **all** apps that define `dev` — `web`, `docs`, `native`, `api`, and `desktop` — in parallel. Prefer a single filter for everyday work; details in root [`AGENTS.md`](../AGENTS.md) (**Commands**).
+**Root `pnpm dev`:** runs `turbo run dev` for **all** apps that define `dev` — `web`, `api`, and `desktop` — in parallel. Prefer a single filter for everyday work; details in root [`AGENTS.md`](../AGENTS.md) (**Commands**). For **`desktop`**, `turbo run dev` runs upstream **`^build`** (including `@repo/electron`) before the app dev server — see [`desktop/AGENTS.md`](desktop/AGENTS.md).
 
 ## Choosing an app
 
 | Goal                                          | Where to work                                            |
 | --------------------------------------------- | -------------------------------------------------------- |
 | User-facing product / main Next experience    | **`web`** — [`web/AGENTS.md`](web/AGENTS.md)             |
-| Separate docs/marketing Next site (port 3001) | **`docs`** — [`docs/AGENTS.md`](docs/AGENTS.md)          |
-| iOS/Android, WebView shell, Metro, native UI  | **`native`** — [`native/AGENTS.md`](native/AGENTS.md)    |
 | Backend API, Health, DB, Sync-Endpunkte       | **`api`** — [`api/AGENTS.md`](api/AGENTS.md)             |
 | Desktop-Fenster, Main/Preload, lokale IPC     | **`desktop`** — [`desktop/AGENTS.md`](desktop/AGENTS.md) |
 
-## Next.js (`web`, `docs`)
-
-Shared rules for both Next apps: same stack and conventions; only ports and package names differ.
+## Next.js (`web`)
 
 - **Framework:** Next.js 16.2 with App Router (`app/` directory)
-- **Build:** from the repo root, `pnpm exec turbo run build --filter=web` (or `--filter=docs`), or root `pnpm build` to run `build` across the workspace; from inside `apps/web` or `apps/docs`, `pnpm build` runs `next build` and outputs to `.next/`.
-- **Type-check:** from the repo root, `pnpm exec turbo run check-types --filter=web` (or `docs`); from the app directory, `pnpm check-types` runs `next typegen` then `tsc --noEmit`.
+- **Build:** from the repo root, `pnpm exec turbo run build --filter=web`, or root `pnpm build` to run `build` across the workspace; from inside `apps/web`, `pnpm build` runs `next build` and outputs to `.next/`.
+- **Type-check:** from the repo root, `pnpm exec turbo run check-types --filter=web`; from the app directory, `pnpm check-types` runs `next typegen` then `tsc --noEmit`.
 
 **Structure (typical):**
 
@@ -52,17 +46,13 @@ Shared Geist Sans / Geist Mono (`.woff` + `next/font/local`) live in **[`package
 
 `@import "@repo/ui/styles/globals.css";`
 
-**Dependencies:** `@repo/ui`, `@repo/fonts`, `next`, `react`, `react-dom`, Tailwind v4 (`tailwindcss`, `@tailwindcss/postcss`). Both **`web`** and **`docs`** use `@repo/turborepo-starter` for shared starter copy (with app-specific deploy targets).
+**Dependencies:** `@repo/ui`, `@repo/fonts`, `next`, `react`, `react-dom`, Tailwind v4 (`tailwindcss`, `@tailwindcss/postcss`). Product copy lives under **`apps/web/content`**.
 
 **Configuration:** ESLint `@repo/eslint-config/next-js`; TypeScript extends `@repo/typescript-config/nextjs.json`; Next.js ESM config.
 
 **Conventions:** Prefer Tailwind aligned with `@repo/ui`; wrap with `<Providers>` from `@repo/ui/providers`; import shared UI from `@repo/ui/<name>`; app-specific UI stays in the app, shared primitives in `packages/ui`.
 
-Per-app notes: **[`web/AGENTS.md`](web/AGENTS.md)**, **[`docs/AGENTS.md`](docs/AGENTS.md)**.
-
-## React Native (`native`)
-
-**Tailwind / shadcn parity:** NativeWind + shared `theme-tokens.css` from `@repo/ui` styles; local `components/ui` (not `@repo/ui` imports). See **[`native/AGENTS.md`](native/AGENTS.md)** for Metro, iOS/Android, CocoaPods, and the `nativeapp` naming.
+Per-app notes: **[`web/AGENTS.md`](web/AGENTS.md)**.
 
 ## Monorepo context
 

@@ -8,11 +8,6 @@ const rootDir = path.dirname(fileURLToPath(import.meta.url));
 /** @type {Array<{file: string; reason: string; mustInclude?: string[]; mustNotInclude?: string[]}>} */
 const checks = [
   {
-    file: "packages/turborepo-starter/src/content.ts",
-    reason: "Shared starter copy must expose web/docs deploy URLs.",
-    mustInclude: ["export const deployHrefWeb", "export const deployHrefDocs"],
-  },
-  {
     file: "apps/web/app/layout.tsx",
     reason: "Web root layout must use the shared brand asset (favicon/metadata).",
     mustInclude: ['from "@repo/brand/logo"'],
@@ -21,35 +16,6 @@ const checks = [
     file: "apps/web/app/page.tsx",
     reason: "Web homepage must use product content and server locale.",
     mustInclude: ['from "@/content/ui-text"', "getServerLocale"],
-  },
-  {
-    file: "apps/docs/app/page.tsx",
-    reason: "Docs site must use ZunftGewerk product content from the web app content layer.",
-    mustInclude: [
-      "ZunftGewerk",
-      "@web/content/ui-text",
-      "getUiText",
-      "@web/content/faqs",
-      "getFaqs",
-    ],
-    mustNotInclude: ['from "@repo/turborepo-starter"'],
-  },
-  {
-    file: "apps/native/global.css",
-    reason: "Native app must import shared design tokens from packages/ui.",
-    mustInclude: ['@import "../../packages/ui/src/styles/theme-tokens.css";'],
-  },
-  {
-    file: "apps/native/src/NativeTurborepoApp.tsx",
-    reason: "Native starter UI must align theme with system mode.",
-    mustInclude: ["useColorScheme", "isDarkMode", "BrandLogo"],
-    mustNotInclude: ["'dark flex-1 bg-background'"],
-  },
-  {
-    file: "apps/native/src/WebShell.tsx",
-    reason: "WebShell must use stricter navigation origin controls and avoid hardcoded white overlay.",
-    mustInclude: ["originWhitelist={[allowedOrigin]}", "onShouldStartLoadWithRequest"],
-    mustNotInclude: ["originWhitelist={['http://*', 'https://*']}", "backgroundColor: '#fff'"],
   },
 ];
 

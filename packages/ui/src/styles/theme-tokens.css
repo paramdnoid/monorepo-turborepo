@@ -1,5 +1,4 @@
-/* Shared design tokens for web (Next) and React Native (NativeWind).
-   Web apps set --font-geist-* via next/font on <body>; native sets fallbacks in apps/native/global.css */
+/* Shared design tokens for Next.js apps. Web apps set --font-geist-* via next/font on <body>. */
 
 :root {
   --radius: 0.625rem;

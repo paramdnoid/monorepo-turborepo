@@ -5,30 +5,11 @@ const TARGETS = {
       { source: "@/content/ui-text", names: ["getUiText"] },
       { source: "@/lib/i18n/server-locale", names: ["getServerLocale"] },
     ],
-    forbiddenImportSources: ["@repo/turborepo-starter"],
     forbiddenStrings: [
       "Monorepo with Turborepo",
       "turborepo.dev?utm_source=create-turbo",
       "Hello from @repo/ui",
     ],
-    forbidVariableNames: [
-      "deployHrefWeb",
-      "deployHrefDocs",
-      "docsHref",
-      "templatesHref",
-      "turborepoSiteHref",
-      "title",
-      "description",
-      "alertMessage",
-    ],
-  },
-  docsPage: {
-    pathSuffix: "/apps/docs/app/page.tsx",
-    requiredImportSpecs: [
-      { source: "@web/content/ui-text", names: ["getUiText"] },
-      { source: "@web/content/faqs", names: ["getFaqs"] },
-    ],
-    forbiddenImportSources: ["@repo/turborepo-starter"],
     forbidVariableNames: [
       "deployHrefWeb",
       "deployHrefDocs",
@@ -69,7 +50,7 @@ export const designGuardrailsPlugin = {
         type: "problem",
         docs: {
           description:
-            "Enforce architecture contracts for web/docs entry pages and prevent starter-template regressions.",
+            "Enforce architecture contracts for the web entry page and prevent starter-template regressions.",
         },
         schema: [],
       },

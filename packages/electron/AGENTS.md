@@ -20,7 +20,7 @@ pnpm exec turbo run lint --filter=@repo/electron
 pnpm exec turbo run check-types --filter=@repo/electron
 ```
 
-`apps/desktop` baut dieses Paket vor `dev`/`start`, damit `dist/` für Runtime-Imports vorhanden ist.
+`apps/desktop` bezieht dieses Paket als Workspace-Abhängigkeit. **`turbo run dev`** / **`turbo run build --filter=desktop`** führen zuerst **`^build`** aus (u. a. dieses Paket). **`pnpm start`** / **`pnpm dist`** im Desktop-App-Ordner ohne Turbo rufen **`@repo/electron`** weiterhin explizit; siehe [`apps/desktop/AGENTS.md`](../../apps/desktop/AGENTS.md).
 
 ## Monorepo
 
