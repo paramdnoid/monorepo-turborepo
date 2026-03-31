@@ -1,4 +1,4 @@
-# my-turborepo
+# zgwerkrepo
 
 Monorepo mit [Turborepo](https://turborepo.dev), einer [Next.js](https://nextjs.org/) App und mehreren internen Shared-Packages.
 
@@ -7,6 +7,7 @@ Monorepo mit [Turborepo](https://turborepo.dev), einer [Next.js](https://nextjs.
 ### Apps
 
 - `apps/web` (`web`) – primäre Produkt-/Marketingseite auf Port **3000**
+- `apps/mobile` (`mobile`) – Expo / React Native (Metro, Gerät oder Simulator)
 
 ### Shared Packages
 

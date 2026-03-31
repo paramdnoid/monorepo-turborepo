@@ -41,23 +41,23 @@
     "wait-on": "^8.0.5"
   },
   "build": {
-    "appId": "com.turborepo.desktop",
+    "appId": "com.zgwerkrepo.desktop",
     "productName": "Turborepo Desktop",
     "asar": true,
     "directories": {
       "output": "release"
     },
     "mac": {
-      "icon": "../../packages/brand/assets/logo-desktop.png",
+      "icon": "../../packages/brand/assets/logo.png",
       "category": "public.app-category.developer-tools",
       "target": ["dmg", "zip"]
     },
     "win": {
-      "icon": "../../packages/brand/assets/logo-desktop.png",
+      "icon": "../../packages/brand/assets/logo.png",
       "target": ["nsis"]
     },
     "linux": {
-      "icon": "../../packages/brand/assets/logo-desktop.png",
+      "icon": "../../packages/brand/assets/logo.png",
       "target": ["AppImage"]
     }
   }

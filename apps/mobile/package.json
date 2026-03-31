@@ -3,36 +3,19 @@
   "version": "1.0.0",
   "main": "index.ts",
   "scripts": {
-    "dev": "expo start --ios",
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web",
-    "lint": "eslint --max-warnings 0 .",
-    "check-types": "tsc --noEmit",
-    "build": "expo export --platform web --output-dir dist" 
+    "web": "expo start --web"
   },
   "dependencies": {
-    "@repo/api-contracts": "workspace:*",
     "expo": "~54.0.33",
     "expo-status-bar": "~3.0.9",
-    "nativewind": "^4.2.3",
     "react": "19.1.0",
-    "react-dom": "19.1.0",
-    "react-native": "0.81.5",
-    "react-native-css-interop": "0.2.3",
-    "react-native-reanimated": "^4.3.0",
-    "react-native-web": "^0.21.0"
+    "react-native": "0.81.5"
   },
   "devDependencies": {
-    "@repo/eslint-config": "workspace:*",
-    "@repo/typescript-config": "workspace:*",
     "@types/react": "~19.1.0",
-    "eslint": "^9.39.1",
-    "eslint-plugin-react": "^7.37.5",
-    "eslint-plugin-react-hooks": "^5.2.0",
-    "globals": "^16.5.0",
-    "tailwindcss": "3.4.17",
     "typescript": "~5.9.2"
   },
   "private": true

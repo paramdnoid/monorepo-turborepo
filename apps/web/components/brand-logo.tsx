@@ -2,8 +2,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { uiText } from "@/content/ui-text";
 
-/** Intrinsic size of `public/logo.png` / `@repo/brand/logo` after trim; update if the asset changes. */
-export const BRAND_LOGO_INTRINSIC = { width: 775, height: 939 } as const;
+/** Intrinsic size of `public/logo.png` / `@repo/brand/logo`; update if the asset changes. */
+export const BRAND_LOGO_INTRINSIC = { width: 1024, height: 1024 } as const;
 
 type BrandWordmarkProps = {
   nameClassName?: string;

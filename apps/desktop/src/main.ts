@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const require = createRequire(import.meta.url);
-const appIconPath = require.resolve("@repo/brand/logo-desktop");
+const appIconPath = require.resolve("@repo/brand/logo");
 
 const rendererUrl = process.env.DESKTOP_RENDERER_URL;
 

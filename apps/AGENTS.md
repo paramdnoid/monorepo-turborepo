@@ -6,25 +6,25 @@ Context for applications under `apps/`: **Next.js** (`web`), the **Hono** API (`
 
 ## Apps at a glance
 
-| Package   | Stack             | Role                    | Port / notes                    | Turbo `--filter` |
-| --------- | ----------------- | ----------------------- | ------------------------------- | ---------------- |
-| `web`     | Next.js 16.2      | Primary web application | 3000                            | `web`            |
-| `api`     | Hono + Drizzle    | Backend HTTP API        | 4000 (default `PORT`)           | `api`            |
-| `desktop` | Electron + TS     | Desktop shell (IPC)     | — (native window)               | `desktop`        |
-| `mobile`  | Expo + NativeWind | React Native app        | Expo / Metro (Gerät, Simulator) | `mobile`         |
+| Package   | Stack           | Role                        | Port / notes          | Turbo `--filter` |
+| --------- | --------------- | --------------------------- | --------------------- | ---------------- |
+| `web`     | Next.js 16.2    | Primary web application     | 3000                  | `web`            |
+| `api`     | Hono + Drizzle  | Backend HTTP API            | 4000 (default `PORT`) | `api`            |
+| `desktop` | Electron + TS   | Desktop shell (IPC)         | — (native window)     | `desktop`        |
+| `mobile`  | Expo + RN       | Mobile app (iOS / Android)  | Expo / Metro          | `mobile`         |
 
 Use **`pnpm exec turbo run <task> --filter=<name>`** with the filter column value (see root [`AGENTS.md`](../AGENTS.md) for the full workspace name table). In scripts and CI, always **`turbo run`**, not the `turbo <task>` shorthand.
 
-**Root `pnpm dev`:** runs `turbo run dev` for **all** apps that define `dev` — `web`, `api`, `desktop`, and `mobile` — in parallel. Prefer a single filter for everyday work; details in root [`AGENTS.md`](../AGENTS.md) (**Commands**). For **`desktop`**, `turbo run dev` runs upstream **`^build`** (including `@repo/electron`) before the app dev server — see [`desktop/AGENTS.md`](desktop/AGENTS.md). For **`mobile`**, `^build` includes **`@repo/api-contracts`** before Expo starts — see [`mobile/AGENTS.md`](mobile/AGENTS.md).
+**Root `pnpm dev`:** runs `turbo run dev` for **all** apps that define `dev` — `web`, `api`, and `desktop` — in parallel. Prefer a single filter for everyday work; details in root [`AGENTS.md`](../AGENTS.md) (**Commands**). For **`desktop`**, `turbo run dev` runs upstream **`^build`** (including `@repo/electron`) before the app dev server — see [`desktop/AGENTS.md`](desktop/AGENTS.md).
 
 ## Choosing an app
 
-| Goal                                       | Where to work                                            |
-| ------------------------------------------ | -------------------------------------------------------- |
-| User-facing product / main Next experience | **`web`** — [`web/AGENTS.md`](web/AGENTS.md)             |
-| Backend API, Health, DB, Sync-Endpunkte    | **`api`** — [`api/AGENTS.md`](api/AGENTS.md)             |
-| Desktop-Fenster, Main/Preload, lokale IPC  | **`desktop`** — [`desktop/AGENTS.md`](desktop/AGENTS.md) |
-| iOS / Android (Expo, NativeWind)           | **`mobile`** — [`mobile/AGENTS.md`](mobile/AGENTS.md)    |
+| Goal                                          | Where to work                                            |
+| --------------------------------------------- | -------------------------------------------------------- |
+| User-facing product / main Next experience    | **`web`** — [`web/AGENTS.md`](web/AGENTS.md)             |
+| Backend API, Health, DB, Sync-Endpunkte       | **`api`** — [`api/AGENTS.md`](api/AGENTS.md)             |
+| Desktop-Fenster, Main/Preload, lokale IPC     | **`desktop`** — [`desktop/AGENTS.md`](desktop/AGENTS.md) |
+| iOS / Android (Expo)                          | **`mobile`** — [`mobile/AGENTS.md`](mobile/AGENTS.md)    |
 
 ## Next.js (`web`)
 

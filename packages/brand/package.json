@@ -3,15 +3,8 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "scripts": {
-    "generate:logo-desktop": "node ./scripts/generate-logo-desktop.mjs"
-  },
   "exports": {
     "./logo": "./assets/logo.png",
-    "./logo-desktop": "./assets/logo-desktop.png",
     "./logo-path": "./logo-path.ts"
-  },
-  "devDependencies": {
-    "jimp": "^1.6.0"
   }
 }

@@ -31,8 +31,8 @@ export async function generateMetadata(): Promise<Metadata> {
         ? "The all-in-one software for chimney sweeps, painters, and HVAC businesses."
         : "Die All-in-One Handwerkersoftware fuer Kaminfeger, Maler und SHK-Betriebe.",
     icons: {
-      icon: [{ url: brandLogo.src, type: "image/png", sizes: "512x512" }],
-      apple: [{ url: brandLogo.src, type: "image/png", sizes: "180x180" }],
+      icon: [{ url: brandLogo.src, type: "image/png", sizes: "1024x1024" }],
+      apple: [{ url: brandLogo.src, type: "image/png", sizes: "1024x1024" }],
     },
     other: {
       "content-language": locale,

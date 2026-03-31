@@ -4,13 +4,14 @@
 
 ## Purpose
 
-[`@repo/brand`](./package.json) holds **one** raster logo (`assets/logo.png`) used by **web** (Next.js metadata + UI).
+[`@repo/brand`](./package.json) holds **one** raster logo (`assets/logo.png`) for **web** (Next.js metadata + UI), **desktop** (Electron window / builder icons), and aligned static copies (e.g. `apps/web/public/logo.png`).
 
 ## Consumers
 
 | App / area | Usage                                                                                        |
 | ---------- | -------------------------------------------------------------------------------------------- |
 | `web`      | `import brandLogo from "@repo/brand/logo"` — `layout.tsx` `metadata.icons`, homepage `Image` |
+| `desktop`  | `require.resolve("@repo/brand/logo")` — window icon; `package.json` → electron-builder `icon` paths to `assets/logo.png` |
 
 ## Tasks
 

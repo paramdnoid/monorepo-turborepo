@@ -30,7 +30,7 @@ const SIDEBAR_WIDTH_ICON = "3rem";
 const SIDEBAR_KEYBOARD_SHORTCUT = "b";
 
 /** Intrinsic size of `@repo/brand/logo` (align with apps/web `BrandLogo` if the asset changes). */
-const BRAND_LOGO_INTRINSIC = { width: 775, height: 939 } as const;
+const BRAND_LOGO_INTRINSIC = { width: 1024, height: 1024 } as const;
 
 function getBrandLogoSrc(
   asset: string | { src: string; width: number; height: number },
