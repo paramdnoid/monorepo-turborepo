@@ -2,7 +2,7 @@
 
 **Read this when:** you work under `apps/` and need to know which application to edit or how Next.js apps relate to React Native.
 
-Context for applications under `apps/`: **Next.js** sites (`web`, `docs`), the **Hono** API (`api`), and the **React Native** app (`native`).
+Context for applications under `apps/`: **Next.js** sites (`web`, `docs`), the **Hono** API (`api`), **Electron** (`desktop`), and the **React Native** app (`native`).
 
 ## Apps at a glance
 
@@ -12,6 +12,7 @@ Context for applications under `apps/`: **Next.js** sites (`web`, `docs`), the *
 | `docs`   | Next.js 16.2    | Documentation site          | 3001                  | `docs`           |
 | `native` | RN + NativeWind | Mobile app (`nativeapp` id) | Metro (no fixed port) | `native`         |
 | `api`    | Hono + Drizzle  | Backend HTTP API            | 4000 (default `PORT`) | `api`            |
+| `desktop`| Electron + TS   | Desktop shell (IPC)         | — (native window)     | `desktop`        |
 
 Use **`pnpm exec turbo <task> --filter=<name>`** with the filter column value (see root [`AGENTS.md`](../AGENTS.md) for the full workspace name table).
 
@@ -23,6 +24,7 @@ Use **`pnpm exec turbo <task> --filter=<name>`** with the filter column value (s
 | Separate docs/marketing Next site (port 3001) | **`docs`** — [`docs/AGENTS.md`](docs/AGENTS.md)       |
 | iOS/Android, WebView shell, Metro, native UI  | **`native`** — [`native/AGENTS.md`](native/AGENTS.md) |
 | Backend API, Health, DB, Sync-Endpunkte       | **`api`** — [`api/AGENTS.md`](api/AGENTS.md)          |
+| Desktop-Fenster, Main/Preload, lokale IPC   | **`desktop`** — [`desktop/AGENTS.md`](desktop/AGENTS.md) |
 
 ## Next.js (`web`, `docs`)
 

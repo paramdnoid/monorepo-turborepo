@@ -4,7 +4,7 @@ This file provides context for AI coding agents working in this repository. **St
 
 ## Project Overview
 
-Turborepo monorepo containing two Next.js applications, one HTTP API (`apps/api`), one React Native application, and ten shared internal packages under `packages/`. Root package name: `my-turborepo`. Uses pnpm workspaces for dependency management and Turborepo for orchestrating builds and tasks across packages.
+Turborepo monorepo containing two Next.js applications, one HTTP API (`apps/api`), one Electron desktop app (`apps/desktop`), one React Native application, and ten shared internal packages under `packages/`. Root package name: `my-turborepo`. Uses pnpm workspaces for dependency management and Turborepo for orchestrating builds and tasks across packages.
 
 **Bootstrap:** clone the repo, then run `pnpm install` once at the repository root to install all workspace dependencies.
 
@@ -21,6 +21,7 @@ Turborepo **`--filter`** values must match each package’s **`name`** in its `p
 | `docs`                    | `apps/docs`                  | Documentation Next.js app                                 |
 | `native`                  | `apps/native`                | React Native app                                          |
 | `api`                     | `apps/api`                   | Hono HTTP API (PostgreSQL / Drizzle)                      |
+| `desktop`                 | `apps/desktop`               | Electron desktop app (TypeScript)                       |
 | `@repo/api-contracts`     | `packages/api-contracts`     | Shared Zod schemas & types (trades, sync batches)         |
 | `@repo/db`                | `packages/db`                | Drizzle schema & PostgreSQL client                        |
 | `@repo/ui`                | `packages/ui`                | Shared UI library                                         |
@@ -46,6 +47,7 @@ pnpm exec turbo check-types --filter=native
 | If you are…                                     | Read                                                                                   |
 | ----------------------------------------------- | -------------------------------------------------------------------------------------- |
 | Choosing or comparing apps                      | [`apps/AGENTS.md`](apps/AGENTS.md)                                                     |
+| Desktop (Electron)                            | [`apps/desktop/AGENTS.md`](apps/desktop/AGENTS.md)                                     |
 | Primary product / marketing site (Next)         | [`apps/web/AGENTS.md`](apps/web/AGENTS.md)                                             |
 | Docs site (Next)                                | [`apps/docs/AGENTS.md`](apps/docs/AGENTS.md)                                           |
 | Mobile: WebView, Metro, iOS/Android, NativeWind | [`apps/native/AGENTS.md`](apps/native/AGENTS.md)                                       |
@@ -64,7 +66,8 @@ More specific agent context lives next to the code:
 
 | Location                                                                       | Purpose                                                    |
 | ------------------------------------------------------------------------------ | ---------------------------------------------------------- |
-| [`apps/AGENTS.md`](apps/AGENTS.md)                                             | All apps: Next.js (`web`, `docs`), API (`api`), RN (`native`) |
+| [`apps/AGENTS.md`](apps/AGENTS.md)                                             | All apps: Next.js (`web`, `docs`), API (`api`), Electron (`desktop`), RN (`native`) |
+| [`apps/desktop/AGENTS.md`](apps/desktop/AGENTS.md)                             | Electron desktop app                                       |
 | [`apps/api/AGENTS.md`](apps/api/AGENTS.md)                                     | Hono HTTP API, PostgreSQL / Drizzle                        |
 | [`apps/web/AGENTS.md`](apps/web/AGENTS.md)                                     | Primary web app (port 3000)                                |
 | [`apps/docs/AGENTS.md`](apps/docs/AGENTS.md)                                   | Documentation site (port 3001)                             |
@@ -85,6 +88,7 @@ apps/
   web/                 → Next.js application (primary web app, port 3000)
   docs/                → Next.js application (documentation site, port 3001)
   api/                 → Hono HTTP API (default port 4000)
+  desktop/             → Electron desktop application (TypeScript)
   native/              → React Native application (bundle id / project: nativeapp)
 packages/
   api-contracts/     → Shared Zod types & API contracts (@repo/api-contracts)
