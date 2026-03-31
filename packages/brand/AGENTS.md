@@ -4,7 +4,19 @@
 
 ## Purpose
 
-[`@repo/brand`](./package.json) holds **one** raster logo (`assets/logo.png`) for **web** (Next.js metadata + UI), **desktop** (Electron window / builder icons), and aligned static copies (e.g. `apps/web/public/logo.png`).
+[`@repo/brand`](./package.json) — **Kanal für das Logo:** die Datei **[`assets/logo.png`](./assets/logo.png)** ist die **einzige Quelle** (exakt dieses Raster für Web, Desktop und abgeleitete Mobile-Assets).
+
+**Next.js-Favicons** (App-Router-Dateikonventionen, nicht nur `metadata.icons`): nach `pnpm generate:icons` liegen u. a. [`apps/web/app/favicon.ico`](../../apps/web/app/favicon.ico), [`icon.png`](../../apps/web/app/icon.png), [`apple-icon.png`](../../apps/web/app/apple-icon.png) vor.
+
+Nach dem **Ersetzen** von `assets/logo.png` die Kopien für Web/Expo neu erzeugen:
+
+```sh
+pnpm generate:icons
+```
+
+(=`turbo run generate:icons --filter=@repo/brand`, siehe [`scripts/generate-icons.mjs`](./scripts/generate-icons.mjs) — **überschreibt nicht** `assets/logo.png`, nur `apps/web/public/logo.png` und `apps/mobile/assets/*`.)
+
+**Desktop (Electron):** nach Logo-Tausch zusätzlich **`pnpm generate:electron-icons`** ausführen (baut `apps/desktop/resources/icon.{icns,ico,png}` aus derselben `logo.png`).
 
 ## Consumers
 
@@ -15,7 +27,7 @@
 
 ## Tasks
 
-No `lint` / `check-types` / `build` — validation runs via dependent apps.
+No `lint` / `check-types` / `build` — validation runs through dependent apps.
 
 ## Monorepo context
 

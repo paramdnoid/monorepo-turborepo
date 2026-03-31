@@ -10,8 +10,8 @@ const rootDir = path.resolve(scriptDir, "..");
 const checks = [
   {
     file: "apps/web/app/layout.tsx",
-    reason: "Web root layout must use the shared brand asset (favicon/metadata).",
-    mustInclude: ['from "@repo/brand/logo"'],
+    reason: "Web root layout must document favicons from brand logo (app/favicon.ico etc.).",
+    mustInclude: ["app/favicon.ico"],
   },
   {
     file: "apps/web/app/page.tsx",

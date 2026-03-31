@@ -54,6 +54,8 @@ pnpm install
 | `pnpm test`        | Führt verfügbare Test-Tasks aus (siehe `package.json` in `web`, `api`, …)        |
 | `pnpm e2e`         | Führt E2E-Tests aus (Playwright-Package, falls betroffen/konfiguriert)         |
 | `pnpm format`      | Formatiert TypeScript/Markdown gemäß Root-Prettier-Setup                        |
+| `pnpm generate:icons` | Kopiert/skalisiert `packages/brand/assets/logo.png` → Web-Public + Expo-Assets (ohne die Quelle zu überschreiben) |
+| `pnpm generate:electron-icons` | Baut `apps/desktop/resources/icon.icns` / `.ico` / `.png` für electron-builder (aus `logo.png`) |
 
 ## Gefilterte Turbo-Beispiele
 

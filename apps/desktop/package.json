@@ -10,13 +10,14 @@
     "start": "pnpm --filter @repo/electron run build && tsc && vite build && electron .",
     "lint": "eslint . --max-warnings 0",
     "check-types": "tsc --noEmit && tsc --noEmit -p tsconfig.renderer.json",
-    "dist": "pnpm --filter @repo/electron run build && pnpm run build && electron-builder",
-    "dist:dir": "pnpm --filter @repo/electron run build && pnpm run build && electron-builder --dir"
+    "generate:electron-icons": "node ./scripts/generate-electron-icons.mjs",
+    "dist": "pnpm run generate:electron-icons && pnpm --filter @repo/electron run build && pnpm run build && electron-builder",
+    "dist:dir": "pnpm run generate:electron-icons && pnpm --filter @repo/electron run build && pnpm run build && electron-builder --dir"
   },
   "dependencies": {
     "@repo/brand": "workspace:*",
-    "@repo/fonts": "workspace:*",
     "@repo/electron": "workspace:*",
+    "@repo/fonts": "workspace:*",
     "@repo/tailwind-config": "workspace:*",
     "@repo/ui": "workspace:*",
     "lucide-react": "^1.7.0",
@@ -35,6 +36,8 @@
     "electron": "^34.5.8",
     "electron-builder": "^26.8.1",
     "eslint": "^9.39.1",
+    "png2icons": "^2.0.1",
+    "sharp": "^0.34.1",
     "tailwindcss": "^4.2.2",
     "typescript": "5.9.2",
     "vite": "^6.3.5",
@@ -42,23 +45,31 @@
   },
   "build": {
     "appId": "com.zgwerkrepo.desktop",
-    "productName": "Turborepo Desktop",
+    "productName": "ZunftGewerk - Software für Handwerksbetriebe",
     "asar": true,
     "directories": {
-      "output": "release"
+      "output": "release",
+      "buildResources": "resources"
     },
     "mac": {
-      "icon": "../../packages/brand/assets/logo.png",
+      "icon": "resources/icon.icns",
       "category": "public.app-category.developer-tools",
-      "target": ["dmg", "zip"]
+      "target": [
+        "dmg",
+        "zip"
+      ]
     },
     "win": {
-      "icon": "../../packages/brand/assets/logo.png",
-      "target": ["nsis"]
+      "icon": "resources/icon.ico",
+      "target": [
+        "nsis"
+      ]
     },
     "linux": {
-      "icon": "../../packages/brand/assets/logo.png",
-      "target": ["AppImage"]
+      "icon": "resources/icon.png",
+      "target": [
+        "AppImage"
+      ]
     }
   }
 }

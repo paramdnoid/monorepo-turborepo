@@ -8,7 +8,7 @@
 
 | Path | Role |
 | ---- | ---- |
-| [`app/layout.tsx`](app/layout.tsx) | Root layout: Geist, `@repo/brand/logo` (icons/metadata), `<Providers>`, `LocaleProvider`, `generateMetadata` |
+| [`app/layout.tsx`](app/layout.tsx) | Root layout: Geist, `<Providers>`, `LocaleProvider`, `generateMetadata` — **Favicons** über [`app/favicon.ico`](app/favicon.ico), [`app/icon.png`](app/icon.png), [`app/apple-icon.png`](app/apple-icon.png) (aus `@repo/brand` via `pnpm generate:icons`) |
 | [`app/page.tsx`](app/page.tsx) | Landing: marketing sections, JSON-LD, `getUiText` / `getServerLocale` |
 | [`app/onboarding/`](app/onboarding/) | Onboarding wizard (server page + client components) |
 | [`app/legal/`](app/legal/) | Imprint, privacy, terms (`layout` + `SiteFooter` / `LegalHeader`) |

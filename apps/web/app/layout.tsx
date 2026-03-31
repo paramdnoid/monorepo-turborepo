@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import brandLogo from "@repo/brand/logo";
 import { geistMono, geistSans } from "@repo/fonts/geist";
 import { Providers } from "@repo/ui/providers";
 
@@ -30,10 +29,7 @@ export async function generateMetadata(): Promise<Metadata> {
       locale === "en"
         ? "The all-in-one software for chimney sweeps, painters, and HVAC businesses."
         : "Die All-in-One Handwerkersoftware fuer Kaminfeger, Maler und SHK-Betriebe.",
-    icons: {
-      icon: [{ url: brandLogo.src, type: "image/png", sizes: "1024x1024" }],
-      apple: [{ url: brandLogo.src, type: "image/png", sizes: "1024x1024" }],
-    },
+    // Favicons: `app/favicon.ico`, `app/icon.png`, `app/apple-icon.png` (generiert aus @repo/brand/logo.png)
     other: {
       "content-language": locale,
     },

@@ -55,6 +55,12 @@
       "cache": false,
       "passThroughEnv": ["PLAYWRIGHT_*"]
     },
+    "generate:icons": {
+      "cache": false
+    },
+    "generate:electron-icons": {
+      "cache": false
+    },
     "//#lint:design-guardrails": {
       "cache": false,
       "inputs": [

@@ -32,6 +32,9 @@ pnpm exec turbo run check-types --filter=desktop
 | `components.json`                         | shadcn-CLI-Aliases (wie `web`)                             |
 | `dist/main.js`, `dist/preload.js`         | Ausgabe `tsc`                                                |
 | `dist/renderer/`                          | Ausgabe `vite build` (`index.html`, Assets)                  |
+| [`resources/`](./resources/)              | Electron-Builder-Assets: **`icon.icns`** (macOS), **`icon.ico`** (Windows), **`icon.png`** (Linux) — aus `@repo/brand/logo.png` via [`scripts/generate-electron-icons.mjs`](./scripts/generate-electron-icons.mjs) |
+
+**Icons aktualisieren:** `pnpm generate:electron-icons` (Root) oder `pnpm --filter desktop run generate:electron-icons`. **`pnpm run dist`** / **`dist:dir`** rufen die Generierung automatisch vor dem Packen auf.
 
 ## Monorepo
 

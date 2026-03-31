@@ -137,6 +137,12 @@ importers:
       eslint:
         specifier: ^9.39.1
         version: 9.39.1(jiti@2.6.1)
+      png2icons:
+        specifier: ^2.0.1
+        version: 2.0.1
+      sharp:
+        specifier: ^0.34.1
+        version: 0.34.5
       tailwindcss:
         specifier: ^4.2.2
         version: 4.2.2
@@ -291,7 +297,14 @@ importers:
         specifier: 5.9.2
         version: 5.9.2
 
-  packages/brand: {}
+  packages/brand:
+    devDependencies:
+      png2icons:
+        specifier: ^2.0.1
+        version: 2.0.1
+      sharp:
+        specifier: ^0.34.1
+        version: 0.34.5
 
   packages/db:
     dependencies:
@@ -5861,6 +5874,10 @@ packages:
     resolution: {integrity: sha512-uysumyrvkUX0rX/dEVqt8gC3sTBzd4zoWfLeS29nb53imdaXVvLINYXTI2GNqzaMuvacNx4uJQ8+b3zXR0pkgQ==}
     engines: {node: '>=10.4.0'}
 
+  png2icons@2.0.1:
+    resolution: {integrity: sha512-GDEQJr8OG4e6JMp7mABtXFSEpgJa1CCpbQiAR+EjhkHJHnUL9zPPtbOrjsMD8gUbikgv3j7x404b0YJsV3aVFA==}
+    hasBin: true
+
   pngjs@3.4.0:
     resolution: {integrity: sha512-NCrCHhWmnQklfH4MtJMRjZ2a8c80qXeMlQMv2uVp9ISJMTt562SbGd6n2oq0PaPgKm7Z6pL9E2UlLIhC+SHL3w==}
     engines: {node: '>=4.0.0'}
@@ -8410,8 +8427,7 @@ snapshots:
 
   '@humanwhocodes/retry@0.4.3': {}
 
-  '@img/colour@1.0.0':
-    optional: true
+  '@img/colour@1.0.0': {}
 
   '@img/sharp-darwin-arm64@0.34.5':
     optionalDependencies:
@@ -13911,6 +13927,8 @@ snapshots:
       base64-js: 1.5.1
       xmlbuilder: 15.1.1
 
+  png2icons@2.0.1: {}
+
   pngjs@3.4.0: {}
 
   possible-typed-array-names@1.1.0: {}
@@ -14640,7 +14658,6 @@ snapshots:
       '@img/sharp-win32-arm64': 0.34.5
       '@img/sharp-win32-ia32': 0.34.5
       '@img/sharp-win32-x64': 0.34.5
-    optional: true
 
   shebang-command@2.0.0:
     dependencies:

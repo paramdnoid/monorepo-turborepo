@@ -9,6 +9,15 @@
     },
     "build": {
       "outputs": ["dist/**"]
+    },
+    "generate:electron-icons": {
+      "cache": false,
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/packages/brand/assets/logo.png",
+        "$TURBO_ROOT$/apps/desktop/scripts/generate-electron-icons.mjs"
+      ],
+      "outputs": ["resources/**"]
     }
   }
 }

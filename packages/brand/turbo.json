@@ -1,5 +1,11 @@
 {
   "$schema": "https://turborepo.dev/schema.json",
   "extends": ["//"],
-  "tags": ["pkg"]
+  "tags": ["pkg"],
+  "tasks": {
+    "generate:icons": {
+      "cache": false,
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/brand/assets/logo.png"]
+    }
+  }
 }

@@ -11,7 +11,9 @@
     "test": "turbo run test",
     "e2e": "turbo run e2e",
     "boundaries": "turbo boundaries",
-    "keycloak:bootstrap": "node scripts/keycloak-bootstrap.mjs"
+    "keycloak:bootstrap": "node scripts/keycloak-bootstrap.mjs",
+    "generate:icons": "turbo run generate:icons --filter=@repo/brand",
+    "generate:electron-icons": "turbo run generate:electron-icons --filter=desktop"
   },
   "devDependencies": {
     "prettier": "^3.7.4",
