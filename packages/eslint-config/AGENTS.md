@@ -6,11 +6,12 @@
 
 Shared **ESLint v9 flat configs** for the monorepo (`@repo/eslint-config`). Entry points:
 
-| Export                               | File                       | Used by                                                                                        |
-| ------------------------------------ | -------------------------- | ---------------------------------------------------------------------------------------------- |
-| `@repo/eslint-config/base`           | `base.js`                  | Rarely imported directly; building block                                                       |
-| `@repo/eslint-config/next-js`        | `next.js` (`nextJsConfig`) | [`apps/web`](../../apps/web/eslint.config.js) |
-| `@repo/eslint-config/react-internal` | `react-internal.js`        | [`packages/ui`](../../packages/ui/eslint.config.mjs)                                           |
+| Export                               | File                       | Used by                                                                         |
+| ------------------------------------ | -------------------------- | ------------------------------------------------------------------------------- |
+| `@repo/eslint-config/base`           | `base.js`                  | Rarely imported directly; building block                                        |
+| `@repo/eslint-config/next-js`        | `next.js` (`nextJsConfig`) | [`apps/web`](../../apps/web/eslint.config.js)                                   |
+| `@repo/eslint-config/react-internal` | `react-internal.js`        | [`packages/ui`](../../packages/ui/eslint.config.mjs)                            |
+| `@repo/eslint-config/react-native`   | `react-native.js`          | [`apps/mobile`](../../apps/mobile/eslint.config.mjs) (no `eslint-plugin-turbo`) |
 
 `next.js` also wires a local custom plugin from [`design-guardrails-plugin.js`](./design-guardrails-plugin.js) that enforces starter-page content contracts for:
 

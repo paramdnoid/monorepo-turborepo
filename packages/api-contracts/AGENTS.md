@@ -21,7 +21,7 @@ Tests use Node’s test runner via **`tsx --test`** (see `package.json` → `tes
 
 ## Workspace
 
-- **Consumers:** [`apps/api`](../../apps/api), [`apps/web`](../../apps/web) (and others via `workspace:*`).
+- **Consumers:** [`apps/api`](../../apps/api), [`apps/web`](../../apps/web), [`apps/mobile`](../../apps/mobile) (and others via `workspace:*`).
 - **Database schema** lives in [`@repo/db`](../db/AGENTS.md), not here.
 
 ## Monorepo

@@ -4,7 +4,7 @@ This file provides context for AI coding agents working in this repository. **St
 
 ## Project Overview
 
-Turborepo monorepo containing one Next.js application, one HTTP API (`apps/api`), one Electron desktop app (`apps/desktop`), and shared internal packages under `packages/`. Root package name: `my-turborepo`. Uses pnpm workspaces for dependency management and Turborepo for orchestrating builds and tasks across packages.
+Turborepo monorepo containing one Next.js application, one HTTP API (`apps/api`), one Electron desktop app (`apps/desktop`), one Expo React Native app (`apps/mobile`), and shared internal packages under `packages/`. Root package name: `my-turborepo`. Uses pnpm workspaces for dependency management and Turborepo for orchestrating builds and tasks across packages.
 
 **Bootstrap:** clone the repo, then run `pnpm install` once at the repository root to install all workspace dependencies.
 
@@ -20,6 +20,7 @@ Turborepo **`--filter`** values must match each package’s **`name`** in its `p
 | `web`                     | `apps/web`                   | Primary Next.js app                                       |
 | `api`                     | `apps/api`                   | Hono HTTP API (PostgreSQL / Drizzle)                      |
 | `desktop`                 | `apps/desktop`               | Electron desktop app (TypeScript)                         |
+| `mobile`                  | `apps/mobile`                | Expo (React Native), NativeWind; Expo Go / simulators     |
 | `@repo/api-contracts`     | `packages/api-contracts`     | Shared Zod schemas & types (trades, sync batches)         |
 | `@repo/db`                | `packages/db`                | Drizzle schema & PostgreSQL client                        |
 | `@repo/ui`                | `packages/ui`                | Shared UI library                                         |
@@ -44,41 +45,43 @@ pnpm exec turbo run check-types --filter=@repo/ui
 
 ## Agent navigation (what to open for which task)
 
-| If you are…                                     | Read                                                                                                                              |
-| ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| Choosing or comparing apps                      | [`apps/AGENTS.md`](apps/AGENTS.md)                                                                                                |
-| Desktop (Electron)                              | [`apps/desktop/AGENTS.md`](apps/desktop/AGENTS.md); shared IPC/types [`packages/electron/AGENTS.md`](packages/electron/AGENTS.md) |
-| Primary product / marketing site (Next)         | [`apps/web/AGENTS.md`](apps/web/AGENTS.md)                                                                                        |
-| Shared React components, tokens, `globals.css`  | [`packages/ui/AGENTS.md`](packages/ui/AGENTS.md)                                                                                  |
-| Shared local fonts (Geist) for Next.js layouts  | [`packages/fonts/AGENTS.md`](packages/fonts/AGENTS.md)                                                                            |
-| Shared logo / app icon source (PNG)             | [`packages/brand/AGENTS.md`](packages/brand/AGENTS.md)                                                                            |
-| Shared Zod API contracts (trades, sync)         | [`packages/api-contracts/AGENTS.md`](packages/api-contracts/AGENTS.md)                                                            |
-| Drizzle schema / PostgreSQL client              | [`packages/db/AGENTS.md`](packages/db/AGENTS.md)                                                                                  |
-| ESLint rules shared across Next + UI            | [`packages/eslint-config/AGENTS.md`](packages/eslint-config/AGENTS.md)                                                            |
-| `tsconfig` bases for Next and libraries         | [`packages/typescript-config/AGENTS.md`](packages/typescript-config/AGENTS.md)                                                    |
-| Shared Tailwind / PostCSS wiring                | [`packages/tailwind-config/AGENTS.md`](packages/tailwind-config/AGENTS.md)                                                        |
-| Web E2E (Playwright)                            | [`packages/playwright-web/AGENTS.md`](packages/playwright-web/AGENTS.md)                                                          |
+| If you are…                                    | Read                                                                                                                              |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Choosing or comparing apps                     | [`apps/AGENTS.md`](apps/AGENTS.md)                                                                                                |
+| Desktop (Electron)                             | [`apps/desktop/AGENTS.md`](apps/desktop/AGENTS.md); shared IPC/types [`packages/electron/AGENTS.md`](packages/electron/AGENTS.md) |
+| Primary product / marketing site (Next)        | [`apps/web/AGENTS.md`](apps/web/AGENTS.md)                                                                                        |
+| Expo / React Native (`mobile`)                 | [`apps/mobile/AGENTS.md`](apps/mobile/AGENTS.md)                                                                                  |
+| Shared React components, tokens, `globals.css` | [`packages/ui/AGENTS.md`](packages/ui/AGENTS.md)                                                                                  |
+| Shared local fonts (Geist) for Next.js layouts | [`packages/fonts/AGENTS.md`](packages/fonts/AGENTS.md)                                                                            |
+| Shared logo / app icon source (PNG)            | [`packages/brand/AGENTS.md`](packages/brand/AGENTS.md)                                                                            |
+| Shared Zod API contracts (trades, sync)        | [`packages/api-contracts/AGENTS.md`](packages/api-contracts/AGENTS.md)                                                            |
+| Drizzle schema / PostgreSQL client             | [`packages/db/AGENTS.md`](packages/db/AGENTS.md)                                                                                  |
+| ESLint rules shared across Next + UI           | [`packages/eslint-config/AGENTS.md`](packages/eslint-config/AGENTS.md)                                                            |
+| `tsconfig` bases for Next and libraries        | [`packages/typescript-config/AGENTS.md`](packages/typescript-config/AGENTS.md)                                                    |
+| Shared Tailwind / PostCSS wiring               | [`packages/tailwind-config/AGENTS.md`](packages/tailwind-config/AGENTS.md)                                                        |
+| Web E2E (Playwright)                           | [`packages/playwright-web/AGENTS.md`](packages/playwright-web/AGENTS.md)                                                          |
 
 ## Where to Look Next
 
 More specific agent context lives next to the code:
 
-| Location                                                                       | Purpose                                                                             |
-| ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------- |
-| [`apps/AGENTS.md`](apps/AGENTS.md)                                             | All apps: Next.js (`web`), API (`api`), Electron (`desktop`)                       |
-| [`apps/desktop/AGENTS.md`](apps/desktop/AGENTS.md)                             | Electron desktop app                                                                |
-| [`packages/electron/AGENTS.md`](packages/electron/AGENTS.md)                   | Shared `@repo/electron` IPC / desktop API types                                     |
-| [`apps/api/AGENTS.md`](apps/api/AGENTS.md)                                     | Hono HTTP API, PostgreSQL / Drizzle                                                 |
-| [`apps/web/AGENTS.md`](apps/web/AGENTS.md)                                     | Primary web app (port 3000)                                                         |
-| [`packages/ui/AGENTS.md`](packages/ui/AGENTS.md)                               | Shared `@repo/ui` component library                                                 |
-| [`packages/fonts/AGENTS.md`](packages/fonts/AGENTS.md)                         | Shared Geist typography (`@repo/fonts`) for `web`                                 |
-| [`packages/brand/AGENTS.md`](packages/brand/AGENTS.md)                         | Shared logo / favicon (`@repo/brand`)                                               |
-| [`packages/api-contracts/AGENTS.md`](packages/api-contracts/AGENTS.md)         | Shared Zod contracts (`@repo/api-contracts`)                                        |
-| [`packages/db/AGENTS.md`](packages/db/AGENTS.md)                               | Drizzle schema & client (`@repo/db`)                                                |
-| [`packages/eslint-config/AGENTS.md`](packages/eslint-config/AGENTS.md)         | Shared ESLint configs (`@repo/eslint-config`)                                       |
-| [`packages/typescript-config/AGENTS.md`](packages/typescript-config/AGENTS.md) | Shared TypeScript bases (`@repo/typescript-config`)                                 |
-| [`packages/tailwind-config/AGENTS.md`](packages/tailwind-config/AGENTS.md)     | Shared styles + PostCSS (`@repo/tailwind-config`)                                   |
-| [`packages/playwright-web/AGENTS.md`](packages/playwright-web/AGENTS.md)       | Playwright smoke/E2E for `web` (`@repo/playwright-web`)                             |
+| Location                                                                       | Purpose                                                                       |
+| ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
+| [`apps/AGENTS.md`](apps/AGENTS.md)                                             | All apps: Next.js (`web`), API (`api`), Electron (`desktop`), Expo (`mobile`) |
+| [`apps/desktop/AGENTS.md`](apps/desktop/AGENTS.md)                             | Electron desktop app                                                          |
+| [`packages/electron/AGENTS.md`](packages/electron/AGENTS.md)                   | Shared `@repo/electron` IPC / desktop API types                               |
+| [`apps/api/AGENTS.md`](apps/api/AGENTS.md)                                     | Hono HTTP API, PostgreSQL / Drizzle                                           |
+| [`apps/web/AGENTS.md`](apps/web/AGENTS.md)                                     | Primary web app (port 3000)                                                   |
+| [`apps/mobile/AGENTS.md`](apps/mobile/AGENTS.md)                               | Expo app (`mobile`), NativeWind                                               |
+| [`packages/ui/AGENTS.md`](packages/ui/AGENTS.md)                               | Shared `@repo/ui` component library                                           |
+| [`packages/fonts/AGENTS.md`](packages/fonts/AGENTS.md)                         | Shared Geist typography (`@repo/fonts`) for `web`                             |
+| [`packages/brand/AGENTS.md`](packages/brand/AGENTS.md)                         | Shared logo / favicon (`@repo/brand`)                                         |
+| [`packages/api-contracts/AGENTS.md`](packages/api-contracts/AGENTS.md)         | Shared Zod contracts (`@repo/api-contracts`)                                  |
+| [`packages/db/AGENTS.md`](packages/db/AGENTS.md)                               | Drizzle schema & client (`@repo/db`)                                          |
+| [`packages/eslint-config/AGENTS.md`](packages/eslint-config/AGENTS.md)         | Shared ESLint configs (`@repo/eslint-config`)                                 |
+| [`packages/typescript-config/AGENTS.md`](packages/typescript-config/AGENTS.md) | Shared TypeScript bases (`@repo/typescript-config`)                           |
+| [`packages/tailwind-config/AGENTS.md`](packages/tailwind-config/AGENTS.md)     | Shared styles + PostCSS (`@repo/tailwind-config`)                             |
+| [`packages/playwright-web/AGENTS.md`](packages/playwright-web/AGENTS.md)       | Playwright smoke/E2E for `web` (`@repo/playwright-web`)                       |
 
 ## Monorepo Structure
 
@@ -87,6 +90,7 @@ apps/
   web/                 → Next.js application (primary web app, port 3000)
   api/                 → Hono HTTP API (default port 4000)
   desktop/             → Electron desktop application (TypeScript)
+  mobile/              → Expo React Native application (NativeWind)
 packages/
   api-contracts/     → Shared Zod types & API contracts (@repo/api-contracts)
   db/                  → Drizzle schema & PostgreSQL client (@repo/db)
@@ -132,7 +136,7 @@ prettier --write "**/*.{ts,tsx,md}"
 
 (Defined in root [`package.json`](package.json).)
 
-**`pnpm dev`:** runs `turbo run dev` for **every** workspace package that defines a `dev` script — **`web`**, **`api`**, and **`desktop`** — which starts many parallel processes. For everyday work, prefer **`pnpm exec turbo run dev --filter=<name>`** for a single app.
+**`pnpm dev`:** runs `turbo run dev` for **every** workspace package that defines a `dev` script — **`web`**, **`api`**, **`desktop`**, and **`mobile`** — which starts many parallel processes. For everyday work, prefer **`pnpm exec turbo run dev --filter=<name>`** for a single app.
 
 `pnpm lint` also runs the root Turbo task `lint:design-guardrails` ([`check-design-guardrails.mjs`](check-design-guardrails.mjs)) after workspace linting.
 
