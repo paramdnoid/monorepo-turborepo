@@ -251,6 +251,9 @@ async function ensureDesktopOauthClient(token) {
       ...(existing ?? []),
       callbackUri,
       `${redirectBase}/*`,
+      /* Electron wählt ggf. einen freien Port (47823… oder OS); Wildcard erlaubt jeden Port auf 127.0.0.1 */
+      "http://127.0.0.1:*",
+      "http://127.0.0.1:*/*",
     ]);
     return [...set];
   };

@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import { Hono } from "hono";
+import { cors } from "hono/cors";
 
 import { TRADE_SLUGS } from "@repo/api-contracts";
 
@@ -35,6 +36,26 @@ export function createApp(options?: CreateAppOptions) {
   const syncHandler = createSyncHandler(getDb);
 
   const app = new Hono();
+
+  /** Desktop (Vite :5173) und Web (:3000) rufen die API cross-origin auf — sonst „Failed to fetch“ (CORS). */
+  const corsOrigins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    ...(process.env.API_CORS_ORIGINS?.split(",")
+      .map((s) => s.trim())
+      .filter(Boolean) ?? []),
+  ];
+  app.use(
+    "*",
+    cors({
+      origin: corsOrigins,
+      allowHeaders: ["Authorization", "Content-Type"],
+      allowMethods: ["GET", "POST", "OPTIONS", "HEAD"],
+      maxAge: 86400,
+    }),
+  );
 
   app.use("*", requestContextMiddleware());
 

@@ -36,7 +36,6 @@ export type OidcResolvedConfig = {
   authorizationEndpoint: string;
   tokenEndpoint: string;
   clientId: string;
-  redirectPort: number;
   redirectPath: string;
 };
 
@@ -62,7 +61,6 @@ export function getOidcConfig(): OidcResolvedConfig | null {
   if (!issuer) {
     return null;
   }
-  const port = Number(process.env.DESKTOP_OAUTH_REDIRECT_PORT) || 47823;
   const redirectPath =
     process.env.DESKTOP_OAUTH_REDIRECT_PATH?.trim() || "/callback";
   return {
@@ -70,7 +68,6 @@ export function getOidcConfig(): OidcResolvedConfig | null {
     authorizationEndpoint: `${issuer}/protocol/openid-connect/auth`,
     tokenEndpoint: `${issuer}/protocol/openid-connect/token`,
     clientId,
-    redirectPort: port,
     redirectPath,
   };
 }

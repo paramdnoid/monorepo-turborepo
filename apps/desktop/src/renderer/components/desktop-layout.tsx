@@ -221,13 +221,17 @@ export function DesktopLayout() {
             </h2>
             <p className="mb-4 text-sm text-muted-foreground">
               Authorization Code mit PKCE; Tokens werden im Benutzerprofil
-              gespeichert. Redirect:{" "}
+              gespeichert. Redirect: freier Port auf{" "}
               <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
-                http://127.0.0.1:47823/callback
+                127.0.0.1
               </code>{" "}
-              (Port über{" "}
+              (Keycloak:{" "}
               <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
-                DESKTOP_OAUTH_REDIRECT_PORT
+                http://127.0.0.1:*
+              </code>{" "}
+              — siehe{" "}
+              <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
+                pnpm keycloak:bootstrap
               </code>
               ).
             </p>

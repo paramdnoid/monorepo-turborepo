@@ -76,6 +76,62 @@ export async function refreshAccessToken(
   return res.json() as Promise<TokenBundle>;
 }
 
+/**
+ * Ports zum Binden: optional DESKTOP_OAUTH_REDIRECT_PORT, dann 47823–47833, zuletzt 0 (OS wählt frei).
+ * Keycloak „Valid redirect URIs“ muss `http://127.0.0.1:*` o. ä. erlauben (siehe keycloak-bootstrap).
+ */
+function candidateListenPorts(): number[] {
+  const fromEnv = Number(process.env.DESKTOP_OAUTH_REDIRECT_PORT);
+  const list: number[] = [];
+  if (Number.isFinite(fromEnv) && fromEnv > 0 && fromEnv < 65536) {
+    list.push(fromEnv);
+  }
+  for (let p = 47823; p <= 47833; p += 1) {
+    if (!list.includes(p)) {
+      list.push(p);
+    }
+  }
+  if (!list.includes(0)) {
+    list.push(0);
+  }
+  return list;
+}
+
+async function listenOAuthServer(
+  handler: http.RequestListener,
+): Promise<http.Server> {
+  const ports = candidateListenPorts();
+  let lastErr: Error | undefined;
+  for (const port of ports) {
+    const server = http.createServer(handler);
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const onErr = (e: Error) => {
+          reject(e);
+        };
+        server.once("error", onErr);
+        server.listen(port, "127.0.0.1", () => {
+          server.removeListener("error", onErr);
+          resolve();
+        });
+      });
+      return server;
+    } catch (e) {
+      lastErr = e instanceof Error ? e : new Error(String(e));
+      const code = (e as NodeJS.ErrnoException)?.code;
+      server.close();
+      if (code === "EADDRINUSE") {
+        continue;
+      }
+      throw lastErr;
+    }
+  }
+  throw new Error(
+    lastErr?.message ??
+      "Kein freier Port für OAuth-Callback (EADDRINUSE überall).",
+  );
+}
+
 export async function runAuthorizationCodeFlow(
   config: OidcResolvedConfig,
 ): Promise<TokenBundle> {
@@ -85,22 +141,13 @@ export async function runAuthorizationCodeFlow(
   );
   const state = base64url(randomBytes(16));
   const redirectPath = normalizeRedirectPath(config.redirectPath);
-  const redirectUri = `http://127.0.0.1:${String(config.redirectPort)}${redirectPath}`;
-
-  const params = new URLSearchParams({
-    client_id: config.clientId,
-    redirect_uri: redirectUri,
-    response_type: "code",
-    scope: "openid profile email offline_access",
-    state,
-    code_challenge: challenge,
-    code_challenge_method: "S256",
-  });
-  const authUrl = `${config.authorizationEndpoint}?${params.toString()}`;
 
   return new Promise((resolve, reject) => {
     let settled = false;
     let win: BrowserWindow | null = null;
+    let server: http.Server | null = null;
+    /** Gültiger ?code=-Callback — Fenster darf schließen, Token-Tausch läuft noch async. */
+    let oauthCallbackAccepted = false;
 
     const finish = (fn: () => void) => {
       if (settled) return;
@@ -108,13 +155,23 @@ export async function runAuthorizationCodeFlow(
       fn();
     };
 
-    const server = http.createServer((req, res) => {
+    const handler: http.RequestListener = (req, res) => {
+      if (!server) {
+        res.writeHead(500);
+        res.end();
+        return;
+      }
+      const addr = server.address();
+      const port =
+        addr && typeof addr !== "string" ? addr.port : 0;
+      const redirectUri = `http://127.0.0.1:${String(port)}${redirectPath}`;
+
       if (!req.url) {
         res.writeHead(400);
         res.end();
         return;
       }
-      const url = new URL(req.url, `http://127.0.0.1:${String(config.redirectPort)}`);
+      const url = new URL(req.url, `http://127.0.0.1:${String(port)}`);
       if (url.pathname !== redirectPath) {
         res.writeHead(404);
         res.end();
@@ -153,9 +210,11 @@ export async function runAuthorizationCodeFlow(
         return;
       }
 
+      oauthCallbackAccepted = true;
+
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
       res.end(
-        '<!doctype html><html><body><p>Anmeldung OK. Dieses Fenster kann geschlossen werden.</p><script>window.close()</script></body></html>',
+        "<!doctype html><html><body><p>Anmeldung OK, Token wird geholt …</p></body></html>",
       );
       server.close();
 
@@ -172,35 +231,62 @@ export async function runAuthorizationCodeFlow(
           });
           win?.destroy();
         });
-    });
+    };
 
-    server.on("error", (e: NodeJS.ErrnoException) => {
-      finish(() => {
-        reject(
-          new Error(
-            `OAuth-Redirect-Port ${String(config.redirectPort)}: ${e.message}`,
-          ),
-        );
-      });
-    });
+    void (async () => {
+      try {
+        server = await listenOAuthServer(handler);
+        const addr = server.address();
+        const port =
+          addr && typeof addr !== "string" ? addr.port : 0;
+        const redirectUri = `http://127.0.0.1:${String(port)}${redirectPath}`;
 
-    server.listen(config.redirectPort, "127.0.0.1", () => {
-      win = new BrowserWindow({
-        width: 520,
-        height: 720,
-        show: true,
-        webPreferences: {
-          nodeIntegration: false,
-          contextIsolation: true,
-        },
-      });
-      win.on("closed", () => {
-        win = null;
-        finish(() => {
-          reject(new Error("login_cancelled"));
+        const params = new URLSearchParams({
+          client_id: config.clientId,
+          redirect_uri: redirectUri,
+          response_type: "code",
+          scope: "openid profile email offline_access",
+          state,
+          code_challenge: challenge,
+          code_challenge_method: "S256",
         });
-      });
-      void win.loadURL(authUrl);
-    });
+        const authUrl = `${config.authorizationEndpoint}?${params.toString()}`;
+
+        win = new BrowserWindow({
+          width: 520,
+          height: 720,
+          show: true,
+          webPreferences: {
+            nodeIntegration: false,
+            contextIsolation: true,
+          },
+        });
+        win.on("closed", () => {
+          win = null;
+          try {
+            server?.close();
+          } catch {
+            /* noop */
+          }
+          if (oauthCallbackAccepted) {
+            return;
+          }
+          finish(() => {
+            reject(new Error("login_cancelled"));
+          });
+        });
+        void win.loadURL(authUrl);
+      } catch (e) {
+        finish(() => {
+          reject(
+            e instanceof Error
+              ? e
+              : new Error(
+                  `OAuth-Redirect-Server: ${String(e)}`,
+                ),
+          );
+        });
+      }
+    })();
   });
 }
