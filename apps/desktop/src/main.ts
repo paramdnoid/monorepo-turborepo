@@ -1,10 +1,19 @@
 import { IPC_CHANNELS } from "@repo/electron";
+import { config as loadEnv } from "dotenv";
 import { app, BrowserWindow, ipcMain } from "electron";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { registerAuthIpc } from "./auth/auth-service.js";
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+/* API-Runbook-Variablen (AUTH_KEYCLOAK_*) — Desktop lädt sie, falls nur apps/api/.env.local existiert */
+loadEnv({ path: path.join(__dirname, "../../api/.env.local") });
+loadEnv({ path: path.join(__dirname, "../../api/.env") });
+loadEnv({ path: path.join(__dirname, "../.env.local") });
+loadEnv({ path: path.join(__dirname, "../.env") });
 
 const require = createRequire(import.meta.url);
 const appIconPath = require.resolve("@repo/brand/logo");
@@ -25,7 +34,7 @@ function createWindow(): void {
     width: 1280,
     height: 720,
     webPreferences: {
-      preload: path.join(__dirname, "preload.js"),
+      preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,
       nodeIntegration: false,
     },
@@ -39,6 +48,7 @@ app.whenReady().then(() => {
     app.dock.setIcon(appIconPath);
   }
   ipcMain.handle(IPC_CHANNELS.ping, () => "pong");
+  registerAuthIpc();
   createWindow();
 
   app.on("activate", () => {

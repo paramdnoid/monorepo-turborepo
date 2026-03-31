@@ -1,7 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { LayoutDashboard, MessageSquare, Settings2 } from "lucide-react";
+import type { DesktopAuthState } from "@repo/electron";
+import { useCallback, useEffect, useState } from "react";
+import { LayoutDashboard, Loader2, MessageSquare, Settings2 } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@repo/ui/alert";
+import { Button } from "@repo/ui/button";
 import {
   Sidebar,
   SidebarBrand,
@@ -20,12 +23,47 @@ import {
 } from "@repo/ui/sidebar";
 import { Separator } from "@repo/ui/separator";
 
+const API_BASE =
+  import.meta.env.VITE_DESKTOP_API_BASE_URL ?? "http://127.0.0.1:4000";
+
+/** Preload fehlt (Browser) oder ist veraltet (fehlende Auth-Methoden). */
+function getDesktopBridgeIssue(): string | null {
+  if (typeof window === "undefined") return null;
+  if (!window.desktop) {
+    return "Diese URL ist im normalen Browser geöffnet — es gibt keine Electron-Preload-Brücke. Bitte das Fenster der Desktop-App nutzen (nach `pnpm exec turbo run dev --filter=desktop`), nicht Chrome/Firefox auf http://localhost:5173 .";
+  }
+  if (typeof window.desktop.authLogin !== "function") {
+    return "Preload ist veraltet: im Repo `pnpm --filter @repo/electron run build`, danach `dist/preload.js` neu erzeugen und den Desktop-Dev neu starten.";
+  }
+  return null;
+}
+
 export function DesktopLayout() {
   const [ipcStatus, setIpcStatus] = useState<string>("…");
+  const [auth, setAuth] = useState<DesktopAuthState | null>(null);
+  const [authBusy, setAuthBusy] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [meJson, setMeJson] = useState<string | null>(null);
+  const [meError, setMeError] = useState<string | null>(null);
+  const [bridgeIssue, setBridgeIssue] = useState<string | null>(null);
+
+  const refreshAuth = useCallback(async () => {
+    if (!window.desktop?.authGetState) {
+      setAuth({ status: "signed_out" });
+      return;
+    }
+    const next = await window.desktop.authGetState();
+    setAuth(next);
+  }, []);
 
   useEffect(() => {
-    window.desktop
-      ?.ping()
+    setBridgeIssue(getDesktopBridgeIssue());
+    const ping = window.desktop?.ping;
+    if (typeof ping !== "function") {
+      setIpcStatus("kein Electron");
+      return;
+    }
+    void ping()
       .then((msg) => {
         setIpcStatus(msg);
       })
@@ -33,6 +71,85 @@ export function DesktopLayout() {
         setIpcStatus("nicht erreichbar");
       });
   }, []);
+
+  useEffect(() => {
+    void refreshAuth();
+  }, [refreshAuth]);
+
+  useEffect(() => {
+    if (auth?.status !== "signed_in") {
+      setMeJson(null);
+      setMeError(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const token = await window.desktop?.authGetAccessToken?.();
+      if (!token || cancelled) return;
+      try {
+        const res = await fetch(`${API_BASE}/v1/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const text = await res.text();
+        if (!res.ok) {
+          setMeError(`${String(res.status)} ${text}`);
+          setMeJson(null);
+          return;
+        }
+        setMeJson(text);
+        setMeError(null);
+      } catch (e) {
+        setMeError(e instanceof Error ? e.message : String(e));
+        setMeJson(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [auth]);
+
+  async function handleLogin() {
+    setAuthError(null);
+    const bridge = getDesktopBridgeIssue();
+    if (bridge) {
+      setAuthError(bridge);
+      return;
+    }
+    const desktopApi = window.desktop;
+    if (!desktopApi || typeof desktopApi.authLogin !== "function") {
+      setAuthError(
+        getDesktopBridgeIssue() ?? "Anmeldung ist in dieser Umgebung nicht möglich.",
+      );
+      return;
+    }
+    setAuthBusy(true);
+    try {
+      const next = await desktopApi.authLogin();
+      setAuth(next);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg === "login_cancelled") {
+        setAuthError("Anmeldung abgebrochen.");
+      } else {
+        setAuthError(msg);
+      }
+    } finally {
+      setAuthBusy(false);
+    }
+  }
+
+  async function handleLogout() {
+    setAuthError(null);
+    setAuthBusy(true);
+    try {
+      await window.desktop?.authLogout?.();
+      await refreshAuth();
+      setMeJson(null);
+      setMeError(null);
+    } finally {
+      setAuthBusy(false);
+    }
+  }
 
   return (
     <SidebarProvider>
@@ -97,6 +214,107 @@ export function DesktopLayout() {
               <span className="font-mono text-foreground">{ipcStatus}</span>
             </p>
           </section>
+
+          <section className="rounded-xl border bg-card p-6 text-card-foreground shadow-sm">
+            <h2 className="mb-2 text-lg font-semibold tracking-tight">
+              Anmeldung (OIDC / Keycloak)
+            </h2>
+            <p className="mb-4 text-sm text-muted-foreground">
+              Authorization Code mit PKCE; Tokens werden im Benutzerprofil
+              gespeichert. Redirect:{" "}
+              <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
+                http://127.0.0.1:47823/callback
+              </code>{" "}
+              (Port über{" "}
+              <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
+                DESKTOP_OAUTH_REDIRECT_PORT
+              </code>
+              ).
+            </p>
+            {bridgeIssue ? (
+              <Alert className="mb-4 border-amber-500/50 bg-amber-500/5">
+                <AlertTitle>Nicht in der Desktop-App</AlertTitle>
+                <AlertDescription className="text-sm">
+                  {bridgeIssue}
+                </AlertDescription>
+              </Alert>
+            ) : null}
+            {authError ? (
+              <Alert variant="destructive" className="mb-4">
+                <AlertTitle>Anmeldung</AlertTitle>
+                <AlertDescription>{authError}</AlertDescription>
+              </Alert>
+            ) : null}
+            {auth?.status === "signed_in" ? (
+              <div className="flex flex-col gap-3">
+                <p className="text-sm">
+                  <span className="text-muted-foreground">Angemeldet als: </span>
+                  <span className="font-medium text-foreground">
+                    {auth.user.name ?? auth.user.email ?? auth.user.sub}
+                  </span>
+                </p>
+                {auth.user.email ? (
+                  <p className="text-xs text-muted-foreground">
+                    {auth.user.email}
+                  </p>
+                ) : null}
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={authBusy}
+                  onClick={() => void handleLogout()}
+                >
+                  {authBusy ? (
+                    <Loader2 className="mr-2 size-4 animate-spin" />
+                  ) : null}
+                  Abmelden
+                </Button>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                <p className="text-sm text-muted-foreground">
+                  {auth === null
+                    ? "Lade Sitzungsstatus …"
+                    : "Nicht angemeldet. Keycloak-Client (öffentlich) mit PKCE und passender Redirect-URI benötigt."}
+                </p>
+                <Button
+                  type="button"
+                  disabled={
+                    authBusy || auth === null || Boolean(bridgeIssue)
+                  }
+                  onClick={() => void handleLogin()}
+                >
+                  {authBusy ? (
+                    <Loader2 className="mr-2 size-4 animate-spin" />
+                  ) : null}
+                  Mit Konto anmelden
+                </Button>
+              </div>
+            )}
+          </section>
+
+          {auth?.status === "signed_in" ? (
+            <section className="rounded-xl border bg-card p-6 text-card-foreground shadow-sm">
+              <h2 className="mb-2 text-lg font-semibold tracking-tight">
+                API{" "}
+                <code className="rounded bg-muted px-1.5 py-0.5 text-sm font-normal">
+                  GET {API_BASE}/v1/me
+                </code>
+              </h2>
+              {meError ? (
+                <Alert variant="destructive">
+                  <AlertTitle>/v1/me</AlertTitle>
+                  <AlertDescription className="font-mono text-xs whitespace-pre-wrap">
+                    {meError}
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <pre className="max-h-64 overflow-auto rounded-md bg-muted p-3 text-xs">
+                  {meJson ?? "Lade …"}
+                </pre>
+              )}
+            </section>
+          ) : null}
         </main>
       </SidebarInset>
     </SidebarProvider>

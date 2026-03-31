@@ -12,6 +12,7 @@
  *   KEYCLOAK_CLIENT_ID (default zunft-dev)
  *   DEV_USER / DEV_PASSWORD (default dev / dev)
  *   TENANT_ID (default local-dev-tenant)
+ *   DESKTOP_OAUTH_REDIRECT_PORT (default 47823) — Redirect für Client „zgwerk-desktop“
  */
 const base = (process.env.KEYCLOAK_URL ?? "http://127.0.0.1:8080").replace(
   /\/$/,
@@ -24,6 +25,10 @@ const clientId = process.env.KEYCLOAK_CLIENT_ID ?? "zunft-dev";
 const devUser = process.env.DEV_USER ?? "dev";
 const devPassword = process.env.DEV_PASSWORD ?? "dev";
 const tenantId = process.env.TENANT_ID ?? "local-dev-tenant";
+
+/** Electron-Desktop: Authorization Code + PKCE (apps/desktop). */
+const desktopOauthRedirectPort =
+  Number(process.env.DESKTOP_OAUTH_REDIRECT_PORT) || 47823;
 
 async function waitForKeycloak() {
   const max = 45;
@@ -232,6 +237,100 @@ async function ensureClient(token, targetClientId = clientId) {
   return uuid;
 }
 
+/**
+ * Öffentlicher OAuth-Client für Electron (kein Password-Grant), Redirect für PKCE.
+ * Client-ID entspricht Default `DESKTOP_OIDC_CLIENT_ID` in apps/desktop.
+ */
+async function ensureDesktopOauthClient(token) {
+  const targetClientId = "zgwerk-desktop";
+  const redirectBase = `http://127.0.0.1:${String(desktopOauthRedirectPort)}`;
+  const callbackUri = `${redirectBase}/callback`;
+
+  const mergeRedirectUris = (existing) => {
+    const set = new Set([
+      ...(existing ?? []),
+      callbackUri,
+      `${redirectBase}/*`,
+    ]);
+    return [...set];
+  };
+
+  let uuid = await findClientUuid(token, targetClientId);
+
+  if (uuid) {
+    const gr = await fetch(
+      `${base}/admin/realms/${encodeURIComponent(realm)}/clients/${uuid}`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    if (!gr.ok) throw new Error(await gr.text());
+    const c = await gr.json();
+    c.redirectUris = mergeRedirectUris(c.redirectUris);
+    c.webOrigins = Array.from(
+      new Set([...(c.webOrigins ?? []), redirectBase, "+"]),
+    );
+    c.publicClient = true;
+    c.standardFlowEnabled = true;
+    c.directAccessGrantsEnabled = false;
+    c.attributes = {
+      ...c.attributes,
+      "pkce.code.challenge.method": "S256",
+    };
+    const pr = await fetch(
+      `${base}/admin/realms/${encodeURIComponent(realm)}/clients/${uuid}`,
+      {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(c),
+      },
+    );
+    if (!pr.ok) {
+      throw new Error(`Desktop-Client aktualisieren: ${await pr.text()}`);
+    }
+    console.log(
+      `Client „${targetClientId}“ aktualisiert (Redirect ${callbackUri}, PKCE).`,
+    );
+    return uuid;
+  }
+
+  const r = await fetch(
+    `${base}/admin/realms/${encodeURIComponent(realm)}/clients`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        clientId: targetClientId,
+        name: "ZunftGewerk Desktop (Electron, PKCE)",
+        enabled: true,
+        publicClient: true,
+        directAccessGrantsEnabled: false,
+        standardFlowEnabled: true,
+        implicitFlowEnabled: false,
+        fullScopeAllowed: true,
+        redirectUris: mergeRedirectUris([]),
+        webOrigins: [redirectBase, "+"],
+        attributes: {
+          "pkce.code.challenge.method": "S256",
+        },
+      }),
+    },
+  );
+  if (r.status !== 201) {
+    throw new Error(`Desktop-Client anlegen: ${r.status} ${await r.text()}`);
+  }
+  console.log(
+    `Client „${targetClientId}“ angelegt (Redirect ${callbackUri}, PKCE).`,
+  );
+  uuid = await findClientUuid(token, targetClientId);
+  if (!uuid) throw new Error("Desktop-Client UUID nicht gefunden.");
+  return uuid;
+}
+
 async function ensureTenantIdMapper(token, clientUuid) {
   const listUrl = `${base}/admin/realms/${encodeURIComponent(realm)}/clients/${clientUuid}/protocol-mappers/models`;
   const r = await fetch(listUrl, {
@@ -422,11 +521,18 @@ async function main() {
   const clientUuid = await ensureClient(token);
   await ensureTenantIdMapper(token, clientUuid);
   await ensureClient(token, "zgwerk-cli");
+  const desktopUuid = await ensureDesktopOauthClient(token);
+  await ensureTenantIdMapper(token, desktopUuid);
   await ensureUser(token);
   console.log("\nFertig. Als Nächstes:");
   console.log("  pnpm --filter api run check:auth-env");
   console.log(
     `  DEV_PASSWORD=${JSON.stringify(devPassword)} pnpm --filter api run token:local`,
+  );
+  console.log(
+    "  Desktop: Client „zgwerk-desktop“, Redirect http://127.0.0.1:" +
+      String(desktopOauthRedirectPort) +
+      "/callback → pnpm exec turbo run dev --filter=desktop",
   );
 }
 
