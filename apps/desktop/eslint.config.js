@@ -1,12 +1,3 @@
-import { config } from "@repo/eslint-config/base";
+import { config } from "@repo/eslint-config/react-internal";
 
-export default [
-  ...config,
-  {
-    languageOptions: {
-      globals: {
-        process: "readonly",
-      },
-    },
-  },
-];
+export default config;

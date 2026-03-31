@@ -1,0 +1,32 @@
+@import "tailwindcss";
+@import "@repo/tailwind-config";
+@import "@repo/ui/styles/theme-tokens.css";
+/* Match next-themes: `dark:` utilities follow `.dark` on <html>, not only prefers-color-scheme */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Paths relative to this file (apps/desktop/src/renderer/) */
+@source "../../../../packages/ui/src/**/*.{ts,tsx}";
+@source "./**/*.{ts,tsx}";
+
+@layer base {
+  html {
+    color-scheme: light;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
+  * {
+    border-color: var(--border);
+    outline-color: color-mix(in oklch, var(--ring) 50%, transparent);
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}

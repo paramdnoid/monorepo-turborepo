@@ -36,6 +36,7 @@ Example imports:
 
 ```ts
 import { Button } from "@repo/ui/button";
+import { SidebarBrand } from "@repo/ui/sidebar";
 import { cn } from "@repo/ui/utils";
 import { Providers } from "@repo/ui/providers";
 ```

@@ -6,6 +6,7 @@
 @import "./theme-tokens.css";
 @source "../../../apps/web/**/*.{ts,tsx}";
 @source "../../../apps/docs/**/*.{ts,tsx}";
+@source "../../../apps/desktop/src/renderer/**/*.{ts,tsx}";
 @source "../**/*.{ts,tsx}";
 
 @layer base {

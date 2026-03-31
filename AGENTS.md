@@ -4,7 +4,7 @@ This file provides context for AI coding agents working in this repository. **St
 
 ## Project Overview
 
-Turborepo monorepo containing two Next.js applications, one HTTP API (`apps/api`), one Electron desktop app (`apps/desktop`), one React Native application, and ten shared internal packages under `packages/`. Root package name: `my-turborepo`. Uses pnpm workspaces for dependency management and Turborepo for orchestrating builds and tasks across packages.
+Turborepo monorepo containing two Next.js applications, one HTTP API (`apps/api`), one Electron desktop app (`apps/desktop`), one React Native application, and eleven shared internal packages under `packages/`. Root package name: `my-turborepo`. Uses pnpm workspaces for dependency management and Turborepo for orchestrating builds and tasks across packages.
 
 **Bootstrap:** clone the repo, then run `pnpm install` once at the repository root to install all workspace dependencies.
 
@@ -32,6 +32,7 @@ Turborepo **`--filter`** values must match each package’s **`name`** in its `p
 | `@repo/typescript-config` | `packages/typescript-config` | Shared `tsconfig` bases                                   |
 | `@repo/tailwind-config`   | `packages/tailwind-config`   | Shared Tailwind v4 styles + PostCSS for apps / `@repo/ui` |
 | `@repo/playwright-web`    | `packages/playwright-web`    | Playwright E2E against `web` (depends on `web` workspace) |
+| `@repo/electron`          | `packages/electron`          | Shared IPC channels & desktop API types for `desktop`     |
 
 **Examples:**
 
@@ -47,7 +48,7 @@ pnpm exec turbo check-types --filter=native
 | If you are…                                     | Read                                                                                   |
 | ----------------------------------------------- | -------------------------------------------------------------------------------------- |
 | Choosing or comparing apps                      | [`apps/AGENTS.md`](apps/AGENTS.md)                                                     |
-| Desktop (Electron)                            | [`apps/desktop/AGENTS.md`](apps/desktop/AGENTS.md)                                     |
+| Desktop (Electron)                            | [`apps/desktop/AGENTS.md`](apps/desktop/AGENTS.md); shared IPC/types [`packages/electron/AGENTS.md`](packages/electron/AGENTS.md) |
 | Primary product / marketing site (Next)         | [`apps/web/AGENTS.md`](apps/web/AGENTS.md)                                             |
 | Docs site (Next)                                | [`apps/docs/AGENTS.md`](apps/docs/AGENTS.md)                                           |
 | Mobile: WebView, Metro, iOS/Android, NativeWind | [`apps/native/AGENTS.md`](apps/native/AGENTS.md)                                       |
@@ -68,6 +69,7 @@ More specific agent context lives next to the code:
 | ------------------------------------------------------------------------------ | ---------------------------------------------------------- |
 | [`apps/AGENTS.md`](apps/AGENTS.md)                                             | All apps: Next.js (`web`, `docs`), API (`api`), Electron (`desktop`), RN (`native`) |
 | [`apps/desktop/AGENTS.md`](apps/desktop/AGENTS.md)                             | Electron desktop app                                       |
+| [`packages/electron/AGENTS.md`](packages/electron/AGENTS.md)                   | Shared `@repo/electron` IPC / desktop API types            |
 | [`apps/api/AGENTS.md`](apps/api/AGENTS.md)                                     | Hono HTTP API, PostgreSQL / Drizzle                        |
 | [`apps/web/AGENTS.md`](apps/web/AGENTS.md)                                     | Primary web app (port 3000)                                |
 | [`apps/docs/AGENTS.md`](apps/docs/AGENTS.md)                                   | Documentation site (port 3001)                             |
@@ -101,6 +103,7 @@ packages/
   typescript-config/   → Shared TypeScript configurations (@repo/typescript-config)
   tailwind-config/     → Shared Tailwind v4 + PostCSS (@repo/tailwind-config)
   playwright-web/      → Playwright E2E package targeting web (@repo/playwright-web)
+  electron/            → Shared IPC channels & desktop API types (@repo/electron; desktop)
 ```
 
 ## Tech Stack

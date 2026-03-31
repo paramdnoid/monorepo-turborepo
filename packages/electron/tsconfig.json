@@ -4,6 +4,6 @@
     "outDir": "dist",
     "rootDir": "src"
   },
-  "include": ["src/main.ts", "src/preload.ts"],
-  "exclude": ["node_modules", "dist", "src/renderer"]
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
 }

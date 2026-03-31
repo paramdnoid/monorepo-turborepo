@@ -5,20 +5,34 @@
   "type": "module",
   "main": "dist/main.js",
   "scripts": {
-    "dev": "tsc && concurrently -k \"tsc -w --preserveWatchOutput\" \"wait-on dist/main.js dist/preload.js && electron .\"",
-    "build": "tsc",
-    "start": "electron .",
+    "dev": "pnpm --filter @repo/electron run build && tsc && concurrently -k \"tsc -w --preserveWatchOutput\" \"vite --port 5173\" \"wait-on http://localhost:5173 dist/main.js dist/preload.js && DESKTOP_RENDERER_URL=http://localhost:5173 electron .\"",
+    "build": "pnpm --filter @repo/electron run build && tsc && vite build",
+    "start": "pnpm --filter @repo/electron run build && tsc && vite build && electron .",
     "lint": "eslint . --max-warnings 0",
-    "check-types": "tsc --noEmit"
+    "check-types": "tsc --noEmit && tsc --noEmit -p tsconfig.renderer.json"
+  },
+  "dependencies": {
+    "@repo/electron": "workspace:*",
+    "@repo/tailwind-config": "workspace:*",
+    "@repo/ui": "workspace:*",
+    "lucide-react": "^1.7.0",
+    "react": "19.2.3",
+    "react-dom": "19.2.3"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
+    "@tailwindcss/postcss": "^4.2.2",
+    "tailwindcss": "^4.2.2",
     "@types/node": "^22.15.3",
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.2",
+    "@vitejs/plugin-react": "^4.7.0",
     "concurrently": "^9.2.1",
     "electron": "^34.5.8",
     "eslint": "^9.39.1",
     "typescript": "5.9.2",
+    "vite": "^6.3.5",
     "wait-on": "^8.0.5"
   }
 }

@@ -20,12 +20,31 @@ import { Skeleton } from "@repo/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@repo/ui/tooltip";
 import { PanelLeftIcon } from "lucide-react";
 
+import brandLogoAsset from "@repo/brand/logo";
+
 const SIDEBAR_COOKIE_NAME = "sidebar_state";
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
 const SIDEBAR_WIDTH = "16rem";
 const SIDEBAR_WIDTH_MOBILE = "18rem";
 const SIDEBAR_WIDTH_ICON = "3rem";
 const SIDEBAR_KEYBOARD_SHORTCUT = "b";
+
+/** Intrinsic size of `@repo/brand/logo` (align with apps/web `BrandLogo` if the asset changes). */
+const BRAND_LOGO_INTRINSIC = { width: 775, height: 939 } as const;
+
+function getBrandLogoSrc(
+  asset: string | { src: string; width: number; height: number },
+): string {
+  return typeof asset === "string" ? asset : asset.src;
+}
+
+function getBrandLogoDimensions(
+  asset: string | { src: string; width: number; height: number },
+): { width: number; height: number } {
+  return typeof asset === "string"
+    ? BRAND_LOGO_INTRINSIC
+    : { width: asset.width, height: asset.height };
+}
 
 type SidebarContextProps = {
   state: "expanded" | "collapsed";
@@ -329,9 +348,55 @@ function SidebarHeader({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="sidebar-header"
       data-sidebar="header"
-      className={cn("flex flex-col gap-2 p-2", className)}
+      className={cn("flex flex-col gap-2 p-1.5", className)}
       {...props}
     />
+  );
+}
+
+function SidebarBrand({
+  className,
+  title = "ZunftGewerk",
+  tagline = "HANDWERK. DIGITAL.",
+  logoSrc,
+  ...props
+}: React.ComponentProps<"div"> & {
+  /** Overrides default `@repo/brand/logo` import when needed. */
+  logoSrc?: string;
+  title?: string;
+  tagline?: string;
+}) {
+  const src = logoSrc ?? getBrandLogoSrc(brandLogoAsset);
+  const { width, height } = getBrandLogoDimensions(brandLogoAsset);
+
+  return (
+    <div
+      data-slot="sidebar-brand"
+      className={cn(
+        "flex min-w-0 items-center gap-2 px-2 py-1.5 group-data-[collapsible=icon]:justify-center",
+        className,
+      )}
+      {...props}
+    >
+      <img
+        src={src}
+        alt=""
+        role="presentation"
+        width={width}
+        height={height}
+        className="h-7 w-auto max-w-[30px] shrink-0 object-contain"
+        decoding="async"
+        fetchPriority="high"
+      />
+      <div className="grid min-w-0 flex-1 text-left leading-tight group-data-[collapsible=icon]:hidden">
+        <span className="truncate font-sans text-sm font-bold tracking-tight text-sidebar-foreground">
+          {title}
+        </span>
+        <span className="truncate pt-0.5 text-[0.46rem] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
+          {tagline}
+        </span>
+      </div>
+    </div>
   );
 }
 
@@ -672,6 +737,7 @@ function SidebarMenuSubButton({
 
 export {
   Sidebar,
+  SidebarBrand,
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
