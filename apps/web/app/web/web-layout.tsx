@@ -1,7 +1,7 @@
 "use client";
 
-import type { DesktopAuthState } from "@repo/electron";
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { LayoutDashboard, Loader2, MessageSquare, Settings2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@repo/ui/alert";
 import { Button } from "@repo/ui/button";
@@ -23,14 +23,16 @@ import {
 } from "@repo/ui/sidebar";
 import { Separator } from "@repo/ui/separator";
 
+import type { WebDesktopAuthState } from "./web-desktop-bridge";
+
 const API_BASE =
-  import.meta.env.VITE_DESKTOP_API_BASE_URL ?? "http://127.0.0.1:4000";
+  process.env.NEXT_PUBLIC_WEB_API_BASE_URL ?? "http://127.0.0.1:4000";
 
 /** Preload fehlt (Browser) oder ist veraltet (fehlende Auth-Methoden). */
 function getDesktopBridgeIssue(): string | null {
   if (typeof window === "undefined") return null;
   if (!window.desktop) {
-    return "Diese URL ist im normalen Browser geöffnet — es gibt keine Electron-Preload-Brücke. Bitte das Fenster der Desktop-App nutzen (nach `pnpm exec turbo run dev --filter=desktop`), nicht Chrome/Firefox auf http://localhost:5173 .";
+    return "Diese Seite ist im normalen Browser geöffnet — es gibt keine Electron-Preload-Brücke. Für die Desktop-Shell: `pnpm exec turbo run dev --filter=desktop` (Renderer unter http://localhost:5173). Für Anmeldung im Web nutze den Link unten.";
   }
   if (typeof window.desktop.authLogin !== "function") {
     return "Preload ist veraltet: im Repo `pnpm --filter @repo/electron run build`, danach `dist/preload.js` neu erzeugen und den Desktop-Dev neu starten.";
@@ -38,9 +40,9 @@ function getDesktopBridgeIssue(): string | null {
   return null;
 }
 
-export function DesktopLayout() {
+export function WebLayout() {
   const [ipcStatus, setIpcStatus] = useState<string>("…");
-  const [auth, setAuth] = useState<DesktopAuthState | null>(null);
+  const [auth, setAuth] = useState<WebDesktopAuthState | null>(null);
   const [authBusy, setAuthBusy] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [meJson, setMeJson] = useState<string | null>(null);
@@ -197,7 +199,7 @@ export function DesktopLayout() {
           <div className="flex flex-1 flex-col gap-0.5">
             <h1 className="text-sm font-medium leading-none">Übersicht</h1>
             <p className="text-xs text-muted-foreground">
-              shadcn Sidebar-Layout (Radix Nova)
+              Next.js · shadcn Sidebar-Layout (Radix Nova)
             </p>
           </div>
         </header>
@@ -207,11 +209,11 @@ export function DesktopLayout() {
               Willkommen
             </h2>
             <p className="text-sm text-muted-foreground">
-              Dieses Fenster nutzt{" "}
+              Diese Route nutzt{" "}
               <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
                 @repo/ui/sidebar
               </code>{" "}
-              im Renderer (Vite + React).
+              in der Next.js App (App Router).
             </p>
             <p className="mt-4 text-sm">
               <span className="text-muted-foreground">IPC ping: </span>
@@ -244,6 +246,14 @@ export function DesktopLayout() {
                 <AlertTitle>Nicht in der Desktop-App</AlertTitle>
                 <AlertDescription className="text-sm">
                   {bridgeIssue}
+                  <span className="mt-3 block">
+                    <Link
+                      href="/login?next=/web"
+                      className="font-medium text-foreground underline underline-offset-4"
+                    >
+                      Zum Web-Login
+                    </Link>
+                  </span>
                 </AlertDescription>
               </Alert>
             ) : null}

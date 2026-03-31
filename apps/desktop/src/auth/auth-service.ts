@@ -9,6 +9,7 @@ import {
   runAuthorizationCodeFlow,
   type TokenBundle,
 } from "./oauth-login.js";
+import { syncPeerAfterAppLogin } from "./peer-web-sync.js";
 import {
   clearPersistedAuth,
   getRefreshTokenFromPersisted,
@@ -128,6 +129,7 @@ export async function login(): Promise<DesktopAuthState> {
     accessExpiresAt: accessExpiresAtFromBundle(at, bundle),
   };
   await persistCurrent();
+  await syncPeerAfterAppLogin(at);
   return getAuthState();
 }
 

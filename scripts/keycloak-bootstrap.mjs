@@ -238,7 +238,9 @@ async function ensureClient(token, targetClientId = clientId) {
 }
 
 /**
- * Öffentlicher OAuth-Client für Electron (kein Password-Grant), Redirect für PKCE.
+ * Öffentlicher OAuth-Client für Electron (Authorization Code + PKCE).
+ * Zusätzlich: Direct Access Grants für POST /api/auth/login (zentrales Web-Login
+ * tauscht Passwort gegen Tokens, bevor der Callback-Code ausgestellt wird).
  * Client-ID entspricht Default `DESKTOP_OIDC_CLIENT_ID` in apps/desktop.
  */
 async function ensureDesktopOauthClient(token) {
@@ -273,7 +275,7 @@ async function ensureDesktopOauthClient(token) {
     );
     c.publicClient = true;
     c.standardFlowEnabled = true;
-    c.directAccessGrantsEnabled = false;
+    c.directAccessGrantsEnabled = true;
     c.attributes = {
       ...c.attributes,
       "pkce.code.challenge.method": "S256",
@@ -292,8 +294,9 @@ async function ensureDesktopOauthClient(token) {
     if (!pr.ok) {
       throw new Error(`Desktop-Client aktualisieren: ${await pr.text()}`);
     }
+    await ensureClientPasswordGrant(token, uuid);
     console.log(
-      `Client „${targetClientId}“ aktualisiert (Redirect ${callbackUri}, PKCE).`,
+      `Client „${targetClientId}“ aktualisiert (Redirect ${callbackUri}, PKCE + Password-Grant für Web-Login).`,
     );
     return uuid;
   }
@@ -311,7 +314,7 @@ async function ensureDesktopOauthClient(token) {
         name: "ZunftGewerk Desktop (Electron, PKCE)",
         enabled: true,
         publicClient: true,
-        directAccessGrantsEnabled: false,
+        directAccessGrantsEnabled: true,
         standardFlowEnabled: true,
         implicitFlowEnabled: false,
         fullScopeAllowed: true,
@@ -331,6 +334,7 @@ async function ensureDesktopOauthClient(token) {
   );
   uuid = await findClientUuid(token, targetClientId);
   if (!uuid) throw new Error("Desktop-Client UUID nicht gefunden.");
+  await ensureClientPasswordGrant(token, uuid);
   return uuid;
 }
 

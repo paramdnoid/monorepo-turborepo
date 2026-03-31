@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { getUiText } from "@/content/ui-text";
 import { AUTH_COOKIE_NAME } from "@/lib/auth/constants";
+import { requestKeycloakPasswordGrant } from "@/lib/auth/keycloak-password-grant";
 import { getRequestLocale } from "@/lib/i18n/request-locale";
 
 export const signUpPayloadSchema = z
@@ -30,11 +31,6 @@ export const signUpPayloadSchema = z
 
 type SignUpPayload = z.infer<typeof signUpPayloadSchema>;
 
-type TokenResponse = {
-  access_token?: string;
-  expires_in?: number;
-};
-
 type KeycloakRole = {
   id?: string;
   name?: string;
@@ -56,9 +52,6 @@ type StripeSetupIntentResponse = {
   client_secret?: string;
 };
 
-const OIDC_TOKEN_ENDPOINT =
-  process.env.AUTH_OIDC_TOKEN_ENDPOINT ??
-  "http://localhost:8081/realms/zgwerk/protocol/openid-connect/token";
 const OIDC_CLIENT_ID = process.env.AUTH_OIDC_CLIENT_ID ?? "zgwerk-cli";
 
 const KEYCLOAK_BASE_URL =
@@ -229,17 +222,6 @@ async function createStripeBillingSetup(
   }
 }
 
-async function requestAccessToken(params: URLSearchParams) {
-  return fetch(OIDC_TOKEN_ENDPOINT, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: params.toString(),
-    cache: "no-store",
-  });
-}
-
 function extractCreatedUserId(location: string | null) {
   if (!location) return null;
   const segments = location.split("/");
@@ -380,27 +362,17 @@ async function deleteKeycloakUser(adminToken: string, userId: string) {
 }
 
 async function issueUserSession(email: string, password: string) {
-  const tokenResponse = await requestAccessToken(
-    new URLSearchParams({
-      grant_type: "password",
-      client_id: OIDC_CLIENT_ID,
-      username: email,
-      password,
-    }),
-  );
-
-  if (!tokenResponse.ok) {
+  const result = await requestKeycloakPasswordGrant({
+    username: email,
+    password,
+    clientId: OIDC_CLIENT_ID,
+  });
+  if (!result.ok) {
     return null;
   }
-
-  const tokenJson = (await tokenResponse.json()) as TokenResponse;
-  if (!tokenJson.access_token) {
-    return null;
-  }
-
   return {
-    accessToken: tokenJson.access_token,
-    expiresIn: tokenJson.expires_in ?? 900,
+    accessToken: result.tokens.access_token,
+    expiresIn: result.tokens.expires_in ?? 900,
   };
 }
 

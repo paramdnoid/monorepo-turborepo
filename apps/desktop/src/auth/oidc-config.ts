@@ -34,7 +34,13 @@ function keycloakRealm(): string {
 export type OidcResolvedConfig = {
   issuer: string;
   authorizationEndpoint: string;
+  /** Authorization-Code-Tausch (Keycloak oder zentraler Web-Login `/api/auth/token`). */
   tokenEndpoint: string;
+  /**
+   * Refresh gegen Keycloak — Pflicht, wenn `tokenEndpoint` die Web-App ist (nur Code-Tausch),
+   * sonst entfällt der Refresh-URL-Override.
+   */
+  refreshTokenEndpoint?: string;
   clientId: string;
   redirectPath: string;
 };
@@ -54,6 +60,20 @@ export function resolveIssuerUrl(): string | null {
   return `${trimSlash(base)}/realms/${encodeURIComponent(realm)}`;
 }
 
+/**
+ * Zentraler Login in `apps/web`: Authorization und Code-Tausch über die Web-URL,
+ * Refresh weiterhin gegen Keycloak.
+ */
+function desktopWebBaseUrl(): string | undefined {
+  const fromEnv =
+    process.env.DESKTOP_WEB_BASE_URL?.trim() ||
+    process.env.DESKTOP_WEB_LOGIN_ORIGIN?.trim();
+  if (fromEnv) {
+    return trimSlash(fromEnv);
+  }
+  return undefined;
+}
+
 export function getOidcConfig(): OidcResolvedConfig | null {
   const issuer = resolveIssuerUrl();
   const clientId =
@@ -63,10 +83,25 @@ export function getOidcConfig(): OidcResolvedConfig | null {
   }
   const redirectPath =
     process.env.DESKTOP_OAUTH_REDIRECT_PATH?.trim() || "/callback";
+  const keycloakAuth = `${issuer}/protocol/openid-connect/auth`;
+  const keycloakToken = `${issuer}/protocol/openid-connect/token`;
+
+  const webBase = desktopWebBaseUrl();
+  if (webBase) {
+    return {
+      issuer,
+      authorizationEndpoint: `${webBase}/login`,
+      tokenEndpoint: `${webBase}/api/auth/token`,
+      refreshTokenEndpoint: keycloakToken,
+      clientId,
+      redirectPath,
+    };
+  }
+
   return {
     issuer,
-    authorizationEndpoint: `${issuer}/protocol/openid-connect/auth`,
-    tokenEndpoint: `${issuer}/protocol/openid-connect/token`,
+    authorizationEndpoint: keycloakAuth,
+    tokenEndpoint: keycloakToken,
     clientId,
     redirectPath,
   };

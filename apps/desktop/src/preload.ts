@@ -7,4 +7,5 @@ contextBridge.exposeInMainWorld("desktop", {
   authLogin: () => ipcRenderer.invoke(IPC_CHANNELS.authLogin),
   authLogout: () => ipcRenderer.invoke(IPC_CHANNELS.authLogout),
   authGetAccessToken: () => ipcRenderer.invoke(IPC_CHANNELS.authGetAccessToken),
+  quitApp: () => ipcRenderer.invoke(IPC_CHANNELS.quitApp),
 });

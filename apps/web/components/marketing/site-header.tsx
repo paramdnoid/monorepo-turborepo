@@ -102,7 +102,7 @@ export function SiteHeader() {
             <LanguageSwitcher />
             <ThemeToggle />
             <Button asChild variant="ghost" size="sm" className="h-8 px-2.5 text-[11px] font-semibold tracking-[0.08em] uppercase">
-              <Link href="/onboarding">{uiText.landing.header.signInDesktop}</Link>
+              <Link href="/login">{uiText.landing.header.signInDesktop}</Link>
             </Button>
             <Button asChild size="sm" className="h-8 rounded-md bg-primary px-3.5 text-[11px] font-semibold tracking-[0.08em] uppercase hover:bg-primary/90">
               <Link href="/onboarding">{uiText.landing.header.startTrialDesktop}</Link>
@@ -165,7 +165,7 @@ export function SiteHeader() {
                   <ThemeToggle />
                 </div>
                 <Button asChild variant="outline" className="h-10 border-border/80 bg-background/80">
-                  <Link href="/onboarding" onClick={() => setIsMobileNavOpen(false)}>
+                  <Link href="/login" onClick={() => setIsMobileNavOpen(false)}>
                     {uiText.landing.header.signInMobile}
                   </Link>
                 </Button>

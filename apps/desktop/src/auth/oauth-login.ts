@@ -64,7 +64,8 @@ export async function refreshAccessToken(
     client_id: config.clientId,
     refresh_token: refreshToken,
   });
-  const res = await fetch(config.tokenEndpoint, {
+  const endpoint = config.refreshTokenEndpoint ?? config.tokenEndpoint;
+  const res = await fetch(endpoint, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body,

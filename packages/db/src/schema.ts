@@ -65,3 +65,28 @@ export const syncMutationReceipts = pgTable(
     ).on(t.tenantId, t.idempotencyKey),
   }),
 );
+
+/**
+ * Letzte Anmeldung Web vs. App (Keycloak `sub`) — gegenseitige Invalidierung
+ * (Web-Session-Cookie vs. Desktop-App-Session), siehe apps/web `peer-session` API.
+ */
+export const authPeerSessions = pgTable("auth_peer_sessions", {
+  userSub: text("user_sub").primaryKey(),
+  lastWebLoginAt: timestamp("last_web_login_at", { withTimezone: true }),
+  lastAppLoginAt: timestamp("last_app_login_at", { withTimezone: true }),
+});
+
+/** Einmalcode nach Web-Login für nativen OAuth-Callback (Desktop/Mobile); kurzlebig. */
+export const nativeLoginOtc = pgTable("native_login_otc", {
+  code: text("code").primaryKey(),
+  payload: jsonb("payload")
+    .notNull()
+    .$type<{
+      codeChallenge: string;
+      redirectUri: string;
+      accessToken: string;
+      refreshToken: string | null;
+      expiresIn: number;
+    }>(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+});

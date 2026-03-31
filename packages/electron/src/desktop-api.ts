@@ -23,4 +23,6 @@ export type DesktopApi = {
   authLogout: () => Promise<void>;
   /** Kurzlebiger Access-Token für `Authorization: Bearer` gegen die HTTP-API. */
   authGetAccessToken: () => Promise<string | null>;
+  /** App beenden (nach Abmelden, damit kein automatischer Login-Flow startet). */
+  quitApp: () => Promise<void>;
 };

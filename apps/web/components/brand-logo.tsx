@@ -8,12 +8,19 @@ export const BRAND_LOGO_INTRINSIC = { width: 1024, height: 1024 } as const;
 type BrandWordmarkProps = {
   nameClassName?: string;
   taglineClassName?: string;
+  /**
+   * Explizit setzen (z. B. von Server-`getUiText`), damit Client Components nicht
+   * zwischen SSR-Locale (Proxy default `de`) und `document.documentElement.lang` hydratisieren.
+   */
+  tagline?: string;
 };
 
 export function BrandWordmark({
   nameClassName = "text-[1.28rem]",
   taglineClassName = "hidden pt-0.5 text-[0.46rem] tracking-[0.28em] sm:block",
+  tagline: taglineProp,
 }: BrandWordmarkProps) {
+  const tagline = taglineProp ?? uiText.branding.tagline;
   return (
     <span className="flex flex-col leading-none">
       <span className={`font-sans font-bold tracking-tight ${nameClassName}`}>
@@ -22,7 +29,7 @@ export function BrandWordmark({
       <span
         className={`${taglineClassName} font-semibold uppercase text-muted-foreground`}
       >
-        {uiText.branding.tagline}
+        {tagline}
       </span>
     </span>
   );
