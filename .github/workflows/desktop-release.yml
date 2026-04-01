@@ -1,0 +1,156 @@
+# Release-Builds der Electron-Desktop-App auf nativen Runnern (macOS / Windows / Linux).
+# Trigger: Git-Tag `v*` (z. B. v1.2.3). Artefakte landen zentral als GitHub-Release-Assets.
+#
+# -----------------------------------------------------------------------------
+# Code Signing & Notarisierung (optional — Repository- oder Environment-Secrets)
+# -----------------------------------------------------------------------------
+# electron-builder (siehe https://www.electron.build/code-signing):
+#
+# Gemeinsam (Windows / macOS, PFX/Zertifikat als Datei oder Base64):
+#   CSC_LINK              — Pfad oder Base64 zum Zertifikat (.p12/.pfx)
+#   CSC_KEY_PASSWORD      — Passwort für CSC_LINK
+#
+# Nur macOS (Apple Notarization, wenn Signing aktiv):
+#   APPLE_ID                      — Apple-ID-E-Mail
+#   APPLE_APP_SPECIFIC_PASSWORD   — App-spezifisches Passwort (nicht iCloud-Passwort)
+#   APPLE_TEAM_ID                 — 10-stellige Team-ID
+#
+# Ohne Zertifikate: CSC_IDENTITY_AUTO_DISCOVERY=false verhindert, dass der Build nach
+# Identitäten sucht (Standard unten). Für produktive Releases Secrets setzen und
+# ggf. diese env-Zeilen pro Job anpassen bzw. entfernen.
+# -----------------------------------------------------------------------------
+
+name: Desktop release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: desktop-release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  desktop-macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build desktop (macOS)
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+        run: pnpm --filter desktop run dist
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-macos-${{ github.ref_name }}
+          path: releases/desktop/
+          if-no-files-found: error
+
+  desktop-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build desktop (Windows)
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+        run: pnpm --filter desktop run dist
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-windows-${{ github.ref_name }}
+          path: releases/desktop/
+          if-no-files-found: error
+
+  desktop-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install Linux packaging dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends rpm fakeroot
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build desktop (Linux)
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+        run: pnpm --filter desktop run dist
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-linux-${{ github.ref_name }}
+          path: releases/desktop/
+          if-no-files-found: error
+
+  publish:
+    needs:
+      - desktop-macos
+      - desktop-windows
+      - desktop-linux
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all platform artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: desktop-*
+          merge-multiple: true
+          path: releases/desktop
+
+      # Semver-Pre-Releases nutzen oft einen Bindestrich (v1.0.0-beta.1) — dann prerelease auf GitHub.
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          make_latest: ${{ !contains(github.ref_name, '-') }}
+          files: releases/desktop/**

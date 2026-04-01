@@ -32,8 +32,11 @@ out/
 dist
 build
 
-# Electron (electron-builder)
+# Electron: alte Default-Ausgabe nicht nutzen — Production-Builds → releases/desktop (siehe apps/desktop package.json)
 apps/desktop/release/
+
+# Desktop-Installer / Release-Artefakte (electron-builder-Ausgabe)
+releases/
 
 # Expo / React Native (apps/mobile; siehe auch apps/mobile/.gitignore)
 apps/mobile/.expo/

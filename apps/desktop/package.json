@@ -53,7 +53,7 @@
     "productName": "ZunftGewerk - Software für Handwerksbetriebe",
     "asar": true,
     "directories": {
-      "output": "release",
+      "output": "../../releases/desktop",
       "buildResources": "resources"
     },
     "mac": {
@@ -67,13 +67,18 @@
     "win": {
       "icon": "resources/icon.ico",
       "target": [
-        "nsis"
+        "nsis",
+        "portable",
+        "zip"
       ]
     },
     "linux": {
       "icon": "resources/icon.png",
       "target": [
-        "AppImage"
+        "AppImage",
+        "deb",
+        "rpm",
+        "tar.xz"
       ]
     }
   }
