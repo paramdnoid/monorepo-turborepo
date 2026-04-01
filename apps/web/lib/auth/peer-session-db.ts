@@ -1,7 +1,6 @@
 import "server-only";
 
-import { authPeerSessions } from "@repo/db";
-import { eq } from "drizzle-orm";
+import { authPeerSessions, eq } from "@repo/db";
 
 import { getDb } from "@/lib/db";
 

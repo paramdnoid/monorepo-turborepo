@@ -1,7 +1,6 @@
 import "server-only";
 
-import { nativeLoginOtc } from "@repo/db";
-import { eq } from "drizzle-orm";
+import { eq, nativeLoginOtc } from "@repo/db";
 
 import { getDb } from "@/lib/db";
 
