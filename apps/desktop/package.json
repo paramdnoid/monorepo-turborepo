@@ -4,10 +4,7 @@
   "private": true,
   "description": "ZunftGewerk Desktop (Electron)",
   "homepage": "https://zunftgewerk.de",
-  "author": {
-    "name": "ZunftGewerk",
-    "email": "hallo@zunftgewerk.de"
-  },
+  "author": "ZunftGewerk <hallo@zunftgewerk.de>",
   "type": "module",
   "main": "dist/main.js",
   "scripts": {
@@ -58,6 +55,11 @@
     "appId": "com.zgwerkrepo.desktop",
     "productName": "ZunftGewerk - Software für Handwerksbetriebe",
     "asar": true,
+    "extraMetadata": {
+      "description": "ZunftGewerk Desktop (Electron)",
+      "homepage": "https://zunftgewerk.de",
+      "author": "ZunftGewerk <hallo@zunftgewerk.de>"
+    },
     "directories": {
       "output": "../../releases/desktop",
       "buildResources": "resources"
@@ -87,6 +89,9 @@
         "rpm",
         "tar.xz"
       ]
+    },
+    "deb": {
+      "maintainer": "ZunftGewerk <hallo@zunftgewerk.de>"
     }
   }
 }
