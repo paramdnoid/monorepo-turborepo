@@ -167,15 +167,9 @@ jobs:
           set -euo pipefail
           TAG="${GITHUB_REF_NAME}"
           ROOT="releases/desktop"
-          dupes=$(find "$ROOT" -type f -printf '%f\n' | sort | uniq -d || true)
-          if [ -n "${dupes}" ]; then
-            echo "Duplicate basenames under ${ROOT} — fix artifact layout:" >&2
-            echo "$dupes" >&2
-            exit 1
-          fi
-          count=$(find "$ROOT" -type f | wc -l)
-          if [ "$count" -eq 0 ]; then
+          mapfile -d '' -t files < <(find "$ROOT" -type f -print0)
+          if [ "${#files[@]}" -eq 0 ]; then
             echo "No files under ${ROOT}" >&2
             exit 1
           fi
-          find "$ROOT" -type f -print0 | xargs -0 bash -c 'gh release upload "$0" "$@" --clobber' "$TAG"
+          gh release upload "$TAG" "${files[@]}" --clobber
