@@ -47,7 +47,7 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v5
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -77,7 +77,7 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v5
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -107,7 +107,7 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v5
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -154,6 +154,7 @@ jobs:
 
       # Release + Assets in einem Schritt (softprops). `gh release upload --clobber` kann bei mehreren
       # Dateien HTTP 404 auf /releases/assets/<id> liefern (cli/cli#10361, #10734).
+      # preserve_order: sequenziell statt paralleler Uploads — weniger REST-Bursts (Secondary Rate Limit).
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2.6.1
         with:
@@ -163,6 +164,7 @@ jobs:
           prerelease: ${{ contains(github.ref_name, '-') }}
           make_latest: ${{ !contains(github.ref_name, '-') }}
           overwrite_files: true
+          preserve_order: true
           fail_on_unmatched_files: true
           working_directory: releases/desktop
           files: |
