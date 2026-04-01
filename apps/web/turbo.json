@@ -42,6 +42,9 @@
     },
     "lint": {
       "env": ["DATABASE_URL"]
+    },
+    "check-types": {
+      "dependsOn": ["^check-types", "^build"]
     }
   }
 }

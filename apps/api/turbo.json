@@ -46,6 +46,9 @@
         "NODE_ENV"
       ]
     },
+    "check-types": {
+      "dependsOn": ["^check-types", "^build"]
+    },
     "test": {
       "env": [
         "DATABASE_URL",
