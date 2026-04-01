@@ -17,8 +17,8 @@
     "lint": "eslint . --max-warnings 0",
     "check-types": "tsc --noEmit && tsc --noEmit -p tsconfig.renderer.json && tsc --noEmit -p tsconfig.preload.json",
     "generate:electron-icons": "node ./scripts/generate-electron-icons.mjs",
-    "dist": "pnpm run generate:electron-icons && pnpm --filter @repo/electron run build && pnpm run build && electron-builder",
-    "dist:dir": "pnpm run generate:electron-icons && pnpm --filter @repo/electron run build && pnpm run build && electron-builder --dir"
+    "dist": "pnpm run generate:electron-icons && pnpm --filter @repo/electron run build && pnpm run build && electron-builder --publish never",
+    "dist:dir": "pnpm run generate:electron-icons && pnpm --filter @repo/electron run build && pnpm run build && electron-builder --dir --publish never"
   },
   "dependencies": {
     "dotenv": "^16.4.7",
