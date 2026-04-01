@@ -152,13 +152,21 @@ jobs:
           merge-multiple: true
           path: releases/desktop
 
-      # electron-builder legt u. a. win-unpacked/, linux-unpacked/ an — darin u. a. resources.pak.
-      # GitHub-Release-Assets sind pro Dateiname eindeutig: zweimal „resources.pak“ → Konflikt / Race.
-      # Installers (.dmg, .exe, AppImage, …) bleiben erhalten.
-      - name: Remove unpacked directories before release upload
+      # Nur Installer + Update-Metadaten (Root von releases/desktop). Kein rekursives ** — sonst
+      # mehrere locale.pak/resources.pak in .app/Frameworks bzw. *-unpacked → gleicher Asset-Name auf GitHub.
+      - name: Verify distributable artifacts exist
         run: |
           set -euo pipefail
-          find releases/desktop -depth -type d -name '*-unpacked' -exec rm -rf {} \;
+          root="releases/desktop"
+          n="$(find "$root" -maxdepth 1 -type f \( \
+            -name '*.dmg' -o -name '*.exe' -o -name '*.AppImage' -o -name '*.deb' -o -name '*.rpm' -o \
+            -name '*.zip' -o -name '*.tar.xz' -o -name '*.yml' -o -name '*.yaml' -o -name '*.blockmap' \
+          \) | wc -l | tr -d ' ')"
+          if [ "$n" -lt 1 ]; then
+            echo "No distributable files in ${root}" >&2
+            ls -la "$root" >&2 || true
+            exit 1
+          fi
 
       # Release + Assets in einem Schritt (softprops). `gh release upload --clobber` kann bei mehreren
       # Dateien HTTP 404 auf /releases/assets/<id> liefern (cli/cli#10361, #10734).
@@ -173,7 +181,16 @@ jobs:
           make_latest: ${{ !contains(github.ref_name, '-') }}
           overwrite_files: true
           preserve_order: true
-          fail_on_unmatched_files: true
+          fail_on_unmatched_files: false
           working_directory: releases/desktop
-          # Ein Muster — softprops konkateniert mehrere Globs ohne Dedupe; * + **/* kann dieselbe Datei doppelt matchen.
-          files: "**"
+          files: |
+            *.dmg
+            *.exe
+            *.AppImage
+            *.deb
+            *.rpm
+            *.zip
+            *.tar.xz
+            *.yml
+            *.yaml
+            *.blockmap
