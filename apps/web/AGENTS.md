@@ -20,11 +20,13 @@
 | [`components/onboarding/`](components/onboarding/) | Onboarding UI + app-local `ToggleGroup` (premium variant) |
 | [`lib/i18n/`](lib/i18n/), [`lib/auth/`](lib/auth/), [`lib/trades/`](lib/trades/) | Locale, session cookie/JWT, trade ids |
 | [`app/globals.css`](app/globals.css) | Imports `@repo/ui` globals + product utilities (panels, hero, legal scrollbar) |
-| [`.env.example`](.env.example) | Stripe, Keycloak/OIDC, **`DATABASE_URL`** (Mandanten-Provision) — copy to `.env.local` |
+| [`.env.example`](.env.example), [`.env.local.example`](.env.local.example) | Vollständige Platzhalter; **lokales Dev:** `.env.local.example` → `.env.local` (Postgres + Keycloak-Defaults) |
 
 ## Mandanten-Provision und `DATABASE_URL`
 
 Nach erfolgreicher Registrierung legt [`lib/provision-organization.ts`](lib/provision-organization.ts) eine Zeile in `organizations` an (**gleiche Postgres-Instanz** wie `apps/api`). Ohne `DATABASE_URL` wird das **übersprungen** (lokal ok).
+
+Nach Login (ohne explizites `next`): Standardziel **`/web`** ([`lib/auth/resolve-post-login-next-path.ts`](lib/auth/resolve-post-login-next-path.ts) — `resolveLoginRedirect`). **`/onboarding`** ist nur der Registrierungsflow (Links von der Landingpage u. a.), nicht die Login-Standard-Weiterleitung. Eingeloggte Nutzer auf **`/login`** werden ebenfalls nach `/web` geschickt (bzw. nach gültigem `?next=`).
 
 **Checkliste Staging/Prod**
 

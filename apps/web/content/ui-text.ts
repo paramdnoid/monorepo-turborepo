@@ -1545,6 +1545,8 @@ const uiTextDe = {
       invalidCredentials: "E-Mail oder Passwort sind ungueltig.",
       tokenResponseIncomplete: "Token-Antwort unvollstaendig.",
       loginRateLimited: "Zu viele Anmeldeversuche. Bitte kurz warten.",
+      loginAuthServiceUnavailable:
+        "Anmeldung ist voruebergehend nicht erreichbar. Bitte spaeter erneut versuchen.",
       loginCsrfInvalid: "Sicherheitspruefung fehlgeschlagen. Bitte Seite neu laden.",
       loginRedirectInvalid: "Ungueltige Weiterleitung.",
       loginNativeIncomplete:
@@ -3177,6 +3179,8 @@ const uiTextEnOverrides: DeepPartial<typeof uiTextDe> = {
       invalidCredentials: "Email or password is invalid.",
       tokenResponseIncomplete: "Token response is incomplete.",
       loginRateLimited: "Too many sign-in attempts. Please wait briefly.",
+      loginAuthServiceUnavailable:
+        "Sign-in is temporarily unavailable. Please try again later.",
       loginCsrfInvalid: "Security check failed. Please reload the page.",
       loginRedirectInvalid: "Invalid redirect.",
       loginNativeIncomplete:

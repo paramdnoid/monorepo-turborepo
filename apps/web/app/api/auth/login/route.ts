@@ -16,6 +16,7 @@ import { rateLimitLogin } from "@/lib/auth/login-rate-limit";
 import { isAllowedNativeRedirectUri } from "@/lib/auth/native-redirect-allowlist";
 import { saveNativeLoginOtc } from "@/lib/auth/native-login-otc";
 import { getRequestLocale } from "@/lib/i18n/request-locale";
+import { resolveLoginRedirect } from "@/lib/auth/resolve-post-login-next-path";
 
 function clientIp(request: Request): string {
   return (
@@ -25,14 +26,20 @@ function clientIp(request: Request): string {
   );
 }
 
-function safeNextPath(next: string | undefined): string | null {
-  if (!next) {
-    return null;
+function loginGrantErrorResponse(
+  grant: { ok: false; status: number; bodyText: string },
+  text: ReturnType<typeof getUiText>,
+) {
+  if (grant.status >= 500) {
+    return NextResponse.json(
+      { error: text.api.auth.loginAuthServiceUnavailable },
+      { status: 503 },
+    );
   }
-  if (!next.startsWith("/") || next.startsWith("//")) {
-    return null;
-  }
-  return next;
+  return NextResponse.json(
+    { error: text.api.auth.invalidCredentials },
+    { status: 401 },
+  );
 }
 
 const loginSchema = z.object({
@@ -124,19 +131,24 @@ export async function POST(request: Request) {
       clientId,
     });
     if (!grant.ok) {
-      return NextResponse.json(
-        { error: text.api.auth.invalidCredentials },
-        { status: 401 },
-      );
+      return loginGrantErrorResponse(grant, text);
     }
     const otc = randomBytes(32).toString("base64url");
-    await saveNativeLoginOtc(otc, {
-      codeChallenge: native.code_challenge,
-      redirectUri: native.redirect_uri,
-      accessToken: grant.tokens.access_token,
-      refreshToken: grant.tokens.refresh_token ?? null,
-      expiresIn: grant.tokens.expires_in ?? 900,
-    });
+    try {
+      await saveNativeLoginOtc(otc, {
+        codeChallenge: native.code_challenge,
+        redirectUri: native.redirect_uri,
+        accessToken: grant.tokens.access_token,
+        refreshToken: grant.tokens.refresh_token ?? null,
+        expiresIn: grant.tokens.expires_in ?? 900,
+      });
+    } catch (err) {
+      console.error("[auth/login] saveNativeLoginOtc failed:", err);
+      return NextResponse.json(
+        { error: text.api.auth.loginAuthServiceUnavailable },
+        { status: 503 },
+      );
+    }
     const redirectUrl = new URL(native.redirect_uri);
     redirectUrl.searchParams.set("code", otc);
     redirectUrl.searchParams.set("state", native.state);
@@ -152,13 +164,10 @@ export async function POST(request: Request) {
     clientId: webClientId,
   });
   if (!grant.ok) {
-    return NextResponse.json(
-      { error: text.api.auth.invalidCredentials },
-      { status: 401 },
-    );
+    return loginGrantErrorResponse(grant, text);
   }
 
-  const nextPath = safeNextPath(next) ?? "/onboarding";
+  const nextPath = resolveLoginRedirect(next);
   cookieStore.set(AUTH_COOKIE_NAME, grant.tokens.access_token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -169,7 +178,11 @@ export async function POST(request: Request) {
 
   const sub = decodeAccessTokenPayload(grant.tokens.access_token)?.sub;
   if (sub) {
-    await recordWebLoginForUserSub(sub);
+    try {
+      await recordWebLoginForUserSub(sub);
+    } catch (err) {
+      console.error("[auth/login] recordWebLoginForUserSub failed:", err);
+    }
   }
 
   return NextResponse.json({ ok: true as const, next: nextPath });

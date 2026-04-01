@@ -57,7 +57,7 @@ const OIDC_CLIENT_ID = process.env.AUTH_OIDC_CLIENT_ID ?? "zgwerk-cli";
 const KEYCLOAK_BASE_URL =
   process.env.AUTH_KEYCLOAK_BASE_URL ??
   process.env.KEYCLOAK_BASE_URL ??
-  "http://localhost:8081";
+  "http://127.0.0.1:8080";
 const KEYCLOAK_REALM = process.env.AUTH_KEYCLOAK_REALM ?? "zgwerk";
 
 function normalizeBaseUrl(url: string) {

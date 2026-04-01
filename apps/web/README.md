@@ -39,12 +39,12 @@ pnpm build
 
 ## Umgebung
 
-Als Vorlage dient `apps/web/.env.example` (keine Secrets committen).
-Wichtige Variablen:
+- **`apps/web/.env.example`** — alle Variablen mit Kurzkommentaren.
+- **`apps/web/.env.local.example`** — lokales Dev-Setup (Postgres + Keycloak auf Port 8080, Client `zgwerk-cli`): nach `.env.local` kopieren und anpassen.
 
-- `NEXT_PUBLIC_SITE_URL`
-- Stripe-Konfiguration (`NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_SECRET_KEY`, Preis-IDs)
-- Keycloak/OIDC-Konfiguration für Onboarding-Registrierung
+Lokal Keycloak: `docker compose -f ../../docker-compose.keycloak.yml up -d`, dann `pnpm keycloak:bootstrap` (Repo-Root). Siehe `apps/web/AGENTS.md`.
+
+Weitere wichtige Variablen: `NEXT_PUBLIC_SITE_URL`, Stripe (`NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_SECRET_KEY`, Preis-IDs), Keycloak/OIDC für Onboarding und `/login`.
 
 ## Hinweise
 

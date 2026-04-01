@@ -7,7 +7,7 @@ type TokenResponse = {
 const KEYCLOAK_BASE_URL =
   process.env.AUTH_KEYCLOAK_BASE_URL ??
   process.env.KEYCLOAK_BASE_URL ??
-  "http://localhost:8081";
+  "http://127.0.0.1:8080";
 export const KEYCLOAK_REALM = process.env.AUTH_KEYCLOAK_REALM ?? "zgwerk";
 const KEYCLOAK_ADMIN_REALM = process.env.AUTH_KEYCLOAK_ADMIN_REALM ?? "master";
 const KEYCLOAK_ADMIN_CLIENT_ID =

@@ -1,6 +1,6 @@
 const OIDC_TOKEN_ENDPOINT =
   process.env.AUTH_OIDC_TOKEN_ENDPOINT ??
-  "http://localhost:8081/realms/zgwerk/protocol/openid-connect/token";
+  "http://127.0.0.1:8080/realms/zgwerk/protocol/openid-connect/token";
 
 export type KeycloakTokenBundle = {
   access_token: string;
@@ -34,14 +34,19 @@ export async function requestKeycloakPasswordGrant(
     scope,
   });
 
-  const tokenResponse = await fetch(OIDC_TOKEN_ENDPOINT, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: params.toString(),
-    cache: "no-store",
-  });
+  let tokenResponse: Response;
+  try {
+    tokenResponse = await fetch(OIDC_TOKEN_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: params.toString(),
+      cache: "no-store",
+    });
+  } catch {
+    return { ok: false, status: 503, bodyText: "fetch_failed" };
+  }
 
   const bodyText = await tokenResponse.text();
   if (!tokenResponse.ok) {

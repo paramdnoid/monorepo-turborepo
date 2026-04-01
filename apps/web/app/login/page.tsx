@@ -1,7 +1,13 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
 import { LoginClient, type LoginNativeParams } from "@/app/login/login-client";
 import { getUiText } from "@/content/ui-text";
+import { resolveLoginRedirect } from "@/lib/auth/resolve-post-login-next-path";
+import {
+  getServerAccessToken,
+  isAccessTokenCookieMissingOrExpired,
+} from "@/lib/auth/server-token";
 import { getServerLocale } from "@/lib/i18n/server-locale";
 
 type LoginPageProps = {
@@ -52,6 +58,12 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const resolved = searchParams ? await searchParams : {};
+
+  const token = await getServerAccessToken();
+  if (!isAccessTokenCookieMissingOrExpired(token) && token) {
+    const next = firstString(resolved.next);
+    redirect(resolveLoginRedirect(next));
+  }
 
   const locale = await getServerLocale();
   const text = getUiText(locale);
