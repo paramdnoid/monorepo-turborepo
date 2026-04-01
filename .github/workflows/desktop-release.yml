@@ -152,8 +152,8 @@ jobs:
           merge-multiple: true
           path: releases/desktop
 
-      # Release nur Metadaten (Notes); Assets separat mit `gh release upload --clobber` — ersetzt Namenskollisionen zuverlässig
-      # (softprops + overwrite_files / manuelles DELETE war bereits 404 bzw. already_exists-anfällig).
+      # Release + Assets in einem Schritt (softprops). `gh release upload --clobber` kann bei mehreren
+      # Dateien HTTP 404 auf /releases/assets/<id> liefern (cli/cli#10361, #10734).
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2.6.1
         with:
@@ -162,17 +162,9 @@ jobs:
           generate_release_notes: true
           prerelease: ${{ contains(github.ref_name, '-') }}
           make_latest: ${{ !contains(github.ref_name, '-') }}
-
-      - name: Upload release assets
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          TAG="${GITHUB_REF_NAME}"
-          ROOT="releases/desktop"
-          mapfile -d '' -t files < <(find "$ROOT" -type f -print0)
-          if [ "${#files[@]}" -eq 0 ]; then
-            echo "No files under ${ROOT}" >&2
-            exit 1
-          fi
-          gh release upload "$TAG" "${files[@]}" --clobber
+          overwrite_files: true
+          fail_on_unmatched_files: true
+          working_directory: releases/desktop
+          files: |
+            *
+            **/*
