@@ -152,6 +152,14 @@ jobs:
           merge-multiple: true
           path: releases/desktop
 
+      # electron-builder legt u. a. win-unpacked/, linux-unpacked/ an — darin u. a. resources.pak.
+      # GitHub-Release-Assets sind pro Dateiname eindeutig: zweimal „resources.pak“ → Konflikt / Race.
+      # Installers (.dmg, .exe, AppImage, …) bleiben erhalten.
+      - name: Remove unpacked directories before release upload
+        run: |
+          set -euo pipefail
+          find releases/desktop -depth -type d -name '*-unpacked' -exec rm -rf {} \;
+
       # Release + Assets in einem Schritt (softprops). `gh release upload --clobber` kann bei mehreren
       # Dateien HTTP 404 auf /releases/assets/<id> liefern (cli/cli#10361, #10734).
       # preserve_order: sequenziell statt paralleler Uploads — weniger REST-Bursts (Secondary Rate Limit).
@@ -167,6 +175,5 @@ jobs:
           preserve_order: true
           fail_on_unmatched_files: true
           working_directory: releases/desktop
-          files: |
-            *
-            **/*
+          # Ein Muster — softprops konkateniert mehrere Globs ohne Dedupe; * + **/* kann dieselbe Datei doppelt matchen.
+          files: "**"
