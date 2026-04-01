@@ -149,20 +149,8 @@ jobs:
           merge-multiple: true
           path: releases/desktop
 
-      # Vor erneutem Upload: bestehende Assets löschen (sonst GH „already_exists“; overwrite_files+DELETE war 404-anfällig).
-      - name: Remove existing release assets
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          TAG="${GITHUB_REF_NAME}"
-          JSON=$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" 2>/dev/null) || exit 0
-          echo "$JSON" | jq -r '(.assets // [])[] | .id' | while read -r id; do
-            [ -z "$id" ] && continue
-            gh api --method DELETE "repos/${GITHUB_REPOSITORY}/releases/assets/${id}" || true
-          done
-
-      # Semver-Pre-Releases nutzen oft einen Bindestrich (v1.0.0-beta.1) — dann prerelease auf GitHub.
+      # Release nur Metadaten (Notes); Assets separat mit `gh release upload --clobber` — ersetzt Namenskollisionen zuverlässig
+      # (softprops + overwrite_files / manuelles DELETE war bereits 404 bzw. already_exists-anfällig).
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2.6.1
         with:
@@ -171,6 +159,23 @@ jobs:
           generate_release_notes: true
           prerelease: ${{ contains(github.ref_name, '-') }}
           make_latest: ${{ !contains(github.ref_name, '-') }}
-          files: releases/desktop/**
-          overwrite_files: false
-          preserve_order: true
+
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          ROOT="releases/desktop"
+          dupes=$(find "$ROOT" -type f -printf '%f\n' | sort | uniq -d || true)
+          if [ -n "${dupes}" ]; then
+            echo "Duplicate basenames under ${ROOT} — fix artifact layout:" >&2
+            echo "$dupes" >&2
+            exit 1
+          fi
+          count=$(find "$ROOT" -type f | wc -l)
+          if [ "$count" -eq 0 ]; then
+            echo "No files under ${ROOT}" >&2
+            exit 1
+          fi
+          find "$ROOT" -type f -print0 | xargs -0 bash -c 'gh release upload "$0" "$@" --clobber' "$TAG"
