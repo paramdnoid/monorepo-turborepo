@@ -149,9 +149,20 @@ jobs:
           merge-multiple: true
           path: releases/desktop
 
+      # Vor erneutem Upload: bestehende Assets löschen (sonst GH „already_exists“; overwrite_files+DELETE war 404-anfällig).
+      - name: Remove existing release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          JSON=$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" 2>/dev/null) || exit 0
+          echo "$JSON" | jq -r '(.assets // [])[] | .id' | while read -r id; do
+            [ -z "$id" ] && continue
+            gh api --method DELETE "repos/${GITHUB_REPOSITORY}/releases/assets/${id}" || true
+          done
+
       # Semver-Pre-Releases nutzen oft einen Bindestrich (v1.0.0-beta.1) — dann prerelease auf GitHub.
-      # overwrite_files: false vermeidet DELETE auf Release-Assets (404 bei API-Race / softprops#373).
-      # Bei erneutem Upload derselben Dateinamen: Release im UI leeren oder Tag neu setzen.
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2.6.1
         with:
