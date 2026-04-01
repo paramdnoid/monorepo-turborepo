@@ -525,9 +525,10 @@ async function main() {
   await ensureRealm(token);
   await ensureRealmSslForLocalHttp(token);
   await ensureRealmRole(token, "API_USER");
-  const clientUuid = await ensureClient(token);
-  await ensureTenantIdMapper(token, clientUuid);
-  await ensureClient(token, "zgwerk-cli");
+  const zunftDevUuid = await ensureClient(token);
+  await ensureTenantIdMapper(token, zunftDevUuid);
+  const cliUuid = await ensureClient(token, "zgwerk-cli");
+  await ensureTenantIdMapper(token, cliUuid);
   const desktopUuid = await ensureDesktopOauthClient(token);
   await ensureTenantIdMapper(token, desktopUuid);
   await ensureUser(token);

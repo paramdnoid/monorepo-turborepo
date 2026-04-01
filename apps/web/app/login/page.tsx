@@ -60,15 +60,23 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const resolved = searchParams ? await searchParams : {};
 
   const token = await getServerAccessToken();
-  if (!isAccessTokenCookieMissingOrExpired(token) && token) {
+  const native = parseNative(resolved);
+  /** Desktop-OAuth (PKCE + Callback): nicht nach /web umleiten — sonst kein Handoff möglich. */
+  if (
+    !native &&
+    !isAccessTokenCookieMissingOrExpired(token) &&
+    token
+  ) {
     const next = firstString(resolved.next);
     redirect(resolveLoginRedirect(next));
   }
 
   const locale = await getServerLocale();
   const text = getUiText(locale);
-  const native = parseNative(resolved);
   const next = firstString(resolved.next);
+
+  const hasWebSession =
+    !isAccessTokenCookieMissingOrExpired(token) && Boolean(token);
 
   return (
     <LoginClient
@@ -77,6 +85,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
       genericError={text.api.genericError}
       brandingTagline={text.branding.tagline}
       native={native}
+      hasWebSession={Boolean(native) && hasWebSession}
       {...(next ? { next } : {})}
     />
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -29,6 +29,8 @@ type LoginClientProps = {
   genericError: string;
   brandingTagline: string;
   native?: LoginNativeParams;
+  /** Web-Session vorhanden: Desktop-OAuth ohne erneutes Passwort (OTC-Handoff). */
+  hasWebSession?: boolean;
   next?: string;
 };
 
@@ -38,6 +40,7 @@ export function LoginClient({
   genericError,
   brandingTagline,
   native,
+  hasWebSession = false,
   next,
 }: LoginClientProps) {
   const [csrf, setCsrf] = useState<string | null>(null);
@@ -47,6 +50,7 @@ export function LoginClient({
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const handoffStarted = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -71,6 +75,49 @@ export function LoginClient({
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!native || !hasWebSession || handoffStarted.current) {
+      return;
+    }
+    handoffStarted.current = true;
+    setBusy(true);
+    setError(null);
+    void (async () => {
+      try {
+        const res = await fetch("/api/auth/native-handoff-from-web-session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            csrf: "",
+            native: {
+              redirect_uri: native.redirect_uri,
+              state: native.state,
+              code_challenge: native.code_challenge,
+              ...(native.client_id ? { client_id: native.client_id } : {}),
+            },
+          }),
+        });
+        const data = (await res.json()) as {
+          ok?: boolean;
+          redirectUrl?: string;
+          error?: string;
+        };
+        if (!res.ok || !data.redirectUrl) {
+          setError(data.error ?? genericError);
+          setBusy(false);
+          handoffStarted.current = false;
+          return;
+        }
+        window.location.href = data.redirectUrl;
+      } catch {
+        setError(genericError);
+        setBusy(false);
+        handoffStarted.current = false;
+      }
+    })();
+  }, [native, hasWebSession, genericError]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -180,7 +227,7 @@ export function LoginClient({
                 value={username}
                 onChange={(ev) => setUsername(ev.target.value)}
                 className="h-11"
-                disabled={busy || !csrf}
+                disabled={busy || (!csrf && !native)}
               />
             </div>
             <div className="space-y-2">
@@ -198,7 +245,7 @@ export function LoginClient({
                   value={password}
                   onChange={(ev) => setPassword(ev.target.value)}
                   className="h-11 pr-11"
-                  disabled={busy || !csrf}
+                  disabled={busy || (!csrf && !native)}
                 />
                 <button
                   type="button"
@@ -227,12 +274,14 @@ export function LoginClient({
             <Button
               type="submit"
               className="h-11 w-full"
-              disabled={busy || !csrf}
+              disabled={busy || (!csrf && !native)}
             >
-              {!csrf && !csrfLoadError
+              {!csrf && !csrfLoadError && !native
                 ? auth.signInPending
                 : busy
-                  ? auth.signInPending
+                  ? native && hasWebSession
+                    ? auth.signInDesktopHandoff
+                    : auth.signInPending
                   : auth.signInSubmit}
             </Button>
           </form>

@@ -113,6 +113,7 @@ const uiTextDe = {
     passwordShow: "Passwort anzeigen",
     passwordHide: "Passwort ausblenden",
     signInPending: "Anmeldung…",
+    signInDesktopHandoff: "Desktop-App wird verbunden…",
     signInSubmit: "Anmelden",
     missingCredentials: "Bitte E-Mail und Passwort eingeben.",
     invalidCredentials: "E-Mail oder Passwort sind ungueltig.",
@@ -1548,6 +1549,8 @@ const uiTextDe = {
       loginAuthServiceUnavailable:
         "Anmeldung ist voruebergehend nicht erreichbar. Bitte spaeter erneut versuchen.",
       loginCsrfInvalid: "Sicherheitspruefung fehlgeschlagen. Bitte Seite neu laden.",
+      bffSessionInvalid:
+        "Sitzung ungueltig oder abgelaufen. Bitte erneut anmelden.",
       loginRedirectInvalid: "Ungueltige Weiterleitung.",
       loginNativeIncomplete:
         "Fuer die App-Anmeldung werden redirect_uri, state und code_challenge benoetigt.",
@@ -1620,6 +1623,30 @@ const uiTextDe = {
     oidcSession: "Sichere Token-Session",
     logout: "Abmelden",
     loggingOut: "Abmeldung…",
+  },
+  webShell: {
+    desktopDownload: {
+      title: "Desktop-App",
+      description:
+        "Installierbare App fuer Windows, macOS und Linux. OS und CPU-Architektur werden im Browser erkannt (keine vollstaendige Hardware-Analyse).",
+      cta: "Desktop-App herunterladen",
+      detectedPrefix: "Erkannt:",
+      osLabels: {
+        windows: "Windows",
+        macos: "macOS",
+        linux: "Linux",
+        unknown: "Unbekannt",
+      },
+      archLabels: {
+        arm64: "arm64",
+        x64: "x64",
+        unknown: "Architektur unbekannt",
+      },
+      otherDownloads: "Weitere Plattformen",
+      configMissing:
+        "Download-Links sind noch nicht konfiguriert. Bitte NEXT_PUBLIC_DESKTOP_DOWNLOADS_JSON setzen.",
+      inElectron: "Du nutzt bereits die Desktop-App.",
+    },
   },
 } as const
 
@@ -1744,6 +1771,7 @@ const uiTextEnOverrides: DeepPartial<typeof uiTextDe> = {
     passwordShow: "Show password",
     passwordHide: "Hide password",
     signInPending: "Signing in…",
+    signInDesktopHandoff: "Connecting desktop app…",
     signInSubmit: "Sign in",
     missingCredentials: "Please enter email and password.",
     invalidCredentials: "Email or password is invalid.",
@@ -3182,6 +3210,7 @@ const uiTextEnOverrides: DeepPartial<typeof uiTextDe> = {
       loginAuthServiceUnavailable:
         "Sign-in is temporarily unavailable. Please try again later.",
       loginCsrfInvalid: "Security check failed. Please reload the page.",
+      bffSessionInvalid: "Session is invalid or expired. Please sign in again.",
       loginRedirectInvalid: "Invalid redirect.",
       loginNativeIncomplete:
         "App sign-in requires redirect_uri, state, and code_challenge.",
@@ -3240,6 +3269,30 @@ const uiTextEnOverrides: DeepPartial<typeof uiTextDe> = {
     oidcSession: "Secure token session",
     logout: "Sign out",
     loggingOut: "Signing out…",
+  },
+  webShell: {
+    desktopDownload: {
+      title: "Desktop app",
+      description:
+        "Installable app for Windows, macOS, and Linux. OS and CPU architecture are detected in the browser (not a full hardware inventory).",
+      cta: "Download desktop app",
+      detectedPrefix: "Detected:",
+      osLabels: {
+        windows: "Windows",
+        macos: "macOS",
+        linux: "Linux",
+        unknown: "Unknown",
+      },
+      archLabels: {
+        arm64: "arm64",
+        x64: "x64",
+        unknown: "Unknown architecture",
+      },
+      otherDownloads: "Other platforms",
+      configMissing:
+        "Download links are not configured yet. Set NEXT_PUBLIC_DESKTOP_DOWNLOADS_JSON.",
+      inElectron: "You are already using the desktop app.",
+    },
   },
 }
 
