@@ -36,6 +36,15 @@ pnpm exec turbo run check-types --filter=desktop
 
 **Icons aktualisieren:** `pnpm generate:electron-icons` (Root) oder `pnpm --filter desktop run generate:electron-icons`. **`pnpm run dist`** / **`dist:dir`** rufen die Generierung automatisch vor dem Packen auf.
 
+## Distribution (macOS): „beschädigt“ / Gatekeeper
+
+Öffentliche **Pre-Releases** ohne Apple **Developer ID** nutzen in [`package.json`](./package.json) unter `build.mac` **`identity: null`** (u. a. Workaround für Start-Crashes unter macOS 26 mit electron-builder). Downloads sind dann **nicht** von Apple verifiziert.
+
+- **Symptom:** Nach dem Download meldet macOS, die **.app** sei **beschädigt** — oft **kein** kaputter Build, sondern **Gatekeeper** + Quarantäne.
+- **Nutzer:** App aus dem DMG nach **Programme** ziehen, dann **Rechtsklick → Öffnen** (beim ersten Mal), oder im Terminal:  
+  `xattr -cr "/Applications/ZunftGewerk - Software für Handwerksbetriebe.app"`
+- **Produktion:** **Code Signing** + **Notarisierung** (GitHub Secrets `CSC_*`, `APPLE_*`), dann `identity: null` entfernen und Release erneut bauen — siehe Kommentar in [`.github/workflows/desktop-release.yml`](../../.github/workflows/desktop-release.yml).
+
 ## Monorepo
 
 Shared IPC-Kanalnamen und `DesktopApi`-Typ: **[`../../packages/electron/AGENTS.md`](../../packages/electron/AGENTS.md)** (`@repo/electron`).

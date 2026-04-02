@@ -1646,6 +1646,8 @@ const uiTextDe = {
       configMissing:
         "Download-Links sind noch nicht konfiguriert. Bitte NEXT_PUBLIC_DESKTOP_DOWNLOADS_JSON setzen.",
       inElectron: "Du nutzt bereits die Desktop-App.",
+      macOSGatekeeperHint:
+        "macOS: Nach dem Download kann eine Meldung erscheinen, die App sei „beschädigt“ — das ist oft der Schutz gegen unsignierte Programme (nicht ein defektes File). App aus dem DMG in Programme ziehen, dann per Rechtsklick → „Öffnen“ starten, oder im Terminal: xattr -cr \"/Applications/ZunftGewerk - Software für Handwerksbetriebe.app\". Dauerhaft ohne Warnung: Apple Developer ID + Notarisierung.",
     },
   },
 } as const
@@ -3292,6 +3294,8 @@ const uiTextEnOverrides: DeepPartial<typeof uiTextDe> = {
       configMissing:
         "Download links are not configured yet. Set NEXT_PUBLIC_DESKTOP_DOWNLOADS_JSON.",
       inElectron: "You are already using the desktop app.",
+      macOSGatekeeperHint:
+        "macOS: If you see the app is “damaged” or can’t be opened, that’s usually Gatekeeper blocking an unsigned build (not a bad download). Copy the app from the DMG to Applications, then right-click → Open, or run: xattr -cr \"/Applications/ZunftGewerk - Software für Handwerksbetriebe.app\". For installs without this step, use Apple Developer ID signing and notarization.",
     },
   },
 }

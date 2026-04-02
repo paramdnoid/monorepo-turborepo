@@ -99,6 +99,11 @@ export function DesktopDownloadCard({
               {t.cta}
             </a>
           </Button>
+          {platform?.os === "macos" ? (
+            <p className="mt-3 text-xs text-muted-foreground leading-relaxed">
+              {t.macOSGatekeeperHint}
+            </p>
+          ) : null}
           {otherLinks.length > 0 ? (
             <div className="mt-4 border-t pt-4">
               <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
