@@ -1,6 +1,7 @@
 import "server-only"
 
 import { getServerAccessToken } from "@/lib/auth/server-token"
+import { getTradeSlugFromOrganization } from "@/lib/organization-trade-slug"
 import { resolveTradeId } from "@/lib/trades/resolve-trade"
 import type { TradeId } from "@/lib/trades/trade-types"
 
@@ -89,14 +90,33 @@ function mapTenantId(claims: AccessTokenClaims | null) {
   return claimToString(claims.tenant_id) ?? claimToString(claims.attributes?.tenant_id) ?? null
 }
 
+/**
+ * Gewerk: zuerst `organizations.trade_slug` (DB), sonst JWT — Mapper in Keycloak können hinter der Registrierung liegen.
+ */
+async function resolveTradeFromSession(claims: AccessTokenClaims | null): Promise<{
+  tradeSlug: string | null
+  tradeId: TradeId
+  tenantId: string | null
+}> {
+  const tenantId = mapTenantId(claims)
+  const jwtTradeSlug = mapTradeSlug(claims)
+  const orgTradeSlug = await getTradeSlugFromOrganization(tenantId)
+  const tradeSlug = orgTradeSlug ?? jwtTradeSlug
+
+  return {
+    tradeSlug,
+    tradeId: resolveTradeId(tradeSlug),
+    tenantId,
+  }
+}
+
 export async function getAuthSessionContext(): Promise<AuthSessionContext> {
   const token = await getServerAccessToken()
   const claims = token ? decodeJwtPayload(token) : null
-  const tradeSlug = mapTradeSlug(claims)
-  const tenantId = mapTenantId(claims)
+  const { tradeSlug, tradeId, tenantId } = await resolveTradeFromSession(claims)
 
   return {
-    tradeId: resolveTradeId(tradeSlug),
+    tradeId,
     tradeSlug,
     tenantId,
   }
@@ -105,15 +125,16 @@ export async function getAuthSessionContext(): Promise<AuthSessionContext> {
 export async function getAuthSessionUser(): Promise<AuthSessionUser> {
   const token = await getServerAccessToken()
   const claims = token ? decodeJwtPayload(token) : null
+  const { tradeSlug, tradeId, tenantId } = await resolveTradeFromSession(claims)
 
   return {
     name: mapName(claims),
     email: mapEmail(claims),
     avatar: claims?.picture?.trim() || "/logo.png",
     session: {
-      tradeId: resolveTradeId(mapTradeSlug(claims)),
-      tradeSlug: mapTradeSlug(claims),
-      tenantId: mapTenantId(claims),
+      tradeId,
+      tradeSlug,
+      tenantId,
     },
   }
 }

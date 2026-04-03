@@ -14,8 +14,7 @@
     "e2e:keycloak": "tsx scripts/e2e-keycloak.mts",
     "verify:runbook-prereqs": "bash scripts/verify-runbook-prereqs.sh",
     "runbook:phase1": "bash scripts/runbook-phase1.sh",
-    "check:auth-env": "tsx scripts/check-auth-env.mts",
-    "token:local": "bash scripts/keycloak-local-token.sh"
+    "check:auth-env": "tsx scripts/check-auth-env.mts"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.9",

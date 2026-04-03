@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Richtet lokales Keycloak für ZunftGewerk-Dev ein (Realm, Client, Mapper, User) — ohne manuelle Klicks.
+ * Richtet lokales Keycloak für ZunftGewerk-Dev ein (Realm, Clients, Mapper) — ohne manuelle Klicks.
  * Voraussetzung: docker compose -f docker-compose.keycloak.yml up -d
  *
  *   pnpm keycloak:bootstrap
@@ -9,10 +9,13 @@
  *   KEYCLOAK_URL (default http://127.0.0.1:8080)
  *   KEYCLOAK_ADMIN / KEYCLOAK_ADMIN_PASSWORD (default admin / admin)
  *   KEYCLOAK_REALM (default zgwerk)
- *   KEYCLOAK_CLIENT_ID (default zunft-dev)
- *   DEV_USER / DEV_PASSWORD (default dev / dev)
- *   TENANT_ID (default local-dev-tenant)
+ *   KEYCLOAK_CLIENT_ID (default zgwerk-cli)
+ *   (früher TENANT_ID für Hardcode-Mapper — entfernt; tenant_id kommt aus dem User-Attribut)
  *   DESKTOP_OAUTH_REDIRECT_PORT (default 47823) — Redirect für Client „zgwerk-desktop“
+ *
+ * User Profile: Realm setzt unmanagedAttributePolicy=ENABLED, damit Custom-Attribute
+ * (tenant_id, trade_slug, …) über die Admin-API gespeichert werden — sonst verwirft
+ * Keycloak sie bei deklarativem User Profile.
  */
 const base = (process.env.KEYCLOAK_URL ?? "http://127.0.0.1:8080").replace(
   /\/$/,
@@ -21,11 +24,7 @@ const base = (process.env.KEYCLOAK_URL ?? "http://127.0.0.1:8080").replace(
 const adminUser = process.env.KEYCLOAK_ADMIN ?? "admin";
 const adminPass = process.env.KEYCLOAK_ADMIN_PASSWORD ?? "admin";
 const realm = process.env.KEYCLOAK_REALM ?? "zgwerk";
-const clientId = process.env.KEYCLOAK_CLIENT_ID ?? "zunft-dev";
-const devUser = process.env.DEV_USER ?? "dev";
-const devPassword = process.env.DEV_PASSWORD ?? "dev";
-const tenantId = process.env.TENANT_ID ?? "local-dev-tenant";
-
+const clientId = process.env.KEYCLOAK_CLIENT_ID ?? "zgwerk-cli";
 /** Electron-Desktop: Authorization Code + PKCE (apps/desktop). */
 const desktopOauthRedirectPort =
   Number(process.env.DESKTOP_OAUTH_REDIRECT_PORT) || 47823;
@@ -120,6 +119,46 @@ async function ensureRealmSslForLocalHttp(token) {
 }
 
 /**
+ * Ohne diese Policy verwirft Keycloak bei aktivem „User profile“ oft unbekannte Attribute;
+ * der tenant_id-Mapper liefert dann nichts → TENANT_CLAIM_MISSING / 403.
+ * @see https://www.keycloak.org/docs/latest/server_admin/#_user_profile
+ */
+async function ensureUserProfileUnmanagedAttributes(token) {
+  const url = `${base}/admin/realms/${encodeURIComponent(realm)}/users/profile`;
+  const gr = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!gr.ok) {
+    console.warn(
+      `User profile: GET fehlgeschlagen (${gr.status}) — Custom-Attribute ggf. manuell in der Admin-UI.`,
+    );
+    return;
+  }
+  const profile = await gr.json();
+  if (profile.unmanagedAttributePolicy === "ENABLED") {
+    console.log(`User profile: unmanagedAttributePolicy bereits ENABLED.`);
+    return;
+  }
+  profile.unmanagedAttributePolicy = "ENABLED";
+  const pr = await fetch(url, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(profile),
+  });
+  if (!pr.ok) {
+    throw new Error(
+      `User profile: PUT unmanagedAttributePolicy — ${pr.status} ${await pr.text()}`,
+    );
+  }
+  console.log(
+    "User profile: unmanagedAttributePolicy → ENABLED (tenant_id / trade_slug per Admin-API).",
+  );
+}
+
+/**
  * Realm-Rolle für die API (JWT / Gateway) — wird Onboarding-Nutzern zugewiesen
  * (`apps/web` POST /api/onboarding/register → assignApiUserRole).
  */
@@ -160,6 +199,20 @@ async function findClientUuid(token, targetClientId) {
   if (!r.ok) throw new Error(await r.text());
   const arr = await r.json();
   return arr[0]?.id ?? null;
+}
+
+/** Früherer Doppel-Client zu „zgwerk-cli“ — bei Bootstrap entfernen. */
+async function deleteClientIfExists(token, targetClientId) {
+  const uuid = await findClientUuid(token, targetClientId);
+  if (!uuid) return;
+  const r = await fetch(
+    `${base}/admin/realms/${encodeURIComponent(realm)}/clients/${uuid}`,
+    { method: "DELETE", headers: { Authorization: `Bearer ${token}` } },
+  );
+  if (!r.ok && r.status !== 404) {
+    throw new Error(`Client löschen: ${r.status} ${await r.text()}`);
+  }
+  console.log(`Client „${targetClientId}“ entfernt (ersetzt durch „zgwerk-cli“).`);
 }
 
 async function ensureClientPasswordGrant(token, clientUuid) {
@@ -216,7 +269,7 @@ async function ensureClient(token, targetClientId = clientId) {
         name:
           targetClientId === "zgwerk-cli"
             ? "ZunftGewerk CLI (Onboarding / Password-Grant)"
-            : "ZunftGewerk Dev",
+            : `ZunftGewerk (${targetClientId})`,
         enabled: true,
         publicClient: true,
         directAccessGrantsEnabled: true,
@@ -365,11 +418,12 @@ async function ensureTenantIdMapper(token, clientUuid) {
     body: JSON.stringify({
       name: "tenant_id",
       protocol: "openid-connect",
-      protocolMapper: "oidc-hardcoded-claim-mapper",
+      protocolMapper: "oidc-usermodel-attribute-mapper",
       config: {
+        "user.attribute": "tenant_id",
         "claim.name": "tenant_id",
-        "claim.value": tenantId,
         "jsonType.label": "String",
+        "multivalued": "false",
         "id.token.claim": "false",
         "access.token.claim": "true",
         "userinfo.token.claim": "true",
@@ -380,143 +434,31 @@ async function ensureTenantIdMapper(token, clientUuid) {
     throw new Error(`Mapper anlegen: ${cr.status} ${await cr.text()}`);
   }
   console.log(
-    `Protocol-Mapper „tenant_id“ = „${tenantId}“ (Hardcoded-Claim, lokales Dev).`,
+    'Protocol-Mapper „tenant_id“: User-Attribut → Access-Token (kein Hardcode; Web-Onboarding setzt tenant_id).',
   );
 }
 
-/**
- * Keycloak verweigert den Password-Grant mit „Account is not fully set up“, wenn
- * Pflichtfelder / requiredActions fehlen — für lokales Dev-Login vervollständigen.
- */
-async function finalizeUserForPasswordGrant(token, userId) {
-  const gr = await fetch(
-    `${base}/admin/realms/${encodeURIComponent(realm)}/users/${userId}`,
-    { headers: { Authorization: `Bearer ${token}` } },
-  );
-  if (!gr.ok) throw new Error(await gr.text());
-  const u = await gr.json();
-  u.requiredActions = [];
-  u.enabled = true;
-  u.emailVerified = true;
-  u.email = u.email || `${devUser}@local.dev`;
-  u.firstName = u.firstName || "Dev";
-  u.lastName = u.lastName || "Local";
-  u.attributes = { ...u.attributes, tenant_id: [tenantId] };
-  const pr = await fetch(
-    `${base}/admin/realms/${encodeURIComponent(realm)}/users/${userId}`,
-    {
-      method: "PUT",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(u),
-    },
-  );
-  if (!pr.ok) {
-    throw new Error(`User finalisieren: ${await pr.text()}`);
-  }
-  console.log(
-    "Benutzer: Profil vervollständigt, requiredActions geleert (Password-Grant).",
-  );
-}
-
-async function ensureUser(token) {
-  const q = new URLSearchParams({ username: devUser, exact: "true" });
+/** Früherer Bootstrap-Testuser — entfernen, falls noch vorhanden. */
+async function deleteLegacyTestUserIfExists(token, username) {
+  const q = new URLSearchParams({ username, exact: "true" });
   const r = await fetch(
     `${base}/admin/realms/${encodeURIComponent(realm)}/users?${q}`,
     { headers: { Authorization: `Bearer ${token}` } },
   );
   if (!r.ok) throw new Error(await r.text());
   const users = await r.json();
-
-  const userBody = {
-    username: devUser,
-    enabled: true,
-    emailVerified: true,
-    email: `${devUser}@local.dev`,
-    firstName: "Dev",
-    lastName: "Local",
-    requiredActions: [],
-    attributes: { tenant_id: [tenantId] },
-  };
-
-  if (users.length === 0) {
-    const cr = await fetch(
-      `${base}/admin/realms/${encodeURIComponent(realm)}/users`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(userBody),
-      },
-    );
-    if (cr.status !== 201) {
-      throw new Error(`User anlegen: ${cr.status} ${await cr.text()}`);
-    }
-    const loc = cr.headers.get("Location");
-    const id = loc?.split("/").pop();
-    if (!id) throw new Error("User-ID aus Location-Header fehlt.");
-    await setPassword(token, id);
-    await finalizeUserForPasswordGrant(token, id);
-    console.log(
-      `Benutzer „${devUser}“ angelegt (Passwort: aus DEV_PASSWORD), tenant_id=${tenantId}.`,
-    );
-    return;
+  const u = users[0];
+  if (!u?.id) return;
+  const dr = await fetch(
+    `${base}/admin/realms/${encodeURIComponent(realm)}/users/${u.id}`,
+    { method: "DELETE", headers: { Authorization: `Bearer ${token}` } },
+  );
+  if (!dr.ok && dr.status !== 404) {
+    throw new Error(`User löschen: ${await dr.text()}`);
   }
-
-  const id = users[0].id;
-  const gr = await fetch(
-    `${base}/admin/realms/${encodeURIComponent(realm)}/users/${id}`,
-    { headers: { Authorization: `Bearer ${token}` } },
-  );
-  if (!gr.ok) throw new Error(await gr.text());
-  const existing = await gr.json();
-  existing.attributes = { ...existing.attributes, tenant_id: [tenantId] };
-  existing.requiredActions = [];
-  existing.emailVerified = true;
-  existing.enabled = true;
-  existing.email = existing.email || `${devUser}@local.dev`;
-  existing.firstName = existing.firstName || "Dev";
-  existing.lastName = existing.lastName || "Local";
-  const ur = await fetch(
-    `${base}/admin/realms/${encodeURIComponent(realm)}/users/${id}`,
-    {
-      method: "PUT",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(existing),
-    },
-  );
-  if (!ur.ok) throw new Error(`User aktualisieren: ${await ur.text()}`);
-  await setPassword(token, id);
-  await finalizeUserForPasswordGrant(token, id);
   console.log(
-    `Benutzer „${devUser}“ aktualisiert (tenant_id=${tenantId}, Passwort gesetzt).`,
+    `Benutzer „${username}“ entfernt (früherer Test-User; Konten über Web-Onboarding).`,
   );
-}
-
-async function setPassword(token, userId) {
-  const r = await fetch(
-    `${base}/admin/realms/${encodeURIComponent(realm)}/users/${userId}/reset-password`,
-    {
-      method: "PUT",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        type: "password",
-        value: devPassword,
-        temporary: false,
-      }),
-    },
-  );
-  if (!r.ok) throw new Error(`Passwort setzen: ${await r.text()}`);
 }
 
 async function main() {
@@ -524,19 +466,22 @@ async function main() {
   const token = await getAdminToken();
   await ensureRealm(token);
   await ensureRealmSslForLocalHttp(token);
+  await ensureUserProfileUnmanagedAttributes(token);
   await ensureRealmRole(token, "API_USER");
-  const zunftDevUuid = await ensureClient(token);
-  await ensureTenantIdMapper(token, zunftDevUuid);
-  const cliUuid = await ensureClient(token, "zgwerk-cli");
+  await deleteClientIfExists(token, "zunft-dev");
+  const cliUuid = await ensureClient(token);
   await ensureTenantIdMapper(token, cliUuid);
   const desktopUuid = await ensureDesktopOauthClient(token);
   await ensureTenantIdMapper(token, desktopUuid);
-  await ensureUser(token);
+  await deleteLegacyTestUserIfExists(token, "dev");
   console.log("\nFertig. Als Nächstes:");
-  console.log("  pnpm --filter api run check:auth-env");
   console.log(
-    `  DEV_PASSWORD=${JSON.stringify(devPassword)} pnpm --filter api run token:local`,
+    "  Web-Onboarding (/onboarding): Konto anlegen — Mandant + JWT wie in Produktion.",
   );
+  console.log(
+    "  API testen: Cookie „zgwerk_access_token“ in den DevTools kopieren → ACCESS_TOKEN=… (siehe apps/api/KEYCLOAK-E2E-RUNBOOK.md).",
+  );
+  console.log("  pnpm --filter api run check:auth-env");
   console.log(
     "  Desktop: Client „zgwerk-desktop“, Redirect http://127.0.0.1:" +
       String(desktopOauthRedirectPort) +

@@ -48,7 +48,13 @@
     "SMTP_PORT",
     "SMTP_SSL",
     "SMTP_STARTTLS",
-    "SMTP_USER"
+    "SMTP_USER",
+    "SEED_ORG_NAME",
+    "SEED_TENANT_ID",
+    "SEED_TRADE_SLUG",
+    "KEYCLOAK_REALM",
+    "KEYCLOAK_CLIENT_ID",
+    "AUTH_TENANT_CLAIM"
   ],
   "tasks": {
     "build": {

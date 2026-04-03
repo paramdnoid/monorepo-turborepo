@@ -2,6 +2,9 @@
 /* Default Tailwind v4 `dark:` uses prefers-color-scheme; next-themes toggles `.dark` on
    <html>. Without this override, `dark:*` utilities disagree with theme CSS variables. */
 @custom-variant dark (&:where(.dark, .dark *));
+/* Radix: `data-state="checked"|"unchecked"` — Tailwind's `data-checked:` targets `[data-checked]` by default (shadcn #9709). */
+@custom-variant data-checked (&[data-state="checked"]);
+@custom-variant data-unchecked (&[data-state="unchecked"]);
 @import "@repo/tailwind-config";
 @import "./theme-tokens.css";
 @source "../../../apps/web/**/*.{ts,tsx}";

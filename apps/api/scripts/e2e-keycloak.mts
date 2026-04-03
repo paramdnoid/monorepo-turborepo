@@ -4,7 +4,7 @@
  * Optional: API_BASE=http://127.0.0.1:4000
  *
  * Voraussetzung: Mandant in `organizations` für die `tenant_id` aus dem Token
- * (z. B. nach Web-Registrierung mit DATABASE_URL oder `pnpm --filter @repo/db run db:seed`).
+ * (z. B. nach Web-Registrierung; optional `pnpm --filter @repo/db run db:seed` mit passender `SEED_TENANT_ID`).
  */
 const base = (process.env.API_BASE ?? "http://127.0.0.1:4000").replace(
   /\/$/,

@@ -89,6 +89,6 @@ try {
 }
 
 console.log(
-  "\nNächster Schritt: Token + Org (KEYCLOAK-E2E-RUNBOOK.md), dann runbook:phase1 mit ACCESS_TOKEN.",
+  "\nNächster Schritt: Web-Onboarding + Mandant (KEYCLOAK-E2E-RUNBOOK.md), JWT aus Cookie zgwerk_access_token, dann runbook:phase1 mit ACCESS_TOKEN.",
 );
 process.exit(0);

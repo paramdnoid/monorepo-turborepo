@@ -16,7 +16,7 @@ pnpm --filter @repo/db exec drizzle-kit generate
 # Migration anwenden:
 pnpm --filter @repo/db exec drizzle-kit migrate
 
-# Beispiel-Mandant (tenant_id = SEED_TENANT_ID, Default: local-dev-tenant)
+# Optional: Mandant manuell anlegen (meist nicht nötig — `apps/api` smoke:http provisioniert selbst)
 pnpm --filter @repo/db run db:seed
 
 # Programmatisch: `provisionOrganizationIfAbsent` aus [`src/provision.ts`](./src/provision.ts) (u. a. von `web` nach Registrierung) — idempotent nach `tenant_id`

@@ -1,23 +1,42 @@
 /**
- * Smoke-Test gegen echte DB ohne Keycloak: `createApp` mit Mock-JWT + gleicher tenant_id wie SEED.
+ * Smoke-Test gegen echte DB ohne Keycloak: `createApp` mit Mock-JWT.
  *
- * Voraussetzung: Migration + `pnpm --filter @repo/db run db:seed` mit gleichem SEED_TENANT_ID.
+ * Voraussetzung: Migration (`drizzle-kit migrate`). Legt bei Bedarf eine Zeile in
+ * `organizations` an (gleiche Logik wie `provisionOrganizationIfAbsent`), damit kein
+ * separates `db:seed` nötig ist.
  *
- *   cp apps/api/.env.local.example apps/api/.env.local  # anpassen
+ *   cp apps/api/.env.local.example apps/api/.env.local  # DATABASE_URL
  *   pnpm --filter api run smoke:http
  */
 import { config } from "dotenv";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { provisionOrganizationIfAbsent } from "@repo/db";
+
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 config({ path: resolve(__dirname, "../.env.local") });
 config({ path: resolve(__dirname, "../.env") });
 
 const tenantId = process.env.SEED_TENANT_ID?.trim() || "local-dev-tenant";
+const orgName = process.env.SEED_ORG_NAME?.trim() || "Local Dev GmbH";
+const tradeSlug = process.env.SEED_TRADE_SLUG?.trim() || "maler";
 
 const { createApp } = await import("../src/app.js");
 const { getOptionalDb } = await import("../src/db.js");
+
+const db = getOptionalDb();
+if (!db) {
+  console.error("DATABASE_URL fehlt (Smoke braucht echte DB).");
+  process.exit(1);
+}
+
+const prov = await provisionOrganizationIfAbsent(db, {
+  tenantId,
+  name: orgName,
+  tradeSlug,
+});
+console.log("Smoke: Mandant", prov, tenantId);
 
 const app = createApp({
   verifyAccessToken: async () => ({ sub: "smoke-user", tenantId }),

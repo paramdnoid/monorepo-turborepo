@@ -21,14 +21,15 @@ export type SendSignupVerificationEmailInput = {
 
 /**
  * Sendet nach neuer Registrierung eine Bestätigungsmail (SMTP aus ENV).
- * Schlägt still fehl (nur Log), wenn SMTP oder Signatur-Secret fehlen.
+ * Ohne SMTP: in `development` kann der Link im Server-Log stehen, wenn das Signatur-Secret gesetzt ist.
+ * Schlägt still fehl (nur Log), wenn Konfiguration fehlt.
  */
 export async function sendSignupVerificationEmail(
   input: SendSignupVerificationEmailInput,
 ): Promise<boolean> {
-  if (!isSmtpConfigured() || !isEmailVerificationSecretConfigured()) {
+  if (!isEmailVerificationSecretConfigured()) {
     console.warn(
-      "[sendSignupVerificationEmail] SMTP oder AUTH_EMAIL_VERIFICATION_SECRET / AUTH_PASSWORD_RESET_SECRET fehlt — keine Mail.",
+      "[sendSignupVerificationEmail] AUTH_EMAIL_VERIFICATION_SECRET oder AUTH_PASSWORD_RESET_SECRET fehlt (min. ein Secret für signierte Links). Siehe apps/web/.env.local.example",
     );
     return false;
   }
@@ -40,6 +41,21 @@ export async function sendSignupVerificationEmail(
 
   const origin = getPublicSiteOrigin();
   const verifyUrl = `${origin}/api/auth/verify-email?token=${encodeURIComponent(token)}`;
+
+  if (!isSmtpConfigured()) {
+    if (process.env.NODE_ENV === "development") {
+      console.info(
+        "[sendSignupVerificationEmail] SMTP nicht gesetzt — Bestätigungslink (nur Dev, Server-Log):\n" +
+          verifyUrl,
+      );
+    } else {
+      console.warn(
+        "[sendSignupVerificationEmail] SMTP_HOST / SMTP_USER / SMTP_PASS fehlt — keine Mail.",
+      );
+    }
+    return false;
+  }
+
   const imprintUrl = `${origin}/legal/imprint`;
   const t = getUiText(input.locale);
   const ev = t.api.emailVerification;

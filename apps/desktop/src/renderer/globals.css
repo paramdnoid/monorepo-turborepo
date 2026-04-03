@@ -3,6 +3,8 @@
 @import "@repo/ui/styles/theme-tokens.css";
 /* Match next-themes: `dark:` utilities follow `.dark` on <html>, not only prefers-color-scheme */
 @custom-variant dark (&:where(.dark, .dark *));
+@custom-variant data-checked (&[data-state="checked"]);
+@custom-variant data-unchecked (&[data-state="unchecked"]);
 
 /* Paths relative to this file (apps/desktop/src/renderer/) */
 @source "../../../../packages/ui/src/**/*.{ts,tsx}";

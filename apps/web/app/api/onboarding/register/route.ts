@@ -6,6 +6,9 @@ import { getUiText } from "@/content/ui-text";
 import { AUTH_COOKIE_NAME } from "@/lib/auth/constants";
 import { requestKeycloakPasswordGrant } from "@/lib/auth/keycloak-password-grant";
 import { getRequestLocale } from "@/lib/i18n/request-locale";
+import { isOnboardingBrowserRequest } from "@/lib/onboarding/is-onboarding-browser-request";
+
+export { isOnboardingBrowserRequest };
 
 export const signUpPayloadSchema = z
   .object({
@@ -62,24 +65,6 @@ const KEYCLOAK_REALM = process.env.AUTH_KEYCLOAK_REALM ?? "zgwerk";
 
 function normalizeBaseUrl(url: string) {
   return url.replace(/\/+$/, "");
-}
-
-export function isOnboardingBrowserRequest(request: Request) {
-  const requestUrl = new URL(request.url);
-  const origin = request.headers.get("origin");
-  const referer = request.headers.get("referer");
-  if (!origin || !referer) return false;
-
-  let refererUrl: URL;
-  try {
-    refererUrl = new URL(referer);
-  } catch {
-    return false;
-  }
-
-  if (origin !== requestUrl.origin) return false;
-  if (refererUrl.origin !== requestUrl.origin) return false;
-  return refererUrl.pathname.startsWith("/onboarding");
 }
 
 export function createTenantId(companyName: string, tradeSlug: string) {

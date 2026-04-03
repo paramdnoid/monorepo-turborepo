@@ -13,7 +13,8 @@ bash scripts/verify-runbook-prereqs.sh
 echo ""
 if [[ -z "${ACCESS_TOKEN:-}" ]]; then
   echo "==> Schritt 2 — Keycloak-E2E: noch kein ACCESS_TOKEN"
-  echo "    Token beschaffen (siehe KEYCLOAK-E2E-RUNBOOK.md §4), Mandant in organizations (§3), dann:"
+  echo "    Token: nach /onboarding Cookie zgwerk_access_token (DevTools) oder curl §4 — KEYCLOAK-E2E-RUNBOOK.md"
+  echo "    Mandant in organizations (§3), dann:"
   echo "    ACCESS_TOKEN=\"…\" pnpm --filter api run runbook:phase1"
   echo "    (oder nur: ACCESS_TOKEN=\"…\" pnpm --filter api run e2e:keycloak)"
   echo ""

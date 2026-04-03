@@ -38,7 +38,7 @@ export function createAuthMiddleware(
             error: "tenant_claim_missing",
             code: "TENANT_CLAIM_MISSING",
             detail:
-              "Access-Token enthält keinen Mandanten-Claim — Keycloak-Protokoll-Mapper für tenant_id konfigurieren.",
+              "Access-Token enthält keinen Mandanten-Claim — Keycloak-Protokoll-Mapper „tenant_id“ am Client (z. B. zgwerk-cli) und User-Attribut tenant_id prüfen; nach `pnpm keycloak:bootstrap` oder Mapper-Fix: abmelden und neu anmelden, damit ein neues Token ausgestellt wird.",
           },
           403,
         );

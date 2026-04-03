@@ -55,8 +55,23 @@ export async function GET(request: Request) {
           { status: 503 },
         );
       }
-      // Eigene API (401/403 z. B. TENANT_NOT_PROVISIONED): Body unverfälscht durchreichen —
-      // das ist keine „ungültige Web-Session“, sondern Token/Claim/Mandant-Status.
+      // Eigene API (401/403): meist durchreichen; bei fehlendem Mandanten-Claim Hilfe für Keycloak.
+      if (res.status === 403) {
+        try {
+          const parsed = JSON.parse(bodyText) as { code?: string; hint?: string };
+          if (parsed.code === "TENANT_CLAIM_MISSING" && parsed.hint === undefined) {
+            return jsonNoStore(
+              {
+                ...parsed,
+                hint: text.api.auth.bffTenantClaimMissingHint,
+              },
+              { status: 403 },
+            );
+          }
+        } catch {
+          /* Roh-Body durchreichen */
+        }
+      }
       return new NextResponse(bodyText, {
         status: res.status,
         headers: {

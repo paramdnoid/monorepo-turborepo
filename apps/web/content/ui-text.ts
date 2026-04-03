@@ -1551,6 +1551,8 @@ const uiTextDe = {
       loginCsrfInvalid: "Sicherheitspruefung fehlgeschlagen. Bitte Seite neu laden.",
       bffSessionInvalid:
         "Sitzung ungueltig oder abgelaufen. Bitte erneut anmelden.",
+      bffTenantClaimMissingHint:
+        "Keycloak: Realm-Client zgwerk-cli (oder dein Login-Client) braucht den Protokoll-Mapper tenant_id; User-Attribut tenant_id muss gesetzt sein. Repo: pnpm keycloak:bootstrap. Danach abmelden und neu anmelden (altes JWT hat den Claim noch nicht).",
       loginRedirectInvalid: "Ungueltige Weiterleitung.",
       loginNativeIncomplete:
         "Fuer die App-Anmeldung werden redirect_uri, state und code_challenge benoetigt.",
@@ -1593,6 +1595,8 @@ const uiTextDe = {
       sessionMissing: "Session nicht gefunden.",
       invalidBillingData: "Ungueltige Abrechnungsdaten.",
       stripeConfigInvalid: "Stripe ist nicht korrekt konfiguriert.",
+      stripeCustomerNotFoundForResume:
+        "Kein Stripe-Kunde zu dieser Anmeldung gefunden (gleiche E-Mail wie bei der Registrierung, STRIPE_SECRET_KEY zum richtigen Konto). Onboarding ggf. erneut starten.",
       setupIntentLoadFailed: "Stripe SetupIntent konnte nicht geladen werden.",
       paymentMethodNotConfirmed: "Zahlungsmethode ist noch nicht bestaetigt.",
       stripeDataIncomplete: "Stripe-Daten sind unvollstaendig.",
@@ -1613,6 +1617,7 @@ const uiTextDe = {
     switchToDarkMode: "Dark Mode aktivieren",
     switchToLightMode: "Light Mode aktivieren",
     cycleThemeMode: "Theme wechseln",
+    appearance: "Thema",
     themeModeLight: "Light",
     themeModeDark: "Dark",
     themeModeSystem: "System",
@@ -1648,6 +1653,10 @@ const uiTextDe = {
       inElectron: "Du nutzt bereits die Desktop-App.",
       macOSGatekeeperHint:
         "macOS: Nach dem Download kann eine Meldung erscheinen, die App sei „beschädigt“ — das ist oft der Schutz gegen unsignierte Programme (nicht ein defektes File). App aus dem DMG in Programme ziehen, dann per Rechtsklick → „Öffnen“ starten, oder im Terminal: xattr -cr \"/Applications/ZunftGewerk - Software für Handwerksbetriebe.app\". Dauerhaft ohne Warnung: Apple Developer ID + Notarisierung.",
+    },
+    userMenu: {
+      menuAriaLabel: "Benutzerkonto, Einstellungen und Abmelden",
+      settings: "Einstellungen",
     },
   },
 } as const
@@ -2851,6 +2860,7 @@ const uiTextEnOverrides: DeepPartial<typeof uiTextDe> = {
     switchToDarkMode: "Enable dark mode",
     switchToLightMode: "Enable light mode",
     cycleThemeMode: "Switch theme",
+    appearance: "Theme",
     themeModeLight: "Light",
     themeModeDark: "Dark",
     themeModeSystem: "System",
@@ -3213,6 +3223,8 @@ const uiTextEnOverrides: DeepPartial<typeof uiTextDe> = {
         "Sign-in is temporarily unavailable. Please try again later.",
       loginCsrfInvalid: "Security check failed. Please reload the page.",
       bffSessionInvalid: "Session is invalid or expired. Please sign in again.",
+      bffTenantClaimMissingHint:
+        "Keycloak: your login client needs the tenant_id protocol mapper and the user attribute tenant_id. Run pnpm keycloak:bootstrap. Then sign out and sign in again (the old JWT will not include the claim).",
       loginRedirectInvalid: "Invalid redirect.",
       loginNativeIncomplete:
         "App sign-in requires redirect_uri, state, and code_challenge.",
@@ -3254,6 +3266,8 @@ const uiTextEnOverrides: DeepPartial<typeof uiTextDe> = {
       sessionMissing: "Session not found.",
       invalidBillingData: "Invalid billing data.",
       stripeConfigInvalid: "Stripe is not configured correctly.",
+      stripeCustomerNotFoundForResume:
+        "No Stripe customer found for this session (same email as at signup, STRIPE_SECRET_KEY must match your Stripe account). Try onboarding again.",
       setupIntentLoadFailed: "Could not load Stripe SetupIntent.",
       paymentMethodNotConfirmed: "Payment method is not confirmed yet.",
       stripeDataIncomplete: "Stripe data is incomplete.",
@@ -3296,6 +3310,10 @@ const uiTextEnOverrides: DeepPartial<typeof uiTextDe> = {
       inElectron: "You are already using the desktop app.",
       macOSGatekeeperHint:
         "macOS: If you see the app is “damaged” or can’t be opened, that’s usually Gatekeeper blocking an unsigned build (not a bad download). Copy the app from the DMG to Applications, then right-click → Open, or run: xattr -cr \"/Applications/ZunftGewerk - Software für Handwerksbetriebe.app\". For installs without this step, use Apple Developer ID signing and notarization.",
+    },
+    userMenu: {
+      menuAriaLabel: "Account, settings, and sign out",
+      settings: "Settings",
     },
   },
 }

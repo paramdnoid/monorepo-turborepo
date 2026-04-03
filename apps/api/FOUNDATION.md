@@ -63,7 +63,7 @@ Dieses Dokument bündelt drei Arbeitspakete, damit API + Auth + Mandant + Betrie
 | --- | ------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------- |
 | 2.1 | Entscheidung A/B/C festhalten (dieses Dokument + Kurz-ADR optional)                                                | Option A festgehalten (siehe §2)                                       |
 | 2.2 | Implementierung: z. B. nach `register` Erfolg → Insert `organizations` (Transaktion / Idempotenz nach `tenant_id`) | Kein manueller Seed für echte Nutzer nötig                             |
-| 2.3 | Migration bestehender Test-Daten: Seed nur noch für Dev (`db:seed`)                                                | Dokumentiert in [`packages/db/AGENTS.md`](../../packages/db/AGENTS.md) |
+| 2.3 | Optional: `db:seed` nur bei Bedarf (Smoke provisioniert Mandanten selbst)                                         | Dokumentiert in [`packages/db/AGENTS.md`](../../packages/db/AGENTS.md) |
 | 2.4 | Fehlerbild: wenn Keycloak-User ohne Org → 403 + Support-Hinweis / Retry nach Provisionierung                       | Einheitliche JSON-Struktur                                             |
 
 ### Akzeptanzkriterien

@@ -4,6 +4,9 @@ import { z } from "zod";
 import { getUiText } from "@/content/ui-text";
 import { getServerAccessToken } from "@/lib/auth/server-token";
 import { getRequestLocale } from "@/lib/i18n/request-locale";
+import { isOnboardingBrowserRequest } from "@/lib/onboarding/is-onboarding-browser-request";
+
+export { isOnboardingBrowserRequest };
 
 export const completeBillingSchema = z.object({
   setupIntentId: z.string().trim().min(1),
@@ -23,24 +26,6 @@ type StripeSubscriptionsListResponse = {
     status?: string;
   }>;
 };
-
-export function isOnboardingBrowserRequest(request: Request) {
-  const requestUrl = new URL(request.url);
-  const origin = request.headers.get("origin");
-  const referer = request.headers.get("referer");
-  if (!origin || !referer) return false;
-
-  let refererUrl: URL;
-  try {
-    refererUrl = new URL(referer);
-  } catch {
-    return false;
-  }
-
-  if (origin !== requestUrl.origin) return false;
-  if (refererUrl.origin !== requestUrl.origin) return false;
-  return refererUrl.pathname.startsWith("/onboarding");
-}
 
 export function stripeBillingEnabled() {
   return (process.env.FEATURE_STRIPE_BILLING ?? "false").toLowerCase() === "true";

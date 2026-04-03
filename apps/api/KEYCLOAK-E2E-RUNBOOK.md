@@ -11,9 +11,9 @@ Sinnvolle Reihenfolge: **alles auf dem eigenen Rechner** (Postgres, ggf. Keycloa
 1. Postgres + Migrationen; `pnpm --filter api run verify:runbook-prereqs` → `/health` und `/ready` **200**
 2. Keycloak **lokal** ([§1b](#1b-lokales-keycloak-docker--einmalig-einrichten)) oder Dev-Instanz — `AUTH_KEYCLOAK_BASE_URL` / Realm gesetzt (kein Platzhalter, sobald du Tokens testen willst)
 3. `pnpm --filter api run check:auth-env` (ohne `--skip-network`, sobald Keycloak erreichbar) → Well-known/JWKS **OK**
-4. Zeile in `organizations` zur Token-`tenant_id` ([§3](#3-mandant-in-organizations-pflicht-für-v1me-und-v1sync))
-5. `ACCESS_TOKEN="…" pnpm --filter api run runbook:phase1` → `/v1/me` und `/v1/sync` **200**
-6. `apps/web`: dieselbe `DATABASE_URL` in `.env.local` → Registrierungsflow einmal durchklicken → Mandant liegt in der DB
+4. **`apps/web`** dieselbe **`DATABASE_URL`** in `.env.local` wie die API → **`/onboarding`** einmal durchlaufen → Mandant liegt in **`organizations`** (wie in Produktion)
+5. **JWT für API-Tests:** Wert des Cookies **`zgwerk_access_token`** in den DevTools kopieren → als `ACCESS_TOKEN` exportieren (oder optional curl, [§4](#4-access-token-beschaffen))
+6. `ACCESS_TOKEN="…" pnpm --filter api run runbook:phase1` → `/v1/me` und `/v1/sync` **200**
 
 **Produktion** (eigene Subdomain für Keycloak, `NEXT_PUBLIC_SITE_URL`, Hosting-Secrets) ist **ein späterer Schritt** — nicht nötig, um die Entwicklung „zu Ende“ zu bringen.
 
@@ -35,8 +35,8 @@ Sinnvolle Reihenfolge: **alles auf dem eigenen Rechner** (Postgres, ggf. Keycloa
 
 1. Postgres + Migrationen
 2. API mit `DATABASE_URL` und Keycloak-Issuer (`AUTH_*`)
-3. Zeile in `organizations` für dieselbe **`tenant_id`**, die später im JWT steht
-4. Access-Token von Keycloak holen
+3. Web **`/onboarding`** mit gleicher `DATABASE_URL` → Zeile in **`organizations`** (gleiche **`tenant_id`** wie im JWT)
+4. **Access-Token:** Cookie **`zgwerk_access_token`** (nach Registrierung) oder optional curl [§4](#4-access-token-beschaffen)
 5. `GET /v1/me` und `POST /v1/sync` mit `Authorization: Bearer …`
 
 ---
@@ -122,43 +122,43 @@ Erwartung: **Well-known** und **JWKS** mit **OK** (nicht `fetch failed`).
 
 ### Automatisch (empfohlen — ohne UI-Klicks)
 
-Nach dem Container-Start **Realm `zgwerk`**, Client **`zunft-dev`**, Mapper **`tenant_id`**, User **`dev`** mit Passwort **`dev`** und Attribut **`tenant_id` = `local-dev-tenant`** anlegen:
+Nach dem Container-Start **Realm `zgwerk`**, Client **`zgwerk-cli`** und Mapper **`tenant_id`** anlegen (Nutzer **nicht** — Registrierung über **Web-Onboarding** oder manuell in Keycloak):
 
 ```sh
 # Repo-Root (Keycloak muss laufen)
 pnpm keycloak:bootstrap
 ```
 
-Details und Umgebungsvariablen: [`scripts/keycloak-bootstrap.mjs`](../../scripts/keycloak-bootstrap.mjs). Anschließend `check:auth-env` und `token:local` wie unten.
+Details und Umgebungsvariablen: [`scripts/keycloak-bootstrap.mjs`](../../scripts/keycloak-bootstrap.mjs). Anschließend `check:auth-env` und Web-Onboarding — JWT wie in [JWT nach Registrierung](#jwt-nach-registrierung-ohne-extra-user).
 
 ### Keycloak-Oberfläche (manuell, falls du nicht skripten willst)
 
 1. **http://localhost:8080** → **Administration Console** anmelden.
 2. **Realm anlegen:** Realm `zgwerk` (Name exakt so, passend zu `AUTH_KEYCLOAK_REALM`).
 3. **Client** (Realm `zgwerk`): **Clients** → **Create client**
-   - **Client ID:** z. B. `zunft-dev`
+   - **Client ID:** z. B. `zgwerk-cli`
    - **Client authentication:** **Off** (public)
    - **Valid redirect URIs:** `http://localhost:3000/*` (Web-Dev)
    - Unter **Capability config:** **Direct access grants** aktivieren (für Password-Grant / Skript — nur lokal).
-4. **Mapper `tenant_id`:** Client `zunft-dev` → **Client scopes** → **Dedicated scope** für diesen Client → **Add mapper** → **User Attribute**
+4. **Mapper `tenant_id`:** Client `zgwerk-cli` → **Client scopes** → **Dedicated scope** für diesen Client → **Add mapper** → **User Attribute**
    - **User Attribute:** `tenant_id`
    - **Token claim name:** `tenant_id`
    - **Claim JSON type:** String
    - **Add to access token:** An
-5. **Test-User:** **Users** → User anlegen (z. B. `dev`) → **Credentials** Passwort setzen → Tab **Attributes** → **`tenant_id`** = `local-dev-tenant` (muss zur Seed-Zeile / DB passen, siehe §3).
+5. **Nutzer:** über **Web-Onboarding** (`apps/web`) oder in Keycloak **Users** → User anlegen → **Credentials** → Tab **Attributes** → **`tenant_id`** wie im Token / in der DB (siehe §3).
 
-### Token holen (Skript)
+### JWT nach Registrierung (ohne Extra-User)
 
-```sh
-export KEYCLOAK_BASE_URL=http://127.0.0.1:8080
-export KEYCLOAK_REALM=zgwerk
-export KEYCLOAK_CLIENT_ID=zunft-dev
-export KEYCLOAK_USER=dev
-export KEYCLOAK_PASSWORD='<dein-passwort>'
-pnpm --filter api run token:local
-```
+Nach erfolgreichem **`/onboarding`** liegt das Access-Token im **httpOnly-Cookie** **`zgwerk_access_token`**.
 
-Ausgabe = nur die **Access-Token-Zeichenkette** (für `ACCESS_TOKEN=…` oder `e2e:keycloak`).
+1. Web-App und API laufen (`pnpm exec turbo run dev --filter=web` bzw. `--filter=api`).
+2. Registrierung abschließen — gleiche Datenbank wie bei der API (`DATABASE_URL`).
+3. **Entwicklertools** → **Anwendung** / **Speicher** → **Cookies** → **`zgwerk_access_token`** kopieren.
+4. Im Terminal: `export ACCESS_TOKEN='<eingefügter_Wert>'` und z. B. `pnpm --filter api run e2e:keycloak` oder die Requests aus [§5](#5-api-aufrufen).
+
+Es ist **kein** separates `.env`-Paar für einen Test-User nötig — du nutzt genau den Account aus der Registrierung.
+
+Optional (nur lokal, ohne Browser): Password-Grant per curl — [§4](#4-access-token-beschaffen).
 
 ---
 
@@ -191,20 +191,22 @@ export SEED_TENANT_ID='<tenant_id_aus_dem_access_token>'
 pnpm --filter @repo/db run db:seed
 ```
 
-Standard-Seed ohne `SEED_TENANT_ID` nutzt **`local-dev-tenant`** — ein Test-Token muss dann dieselbe `tenant_id` im Claim haben.
+Ohne `SEED_TENANT_ID` nutzt das Seed-Skript **`local-dev-tenant`** — der Token muss dieselbe `tenant_id` im Claim haben (oder `SEED_TENANT_ID` auf den Claim setzen).
 
 ---
 
 ## 4. Access-Token beschaffen
 
-Abhängig von Realm und Client (nur **Beispiel** — Pfade anpassen):
+**Standard:** JWT aus dem Cookie **`zgwerk_access_token`** nach **`/onboarding`** (siehe [oben](#jwt-nach-registrierung-ohne-extra-user)).
+
+**Alternativ (nur lokal, curl):** Password-Grant mit **denselben** Zugangsdaten wie nach der Registrierung — kein separater Test-Account nötig. Realm und Client anpassen:
 
 ```sh
 export KEYCLOAK_BASE='https://<host>'
 export REALM='zgwerk'
 export CLIENT_ID='<public-client-id>'
-export USER='<user>'
-export PASS='<password>'
+export USER='<ihre-registrierungs-email>'
+export PASS='<ihr-passwort>'
 
 curl -sS -X POST "$KEYCLOAK_BASE/realms/$REALM/protocol/openid-connect/token" \
   -d grant_type=password \
@@ -214,7 +216,7 @@ curl -sS -X POST "$KEYCLOAK_BASE/realms/$REALM/protocol/openid-connect/token" \
 | jq -r .access_token
 ```
 
-Password-Grant ist oft nur in **Development** erlaubt. Alternativen: Authorization-Code-Flow wie die Web-App, oder ein dedizierter Test-Client mit passender Policy.
+Password-Grant ist oft nur in **Development** erlaubt. In der Web-App läuft derselbe Flow über den Login bzw. die Registrierung (Authorization-Code bzw. Password-Grant je nach Client — siehe Keycloak-Client `zgwerk-cli`).
 
 Token exportieren:
 
@@ -292,7 +294,7 @@ Bis dahin: dieses Runbook + lokales **`pnpm --filter api run e2e:keycloak`** als
 | Auth-Env prüfen              | [`scripts/check-auth-env.mts`](./scripts/check-auth-env.mts) (`check:auth-env`)                            |
 | Lokales Keycloak (Docker)    | [`../../docker-compose.keycloak.yml`](../../docker-compose.keycloak.yml)                                   |
 | Keycloak einrichten (API)    | [`../../scripts/keycloak-bootstrap.mjs`](../../scripts/keycloak-bootstrap.mjs) (`pnpm keycloak:bootstrap`) |
-| Token (lokal / Password)     | [`scripts/keycloak-local-token.sh`](./scripts/keycloak-local-token.sh) (`token:local`)                     |
+| JWT nach Onboarding          | Cookie `zgwerk_access_token` in DevTools — [§1b](#jwt-nach-registrierung-ohne-extra-user)                    |
 | JWT-Verifikation             | [`src/auth/verify-token.ts`](./src/auth/verify-token.ts)                                                   |
 | Web-Provision nach Sign-up   | [`../web/lib/provision-organization.ts`](../web/lib/provision-organization.ts)                             |
 | Seed-Skript                  | [`../../packages/db/scripts/seed-organization.ts`](../../packages/db/scripts/seed-organization.ts)         |

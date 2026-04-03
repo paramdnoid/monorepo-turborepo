@@ -1,6 +1,21 @@
-const OIDC_TOKEN_ENDPOINT =
-  process.env.AUTH_OIDC_TOKEN_ENDPOINT ??
-  "http://127.0.0.1:8080/realms/zgwerk/protocol/openid-connect/token";
+/**
+ * Gleiche Basis wie API-Issuer: Realm aus ENV, nicht nur Default `zgwerk`.
+ * Sonst zeigt der Password-Grant auf einen anderen Realm → JWT ohne `tenant_id`-Mapper.
+ */
+export function getOidcPasswordGrantTokenEndpoint(): string {
+  const explicit = process.env.AUTH_OIDC_TOKEN_ENDPOINT?.trim();
+  if (explicit) return explicit;
+  const base = (
+    process.env.AUTH_KEYCLOAK_BASE_URL ??
+    process.env.KEYCLOAK_BASE_URL ??
+    "http://127.0.0.1:8080"
+  ).replace(/\/+$/, "");
+  const realm =
+    process.env.AUTH_KEYCLOAK_REALM?.trim() ||
+    process.env.KEYCLOAK_REALM?.trim() ||
+    "zgwerk";
+  return `${base}/realms/${encodeURIComponent(realm)}/protocol/openid-connect/token`;
+}
 
 export type KeycloakTokenBundle = {
   access_token: string;
@@ -36,7 +51,7 @@ export async function requestKeycloakPasswordGrant(
 
   let tokenResponse: Response;
   try {
-    tokenResponse = await fetch(OIDC_TOKEN_ENDPOINT, {
+    tokenResponse = await fetch(getOidcPasswordGrantTokenEndpoint(), {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",

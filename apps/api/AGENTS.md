@@ -21,7 +21,6 @@ pnpm --filter api run e2e:keycloak   # ACCESS_TOKEN=… (echtes Keycloak-Token)
 pnpm --filter api run verify:runbook-prereqs   # API läuft? /health + /ready (ohne Token)
 pnpm --filter api run runbook:phase1           # Prächeck; mit ACCESS_TOKEN=… auch e2e:keycloak
 pnpm --filter api run check:auth-env         # Issuer/JWKS prüfen (nach AUTH_* in .env.local)
-pnpm --filter api run token:local            # Access-Token (lokales Keycloak, siehe Runbook §1b)
 ```
 
 `dev` baut zuerst `@repo/api-contracts` und `@repo/db` (`^build`).
@@ -40,8 +39,7 @@ pnpm --filter api run token:local            # Access-Token (lokales Keycloak, s
 | [`KEYCLOAK-E2E-RUNBOOK.md`](./KEYCLOAK-E2E-RUNBOOK.md)                     | Durchgängiger Ablauf Keycloak + Org + curl / `e2e:keycloak` + CI-Hinweis     |
 | [`scripts/runbook-phase1.sh`](./scripts/runbook-phase1.sh)                 | Prächeck + optional E2E (`runbook:phase1`)                                   |
 | [`scripts/check-auth-env.mts`](./scripts/check-auth-env.mts)               | Issuer + optional JWKS (`check:auth-env`)                                    |
-| [`scripts/keycloak-local-token.sh`](./scripts/keycloak-local-token.sh)     | Password-Grant lokal (`token:local`)                                         |
-| [`http/keycloak-e2e.http`](./http/keycloak-e2e.http)                       | Beispiel-Requests (Keycloak-Token)                                           |
+| [`http/keycloak-e2e.http`](./http/keycloak-e2e.http)                       | Beispiel-Requests (Bearer nach Web-Onboarding / Runbook)                    |
 | [`src/routes/sync.ts`](./src/routes/sync.ts)                               | `POST /v1/sync` (Idempotenz, `project`)                                      |
 | [`src/routes/me.ts`](./src/routes/me.ts)                                   | `GET /v1/me`                                                                 |
 | [`src/db.ts`](./src/db.ts)                                                 | Lazy `DATABASE_URL` → Pool                                                   |
@@ -65,7 +63,7 @@ pnpm --filter api run token:local            # Access-Token (lokales Keycloak, s
 
 1. Postgres starten, z. B. `docker compose -f docker-compose.postgres.yml up -d` (siehe Repo-Root).
 2. `cp apps/api/.env.local.example apps/api/.env.local` und `DATABASE_URL` prüfen.
-3. `./scripts/local-api-smoke.sh` — führt Migration, Seed und **`pnpm --filter api run smoke:http`** aus (Mock-JWT + echte DB, kein Keycloak).
+3. `./scripts/local-api-smoke.sh` — führt Migration und **`pnpm --filter api run smoke:http`** aus (Mock-JWT + echte DB, Mandant wird im Smoke angelegt; kein Keycloak).
 4. **Echtes Keycloak-Token + provisionierte Org:** siehe **[`KEYCLOAK-E2E-RUNBOOK.md`](./KEYCLOAK-E2E-RUNBOOK.md)** (`e2e:keycloak`, curl, Weg A/B für `organizations`).
 
 ## Workspace
