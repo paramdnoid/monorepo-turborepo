@@ -29,7 +29,7 @@ export async function sendSignupVerificationEmail(
 ): Promise<boolean> {
   if (!isEmailVerificationSecretConfigured()) {
     console.warn(
-      "[sendSignupVerificationEmail] AUTH_EMAIL_VERIFICATION_SECRET oder AUTH_PASSWORD_RESET_SECRET fehlt (min. ein Secret für signierte Links). Siehe apps/web/.env.local.example",
+      "[sendSignupVerificationEmail] AUTH_EMAIL_VERIFICATION_SECRET oder AUTH_PASSWORD_RESET_SECRET fehlt (min. ein Secret für signierte Links). Siehe /.env.example am Repository-Root",
     );
     return false;
   }

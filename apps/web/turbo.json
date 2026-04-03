@@ -1,43 +1,60 @@
 {
   "$schema": "https://turborepo.dev/schema.json",
-  "extends": [
-    "//"
-  ],
+  "extends": ["//"],
   "tags": ["app"],
   "tasks": {
     "build": {
-      "outputs": [
-        ".next/**",
-        "!.next/cache/**"
-      ],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/.env.example"],
+      "outputs": [".next/**", "!.next/cache/**"],
       "env": [
-        "NODE_ENV",
+        "ADDRESS_API_TIMEOUT_MS",
+        "AUTH_EMAIL_VERIFICATION_SECRET",
+        "AUTH_KEYCLOAK_ADMIN_CLIENT_ID",
+        "AUTH_KEYCLOAK_ADMIN_PASSWORD",
+        "AUTH_KEYCLOAK_ADMIN_REALM",
+        "AUTH_KEYCLOAK_ADMIN_USERNAME",
+        "AUTH_KEYCLOAK_BASE_URL",
+        "AUTH_KEYCLOAK_REALM",
+        "AUTH_NATIVE_OIDC_CLIENT_ID",
+        "AUTH_NATIVE_REDIRECT_URI_REGEX",
+        "AUTH_OIDC_CLIENT_ID",
+        "AUTH_OIDC_TOKEN_ENDPOINT",
+        "AUTH_PASSWORD_RESET_SECRET",
+        "DATABASE_URL",
+        "EMAIL_FROM_NAME",
         "FEATURE_STRIPE_BILLING",
         "FEATURE_STRIPE_WEBHOOK_ENABLED",
-        "STRIPE_WEBHOOK_SECRET",
-        "STRIPE_WEBHOOK_TOLERANCE_SECONDS",
-        "STRIPE_SECRET_KEY",
+        "KEYCLOAK_BASE_URL",
+        "KEYCLOAK_REALM",
+        "MAIL_BRAND_ORIGIN",
+        "MAIL_FROM",
+        "NEXT_PUBLIC_AUTH_KEYCLOAK_BASE_URL",
+        "NEXT_PUBLIC_AUTH_KEYCLOAK_REALM",
+        "NEXT_PUBLIC_AUTH_OIDC_CLIENT_ID",
+        "NEXT_PUBLIC_AUTH_PASSWORD_RESET_URL",
+        "NEXT_PUBLIC_DESKTOP_DOWNLOADS_JSON",
+        "NEXT_PUBLIC_SITE_URL",
         "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
-        "STRIPE_PRICE_STARTER_MONTHLY",
-        "STRIPE_PRICE_STARTER_YEARLY",
+        "NEXT_PUBLIC_WEB_API_BASE_URL",
+        "NODE_ENV",
+        "OPENROUTESERVICE_API_KEY",
+        "OPENROUTESERVICE_BASE_URL",
+        "SMTP_AUTH",
+        "SMTP_HOST",
+        "SMTP_PASS",
+        "SMTP_PORT",
+        "SMTP_SSL",
+        "SMTP_STARTTLS",
+        "SMTP_USER",
+        "STRIPE_ONBOARDING_CANCEL_URL",
+        "STRIPE_ONBOARDING_SUCCESS_URL",
         "STRIPE_PRICE_PROFESSIONAL_MONTHLY",
         "STRIPE_PRICE_PROFESSIONAL_YEARLY",
-        "STRIPE_ONBOARDING_SUCCESS_URL",
-        "STRIPE_ONBOARDING_CANCEL_URL",
-        "NEXT_PUBLIC_SITE_URL",
-        "AUTH_OIDC_TOKEN_ENDPOINT",
-        "AUTH_OIDC_CLIENT_ID",
-        "AUTH_KEYCLOAK_BASE_URL",
-        "KEYCLOAK_BASE_URL",
-        "AUTH_KEYCLOAK_REALM",
-        "AUTH_KEYCLOAK_ADMIN_REALM",
-        "AUTH_KEYCLOAK_ADMIN_CLIENT_ID",
-        "AUTH_KEYCLOAK_ADMIN_USERNAME",
-        "AUTH_KEYCLOAK_ADMIN_PASSWORD",
-        "OPENROUTESERVICE_BASE_URL",
-        "OPENROUTESERVICE_API_KEY",
-        "ADDRESS_API_TIMEOUT_MS",
-        "DATABASE_URL"
+        "STRIPE_PRICE_STARTER_MONTHLY",
+        "STRIPE_PRICE_STARTER_YEARLY",
+        "STRIPE_SECRET_KEY",
+        "STRIPE_WEBHOOK_SECRET",
+        "STRIPE_WEBHOOK_TOLERANCE_SECONDS"
       ]
     },
     "lint": {
@@ -45,6 +62,18 @@
     },
     "check-types": {
       "dependsOn": ["^check-types", "^build"]
+    },
+    "test": {
+      "env": [
+        "AUTH_PASSWORD_RESET_SECRET",
+        "DATABASE_URL",
+        "FEATURE_STRIPE_BILLING",
+        "NODE_ENV",
+        "STRIPE_PRICE_PROFESSIONAL_MONTHLY",
+        "STRIPE_PRICE_PROFESSIONAL_YEARLY",
+        "STRIPE_PRICE_STARTER_MONTHLY",
+        "STRIPE_PRICE_STARTER_YEARLY"
+      ]
     }
   }
 }

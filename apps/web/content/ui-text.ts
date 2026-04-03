@@ -142,6 +142,9 @@ const uiTextDe = {
     resetPasswordTooShort: "Das Passwort muss mindestens 8 Zeichen haben.",
     resetPasswordRequestError: "Passwort konnte nicht aktualisiert werden. Bitte versuche es erneut.",
     backToSignIn: "Zurueck zur Anmeldung",
+    rememberMeLabel: "Angemeldet bleiben",
+    noAccountQuestion: "Noch kein Konto?",
+    signUpCta: "Zum Onboarding",
   },
   onboarding: {
     metaTitle: "Onboarding",
@@ -270,9 +273,9 @@ const uiTextDe = {
       planReadyHint:
         "Tarif und Abrechnung sind gesetzt. Du kannst mit den Betriebsdaten fortfahren.",
       verificationEmailHint:
-        "Wir haben dir eine Bestaetigungsmail gesendet. Bitte oeffne den Link in der E-Mail, um deine Adresse zu verifizieren.",
+        "Wir haben dir eine Bestaetigungsmail gesendet. Du kannst auf dieser Seite bleiben: Sobald du den Link in der E-Mail bestaetigt hast (auch in einem anderen Fenster), aktualisieren wir den Status hier automatisch. Alternativ kannst du den Link aus der E-Mail in die Adresszeile dieses Browser-Tabs kopieren.",
       verifyPendingHint:
-        "Bitte oeffne den Link in der E-Mail. Wir pruefen automatisch, ob deine Adresse bestaetigt ist.",
+        "Warte kurz auf dieser Seite oder bestaetige den Link aus der E-Mail. Wir fragen den Server regelmaessig ab — auch wenn der Link in einem anderen Browser geoeffnet wurde.",
       verifyReadyHint:
         "E-Mail ist bestaetigt. Du kannst mit dem Checkout fortfahren.",
       continueToCheckout: "Zum Checkout",
@@ -1811,6 +1814,9 @@ const uiTextEnOverrides: DeepPartial<typeof uiTextDe> = {
     backToSignIn: "Back to sign in",
     securityHintDsgvo: "GDPR-compliant sign in",
     securityHint2fa: "2FA and secure session tokens",
+    rememberMeLabel: "Stay signed in",
+    noAccountQuestion: "No account yet?",
+    signUpCta: "Go to onboarding",
   },
   onboarding: {
     metaTitle: "Onboarding",
@@ -1931,9 +1937,9 @@ const uiTextEnOverrides: DeepPartial<typeof uiTextDe> = {
         "All required fields are present. You can complete onboarding.",
       planReadyHint: "Plan and billing are set. You can continue with company details.",
       verificationEmailHint:
-        "We sent you a confirmation email. Open the link in the message to verify your address.",
+        "We sent you a confirmation email. You can stay on this page: once you confirm the link from the mail (even in another window), we update the status here automatically. Or paste the link into the address bar of this browser tab.",
       verifyPendingHint:
-        "Open the link in the email. We automatically check when your address is confirmed.",
+        "Stay on this page or confirm the link from the email. We poll the server regularly — even if the link was opened in another browser.",
       verifyReadyHint: "Your email is confirmed. You can continue to checkout.",
       continueToCheckout: "Continue to checkout",
     },

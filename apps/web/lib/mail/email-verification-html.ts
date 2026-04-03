@@ -262,7 +262,7 @@ export function buildEmailVerificationHtml(input: EmailVerificationHtmlInput): s
                         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;table-layout:fixed;max-width:100%;">
                           <tr>
                             <td class="email-button" align="center" style="border-radius:8px;background-color:#ea580c;padding:11px 18px;max-width:100%;">
-                              <a href="${safeUrl}" style="display:block;font-family:${f};font-size:14px;font-weight:600;line-height:1.35;color:#fafafa;text-decoration:none;text-align:center;word-wrap:break-word;overflow-wrap:break-word;">
+                              <a href="${safeUrl}" target="_self" rel="noopener noreferrer" style="display:block;font-family:${f};font-size:14px;font-weight:600;line-height:1.35;color:#fafafa;text-decoration:none;text-align:center;word-wrap:break-word;overflow-wrap:break-word;">
                                 ${escapeHtml(t.signupHtmlButton)}
                               </a>
                             </td>
@@ -280,7 +280,7 @@ export function buildEmailVerificationHtml(input: EmailVerificationHtmlInput): s
                     ${escapeHtml(t.signupHtmlLinkFallback)}
                   </p>
                   <p style="margin:0 0 18px 0;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:11px;line-height:1.45;word-break:break-all;">
-                    <a class="email-link-url" href="${safeUrl}" style="color:#ea580c;text-decoration:underline;">${safeUrl}</a>
+                    <a class="email-link-url" href="${safeUrl}" target="_self" rel="noopener noreferrer" style="color:#ea580c;text-decoration:underline;">${safeUrl}</a>
                   </p>
                   <p class="email-footer" style="margin:0;font-family:${f};font-size:12px;line-height:1.5;color:#71717a;">
                     ${escapeHtml(t.signupHtmlFooter)}

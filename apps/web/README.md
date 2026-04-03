@@ -39,8 +39,7 @@ pnpm build
 
 ## Umgebung
 
-- **`apps/web/.env.example`** — alle Variablen mit Kurzkommentaren.
-- **`apps/web/.env.local.example`** — lokales Dev-Setup (Postgres + Keycloak auf Port 8080, Client `zgwerk-cli`): nach `.env.local` kopieren und anpassen.
+- **`/.env.example`** (Repo-Root) — Platzhalter für Web, API und Desktop; für lokale Secrets **`/.env.local`** anlegen (z. B. `cp .env.example .env.local`).
 
 Lokal Keycloak: `docker compose -f ../../docker-compose.keycloak.yml up -d`, dann `pnpm keycloak:bootstrap` (Repo-Root). Siehe `apps/web/AGENTS.md`.
 

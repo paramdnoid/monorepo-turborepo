@@ -20,7 +20,7 @@
 | [`components/onboarding/`](components/onboarding/) | Onboarding UI + app-local `ToggleGroup` (premium variant) |
 | [`lib/i18n/`](lib/i18n/), [`lib/auth/`](lib/auth/), [`lib/trades/`](lib/trades/) | Locale, session cookie/JWT, trade ids |
 | [`app/globals.css`](app/globals.css) | Imports `@repo/ui` globals + product utilities (panels, hero, legal scrollbar) |
-| [`.env.example`](.env.example), [`.env.local.example`](.env.local.example) | Vollständige Platzhalter; **lokales Dev:** `.env.local.example` → `.env.local` (Postgres + Keycloak-Defaults) |
+| [`/.env.example`](../../.env.example) am Repo-Root | Platzhalter für Web, API und Desktop; **lokal:** `.env.local` im Repo-Root (nicht committen) |
 
 ## Mandanten-Provision und `DATABASE_URL`
 

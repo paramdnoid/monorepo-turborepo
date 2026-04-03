@@ -1,6 +1,6 @@
 /**
  * Prüft lokale Auth-Konfiguration (ohne laufende API): Issuer, JWKS-URL, optional Erreichbarkeit.
- * Lädt `apps/api/.env` und `.env.local` wie `src/server.ts`.
+ * Lädt `.env` / `.env.local` am Repository-Root wie `src/server.ts`.
  *
  *   pnpm --filter api run check:auth-env
  *   pnpm --filter api run check:auth-env -- --skip-network  — kein HTTP (Offline/CI)
@@ -11,9 +11,10 @@ import { fileURLToPath } from "node:url";
 
 import { loadEnv, resolveIssuer, resetEnvCacheForTests } from "../src/env.js";
 
-const apiRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
-loadEnvFile({ path: join(apiRoot, ".env") });
-loadEnvFile({ path: join(apiRoot, ".env.local") });
+const scriptDir = dirname(fileURLToPath(import.meta.url));
+const repoRoot = join(scriptDir, "../../..");
+loadEnvFile({ path: join(repoRoot, ".env") });
+loadEnvFile({ path: join(repoRoot, ".env.local"), override: true });
 resetEnvCacheForTests();
 
 const skipNetwork = process.argv.includes("--skip-network");

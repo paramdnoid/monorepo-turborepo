@@ -5,6 +5,7 @@ import { z } from "zod";
 import { getUiText } from "@/content/ui-text";
 import {
   AUTH_COOKIE_NAME,
+  AUTH_REFRESH_COOKIE_NAME,
   LOGIN_CSRF_COOKIE_NAME,
 } from "@/lib/auth/constants";
 import { getRequestLocale } from "@/lib/i18n/request-locale";
@@ -45,6 +46,7 @@ export async function POST(request: Request) {
   }
 
   cookieStore.delete(AUTH_COOKIE_NAME);
+  cookieStore.delete(AUTH_REFRESH_COOKIE_NAME);
 
   const res = NextResponse.json({ ok: true as const });
   res.headers.set("Cache-Control", "private, no-store");

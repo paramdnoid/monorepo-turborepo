@@ -4,14 +4,14 @@ Dieses Dokument ist der **durchgängige Referenzablauf** für Entwicklung und ma
 
 ### Entwicklung zuerst lokal abschließen (ohne Produktion)
 
-Sinnvolle Reihenfolge: **alles auf dem eigenen Rechner** (Postgres, ggf. Keycloak in Docker, `apps/api` + `apps/web` mit `.env.local`) **vollständig durchtesten** — erst danach Hosting, Domain ([zunftgewerk.de](https://zunftgewerk.de/)) und produktive Secrets.
+Sinnvolle Reihenfolge: **alles auf dem eigenen Rechner** (Postgres, ggf. Keycloak in Docker, `apps/api` + `apps/web` mit Repo-Root **`.env.local`**) **vollständig durchtesten** — erst danach Hosting, Domain ([zunftgewerk.de](https://zunftgewerk.de/)) und produktive Secrets.
 
 **Checkliste „Dev fertig“ (Minimal)**
 
 1. Postgres + Migrationen; `pnpm --filter api run verify:runbook-prereqs` → `/health` und `/ready` **200**
 2. Keycloak **lokal** ([§1b](#1b-lokales-keycloak-docker--einmalig-einrichten)) oder Dev-Instanz — `AUTH_KEYCLOAK_BASE_URL` / Realm gesetzt (kein Platzhalter, sobald du Tokens testen willst)
 3. `pnpm --filter api run check:auth-env` (ohne `--skip-network`, sobald Keycloak erreichbar) → Well-known/JWKS **OK**
-4. **`apps/web`** dieselbe **`DATABASE_URL`** in `.env.local` wie die API → **`/onboarding`** einmal durchlaufen → Mandant liegt in **`organizations`** (wie in Produktion)
+4. **`apps/web`** dieselbe **`DATABASE_URL`** in Repo-Root **`.env.local`** wie die API → **`/onboarding`** einmal durchlaufen → Mandant liegt in **`organizations`** (wie in Produktion)
 5. **JWT für API-Tests:** Wert des Cookies **`zgwerk_access_token`** in den DevTools kopieren → als `ACCESS_TOKEN` exportieren (oder optional curl, [§4](#4-access-token-beschaffen))
 6. `ACCESS_TOKEN="…" pnpm --filter api run runbook:phase1` → `/v1/me` und `/v1/sync` **200**
 
@@ -23,10 +23,10 @@ Sinnvolle Reihenfolge: **alles auf dem eigenen Rechner** (Postgres, ggf. Keycloa
 | ------- | ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | **1**   | API + DB (lokal)                                                       | `pnpm --filter api run runbook:phase1` — ohne Token endet es nach `/ready` mit Hinweis                           |
 | **1b**  | Issuer / JWKS prüfen                                                   | `pnpm --filter api run check:auth-env` — Keycloak lokal: [§1b](#1b-lokales-keycloak-docker--einmalig-einrichten) |
-| **2**   | Keycloak `AUTH_*` in `apps/api/.env.local`                             | §1 / [§1b](#1b-lokales-keycloak-docker--einmalig-einrichten)                                                     |
+| **2**   | Keycloak `AUTH_*` in Repo-Root `.env.local`                             | §1 / [§1b](#1b-lokales-keycloak-docker--einmalig-einrichten)                                                     |
 | **3**   | Zeile in `organizations` (Seed oder Web-Sign-up)                       | §3                                                                                                               |
 | **4**   | Token + `e2e:keycloak`                                                 | `ACCESS_TOKEN="…" pnpm --filter api run runbook:phase1` oder §5                                                  |
-| **5**   | Web `DATABASE_URL` (lokal in `.env.local`; Staging/Prod erst nach Dev) | [Web-DB](#web-db-stagingprod), `apps/web/AGENTS.md`                                                              |
+| **5**   | Web `DATABASE_URL` (lokal in Repo-Root `.env.local`; Staging/Prod erst nach Dev) | [Web-DB](#web-db-stagingprod), `apps/web/AGENTS.md`                                                              |
 | **6**   | Fachlogik / Verträge                                                   | `@repo/api-contracts`, Sync-Handler — nach Fundament                                                             |
 
 ---
@@ -65,7 +65,7 @@ docker compose -f docker-compose.postgres.yml up -d   # oder eigener Postgres
 pnpm --filter @repo/db exec drizzle-kit migrate
 ```
 
-`apps/api/.env.local` (lokal z. B. `cp apps/api/.env.local.example apps/api/.env.local`; fehlende OIDC-Variablen siehe `apps/api/.env.example`):
+Repo-Root **`.env.local`** (lokal z. B. `cp .env.example .env.local`; Platzhalter siehe `/.env.example`):
 
 - `DATABASE_URL` — gleiche Datenbank wie für Web/Seed
 - **Eines** von:
@@ -104,7 +104,7 @@ docker compose -f docker-compose.keycloak.yml up -d
 
 Warten, bis **http://localhost:8080** lädt. Admin-Zugang (nur Entwicklung): Benutzer **`admin`**, Passwort **`admin`** (siehe [`docker-compose.keycloak.yml`](../../docker-compose.keycloak.yml)).
 
-### `apps/api/.env.local`
+### Repo-Root `.env.local`
 
 ```env
 # Gleicher Host wie im JWT-Claim `iss` (Keycloak nutzt oft 127.0.0.1 statt „localhost“).
@@ -178,7 +178,7 @@ Die **`tenant_id` in der DB** muss mit der **`tenant_id` im JWT** übereinstimme
 
 ### Weg A — wie in Produktion (empfohlen zum Testen des echten Flows)
 
-1. In `apps/web/.env.local` (bzw. Host-Env in Staging/Prod) dieselbe **`DATABASE_URL`** setzen wie für die API — siehe [Web-DB](#web-db-stagingprod).
+1. In Repo-Root **`.env.local`** (bzw. Host-Env in Staging/Prod) dieselbe **`DATABASE_URL`** setzen wie für die API — siehe [Web-DB](#web-db-stagingprod).
 2. Nutzer über das Web-Onboarding registrieren (Keycloak legt `tenant_id` an; `register` provisioniert die Org).
 
 ### Weg B — nur API / schnell lokal

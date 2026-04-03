@@ -150,7 +150,7 @@ pnpm check-types
 pnpm build
 ```
 
-[`ci.yml`](.github/workflows/ci.yml) uses `pnpm install --frozen-lockfile`, then `turbo run lint check-types build` (on pull requests with `--affected`), then `turbo run lint:design-guardrails`, then **conditionally** `turbo run e2e` (PRs: `--affected`) after installing Playwright Chromium when that plan includes `@repo/playwright-web#e2e`. Root **`pnpm lint`** already runs workspace lint and **`lint:design-guardrails`** in one go; it does **not** run E2E — run **`pnpm e2e`** locally when you need Playwright.
+[`ci.yml`](.github/workflows/ci.yml) uses `pnpm install --frozen-lockfile`, then **`turbo run lint lint:design-guardrails check-types build`** (on pull requests with `--affected`), then **conditionally** `turbo run e2e` (PRs: `--affected`) after installing Playwright Chromium when that plan includes `@repo/playwright-web#e2e`. Root **`pnpm lint`** runs **`turbo run lint lint:design-guardrails`** (Workspace-Lint plus Root-Task `//#lint:design-guardrails`). Es startet **kein** E2E — dafür **`pnpm e2e`**.
 
 ## `@repo/ui` and builds
 
@@ -164,6 +164,10 @@ Some asset/config-only packages (`@repo/fonts`, `@repo/brand`, `@repo/tailwind-c
 
 Never commit secrets. Use `.env.example` (committed) for placeholder names only; keep real values in `.env.local` or your host’s secret store (see root and app `.gitignore` for `.env*` patterns). Variables prefixed with `NEXT_PUBLIC_` are exposed to the browser — set them only when that is intentional.
 
+**Where apps load env (runtime):** the repo uses a **single root** for local files — **`web`** loads via `nextEnv.loadEnvConfig` pointed at the repo root ([`apps/web/next.config.js`](apps/web/next.config.js)); **`api`** loads **`/.env`** then **`/.env.local`** from the repo root ([`apps/api/src/server.ts`](apps/api/src/server.ts)); **`desktop`** (Vite) uses `envDir` = repo root ([`apps/desktop/vite.config.ts`](apps/desktop/vite.config.ts)). Details and copy-paste examples: root [`.env.example`](.env.example).
+
+**Turbo cache vs runtime:** root [`turbo.json`](turbo.json) keeps **`globalEnv`** minimal (essentially `NODE_ENV`). Package-specific task hashes use each package’s `turbo.json` **`env`** entries (and, for `web`/`api` **`build`**, the extra **`inputs`** entry **`$TURBO_ROOT$/.env.example`**). Listing a name under `env` affects **cache keys only**; Turbo does not inject values — the process still reads the shell and the files above. When you add or rename variables that affect build output, update the corresponding package `turbo.json` `env` list (and `.env.example` when it is a build input).
+
 ## Tests and CI
 
 Root script **`pnpm test`** runs `turbo run test` (see [`turbo.json`](turbo.json)); packages without a `test` script are skipped.
@@ -172,7 +176,7 @@ Packages that define **`test`:**
 
 - **`web`**, **`api`**, **`@repo/db`**, **`@repo/api-contracts`** — Node’s test runner via **`tsx --test`** (see each package’s `package.json` script)
 
-**CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml) on `main` and pull requests): installs with `pnpm install --frozen-lockfile` on Node 22, then runs **`turbo run lint`**, **`check-types`**, and **`build`** (pull requests: **`--affected`**), then **`turbo run lint:design-guardrails`**, then **Playwright E2E** when the dry-run plan includes `@repo/playwright-web#e2e` (pull requests: **`e2e --affected`**). It does **not** run **`pnpm test`** by default. Run unit tests locally when needed.
+**CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml) on `main` and pull requests): installs with `pnpm install --frozen-lockfile` on Node 22, then runs **`turbo run lint lint:design-guardrails check-types build`** (pull requests: **`--affected`**), then **Playwright E2E** when the dry-run plan includes `@repo/playwright-web#e2e` (pull requests: **`e2e --affected`**). It does **not** run **`pnpm test`** by default. Run unit tests locally when needed.
 
 ## Code Conventions
 

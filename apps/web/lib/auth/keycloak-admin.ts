@@ -55,6 +55,27 @@ export async function getKeycloakAdminToken(): Promise<string | null> {
   return tokenPayload.access_token ?? null;
 }
 
+/**
+ * Aktueller `emailVerified`-Status aus Keycloak (nicht aus dem JWT), z. B. wenn die Bestätigung
+ * in einem anderen Browser/Fenster erfolgte und das Access-Token noch alte Claims hat.
+ */
+export async function getKeycloakUserEmailVerified(
+  adminToken: string,
+  userId: string,
+): Promise<boolean | null> {
+  const base = normalizeKeycloakBaseUrl(KEYCLOAK_BASE_URL);
+  const userUrl = `${base}/admin/realms/${encodeURIComponent(KEYCLOAK_REALM)}/users/${encodeURIComponent(userId)}`;
+  const gr = await fetch(userUrl, {
+    headers: { Authorization: `Bearer ${adminToken}` },
+    cache: "no-store",
+  });
+  if (!gr.ok) {
+    return null;
+  }
+  const user = (await gr.json()) as { emailVerified?: boolean };
+  return typeof user.emailVerified === "boolean" ? user.emailVerified : null;
+}
+
 export async function getKeycloakUserEmail(
   adminToken: string,
   userId: string,

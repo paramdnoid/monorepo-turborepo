@@ -30,7 +30,7 @@ function warnMissingPeerSessionsTableOnce(): void {
   if (warnedMissingAuthPeerSessionsTable) return;
   warnedMissingAuthPeerSessionsTable = true;
   console.warn(
-    '[web/db] Tabelle "auth_peer_sessions" fehlt — Migration anwenden: pnpm --filter @repo/db exec drizzle-kit migrate (DATABASE_URL wie in .env.local)',
+    '[web/db] Tabelle "auth_peer_sessions" fehlt — Migration anwenden: pnpm --filter @repo/db exec drizzle-kit migrate (DATABASE_URL wie in Repo-Root .env.local)',
   );
 }
 

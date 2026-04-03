@@ -5,18 +5,19 @@
  * `organizations` an (gleiche Logik wie `provisionOrganizationIfAbsent`), damit kein
  * separates `db:seed` nötig ist.
  *
- *   cp apps/api/.env.local.example apps/api/.env.local  # DATABASE_URL
+ *   DATABASE_URL in Repo-Root `.env.local` (siehe `/.env.example`)
  *   pnpm --filter api run smoke:http
  */
 import { config } from "dotenv";
-import { resolve } from "node:path";
+import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { provisionOrganizationIfAbsent } from "@repo/db";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
-config({ path: resolve(__dirname, "../.env.local") });
-config({ path: resolve(__dirname, "../.env") });
+const repoRoot = resolve(__dirname, "../../..");
+config({ path: join(repoRoot, ".env") });
+config({ path: join(repoRoot, ".env.local"), override: true });
 
 const tenantId = process.env.SEED_TENANT_ID?.trim() || "local-dev-tenant";
 const orgName = process.env.SEED_ORG_NAME?.trim() || "Local Dev GmbH";

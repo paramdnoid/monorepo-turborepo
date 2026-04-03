@@ -1,14 +1,91 @@
 {
+  "$schema": "https://turborepo.dev/schema.json",
   "extends": ["//"],
   "tags": ["app"],
   "tasks": {
     "dev": {
       "dependsOn": ["^build"],
       "cache": false,
-      "persistent": true
+      "persistent": true,
+      "env": [
+        "AUTH_KEYCLOAK_BASE_URL",
+        "AUTH_KEYCLOAK_REALM",
+        "AUTH_OIDC_ISSUER",
+        "DESKTOP_AUTH_KEYCLOAK_BASE_URL",
+        "DESKTOP_AUTH_KEYCLOAK_REALM",
+        "DESKTOP_OAUTH_REDIRECT_PATH",
+        "DESKTOP_OAUTH_REDIRECT_PORT",
+        "DESKTOP_OIDC_CLIENT_ID",
+        "DESKTOP_OIDC_ISSUER",
+        "DESKTOP_OIDC_STRICT",
+        "DESKTOP_RENDERER_URL",
+        "DESKTOP_WEB_BASE_URL",
+        "DESKTOP_WEB_LOGIN_ORIGIN",
+        "KEYCLOAK_BASE_URL",
+        "NODE_ENV",
+        "VITE_DESKTOP_API_BASE_URL"
+      ]
     },
     "build": {
-      "outputs": ["dist/**"]
+      "outputs": ["dist/**"],
+      "env": [
+        "AUTH_KEYCLOAK_BASE_URL",
+        "AUTH_KEYCLOAK_REALM",
+        "AUTH_OIDC_ISSUER",
+        "DESKTOP_AUTH_KEYCLOAK_BASE_URL",
+        "DESKTOP_AUTH_KEYCLOAK_REALM",
+        "DESKTOP_OAUTH_REDIRECT_PATH",
+        "DESKTOP_OAUTH_REDIRECT_PORT",
+        "DESKTOP_OIDC_CLIENT_ID",
+        "DESKTOP_OIDC_ISSUER",
+        "DESKTOP_OIDC_STRICT",
+        "DESKTOP_RENDERER_URL",
+        "DESKTOP_WEB_BASE_URL",
+        "DESKTOP_WEB_LOGIN_ORIGIN",
+        "KEYCLOAK_BASE_URL",
+        "NODE_ENV",
+        "VITE_DESKTOP_API_BASE_URL"
+      ]
+    },
+    "lint": {
+      "env": [
+        "AUTH_KEYCLOAK_BASE_URL",
+        "AUTH_KEYCLOAK_REALM",
+        "AUTH_OIDC_ISSUER",
+        "DESKTOP_AUTH_KEYCLOAK_BASE_URL",
+        "DESKTOP_AUTH_KEYCLOAK_REALM",
+        "DESKTOP_OAUTH_REDIRECT_PATH",
+        "DESKTOP_OAUTH_REDIRECT_PORT",
+        "DESKTOP_OIDC_CLIENT_ID",
+        "DESKTOP_OIDC_ISSUER",
+        "DESKTOP_OIDC_STRICT",
+        "DESKTOP_RENDERER_URL",
+        "DESKTOP_WEB_BASE_URL",
+        "DESKTOP_WEB_LOGIN_ORIGIN",
+        "KEYCLOAK_BASE_URL",
+        "NODE_ENV",
+        "VITE_DESKTOP_API_BASE_URL"
+      ]
+    },
+    "check-types": {
+      "env": [
+        "AUTH_KEYCLOAK_BASE_URL",
+        "AUTH_KEYCLOAK_REALM",
+        "AUTH_OIDC_ISSUER",
+        "DESKTOP_AUTH_KEYCLOAK_BASE_URL",
+        "DESKTOP_AUTH_KEYCLOAK_REALM",
+        "DESKTOP_OAUTH_REDIRECT_PATH",
+        "DESKTOP_OAUTH_REDIRECT_PORT",
+        "DESKTOP_OIDC_CLIENT_ID",
+        "DESKTOP_OIDC_ISSUER",
+        "DESKTOP_OIDC_STRICT",
+        "DESKTOP_RENDERER_URL",
+        "DESKTOP_WEB_BASE_URL",
+        "DESKTOP_WEB_LOGIN_ORIGIN",
+        "KEYCLOAK_BASE_URL",
+        "NODE_ENV",
+        "VITE_DESKTOP_API_BASE_URL"
+      ]
     },
     "generate:electron-icons": {
       "cache": false,

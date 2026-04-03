@@ -15,11 +15,11 @@ export DATABASE_URL="${DATABASE_URL:-postgresql://postgres:postgres@127.0.0.1:54
 echo "==> drizzle-kit migrate (@repo/db)"
 pnpm --filter @repo/db exec drizzle-kit migrate
 
-echo "==> HTTP-Smoke (Mock-JWT, gleiche DB wie .env.local)"
-if [[ -f apps/api/.env.local ]]; then
+echo "==> HTTP-Smoke (Mock-JWT, gleiche DB wie Repo-Root .env.local)"
+if [[ -f .env.local ]]; then
   pnpm --filter api run smoke:http
 else
-  echo "Hinweis: apps/api/.env.local fehlt — Smoke mit DATABASE_URL aus der Shell:"
+  echo "Hinweis: .env.local im Repo-Root fehlt — Smoke mit DATABASE_URL aus der Shell:"
   export DATABASE_URL
   pnpm --filter api run smoke:http
 fi

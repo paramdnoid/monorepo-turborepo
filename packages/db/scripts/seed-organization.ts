@@ -1,7 +1,7 @@
 /**
  * Legt eine Beispiel-Organisation an (idempotent per tenant_id).
  * Nutzung: DATABASE_URL=... SEED_TENANT_ID=my-tenant pnpm --filter @repo/db exec tsx scripts/seed-organization.ts
- * (ohne DATABASE_URL: lädt wie die API `apps/api/.env` und `.env.local`)
+ * (ohne DATABASE_URL: lädt wie die API Repo-Root `.env` und `.env.local`)
  */
 import { eq } from "drizzle-orm";
 

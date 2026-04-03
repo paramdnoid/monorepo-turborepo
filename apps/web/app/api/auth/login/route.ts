@@ -7,6 +7,7 @@ import { z } from "zod";
 import { getUiText } from "@/content/ui-text";
 import {
   AUTH_COOKIE_NAME,
+  AUTH_REFRESH_COOKIE_NAME,
   LOGIN_CSRF_COOKIE_NAME,
 } from "@/lib/auth/constants";
 import { decodeAccessTokenPayload } from "@/lib/auth/decode-access-token";
@@ -46,6 +47,8 @@ const loginSchema = z.object({
   username: z.string().min(1).max(320),
   password: z.string().min(1).max(128),
   csrf: z.string().min(16).max(200),
+  /** Länger eingeloggt bleiben: Refresh-Token-Cookie + verlängerte Access-Cookie-Lebensdauer. */
+  rememberMe: z.boolean().optional(),
   next: z.string().max(2000).optional(),
   native: z
     .object({
@@ -90,7 +93,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const { username, password, next, native } = parsed.data;
+  const { username, password, rememberMe, next, native } = parsed.data;
   const cookieStore = await cookies();
 
   if (native && !isAllowedNativeRedirectUri(native.redirect_uri)) {
@@ -168,12 +171,30 @@ export async function POST(request: Request) {
   }
 
   const nextPath = resolveLoginRedirect(next);
+  const secure = process.env.NODE_ENV === "production";
+  const stayLoggedIn = rememberMe === true;
+  const longLivedSec = 60 * 60 * 24 * 30;
+
+  if (stayLoggedIn && grant.tokens.refresh_token) {
+    cookieStore.set(AUTH_REFRESH_COOKIE_NAME, grant.tokens.refresh_token, {
+      httpOnly: true,
+      secure,
+      sameSite: "lax",
+      path: "/",
+      maxAge: longLivedSec,
+    });
+  } else {
+    cookieStore.delete(AUTH_REFRESH_COOKIE_NAME);
+  }
+
   cookieStore.set(AUTH_COOKIE_NAME, grant.tokens.access_token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure,
     sameSite: "lax",
     path: "/",
-    maxAge: Math.max(60, grant.tokens.expires_in ?? 900),
+    maxAge: stayLoggedIn
+      ? longLivedSec
+      : Math.max(60, grant.tokens.expires_in ?? 900),
   });
 
   const sub = decodeAccessTokenPayload(grant.tokens.access_token)?.sub;

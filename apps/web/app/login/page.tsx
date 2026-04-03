@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { LoginClient, type LoginNativeParams } from "@/app/login/login-client";
 import { getUiText } from "@/content/ui-text";
+import { getPasswordResetUrl } from "@/lib/auth/password-reset-url";
 import { resolveLoginRedirect } from "@/lib/auth/resolve-post-login-next-path";
 import {
   getServerAccessToken,
@@ -84,6 +85,8 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
       apiAuth={text.api.auth}
       genericError={text.api.genericError}
       brandingTagline={text.branding.tagline}
+      forgotPasswordHref={getPasswordResetUrl()}
+      signUpHref="/onboarding"
       native={native}
       hasWebSession={Boolean(native) && hasWebSession}
       {...(next ? { next } : {})}

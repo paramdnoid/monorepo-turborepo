@@ -74,8 +74,8 @@ pnpm exec turbo run build --filter=web
 
 ## Umgebungsvariablen
 
-- Beispielwerte liegen unter `apps/web/.env.example`.
-- Keine Secrets committen; lokale Werte in `.env.local` bzw. Secret-Store halten.
+- Beispielwerte für **web**, **api** und **desktop** liegen in **`.env.example`** im Repository-Root.
+- Keine Secrets committen; lokale Werte in **`.env.local`** am Repo-Root bzw. im Secret-Store des Hosts halten.
 
 ## CI
 

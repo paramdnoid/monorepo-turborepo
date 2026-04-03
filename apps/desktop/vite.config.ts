@@ -4,8 +4,10 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = path.join(root, "../..");
 
 export default defineConfig({
+  envDir: repoRoot,
   plugins: [react()],
   root: path.join(root, "src/renderer"),
   base: "./",

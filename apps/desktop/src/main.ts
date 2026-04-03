@@ -14,11 +14,10 @@ import { startPeerSessionPolling } from "./auth/peer-session-poll.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-/* API-Runbook-Variablen (AUTH_KEYCLOAK_*) — Desktop lädt sie, falls nur apps/api/.env.local existiert */
-loadEnv({ path: path.join(__dirname, "../../api/.env.local") });
-loadEnv({ path: path.join(__dirname, "../../api/.env") });
-loadEnv({ path: path.join(__dirname, "../.env.local") });
-loadEnv({ path: path.join(__dirname, "../.env") });
+/* Monorepo-Root — gleiche `.env` / `.env.local` wie web und api */
+const repoRoot = path.join(__dirname, "../../..");
+loadEnv({ path: path.join(repoRoot, ".env") });
+loadEnv({ path: path.join(repoRoot, ".env.local"), override: true });
 
 const require = createRequire(import.meta.url);
 const appIconPath = require.resolve("@repo/brand/logo");

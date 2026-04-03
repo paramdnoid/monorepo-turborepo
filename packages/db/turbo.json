@@ -1,12 +1,31 @@
 {
-  "extends": ["//"],
-  "tags": ["pkg"],
+  "extends": [
+    "//"
+  ],
+  "tags": [
+    "pkg"
+  ],
   "tasks": {
     "build": {
-      "outputs": ["dist/**"]
+      "outputs": [
+        "dist/**"
+      ]
     },
     "lint": {
-      "env": ["DATABASE_URL", "SEED_TENANT_ID", "SEED_ORG_NAME", "SEED_TRADE_SLUG"]
+      "env": [
+        "DATABASE_URL",
+        "SEED_TENANT_ID",
+        "SEED_ORG_NAME",
+        "SEED_TRADE_SLUG"
+      ]
+    },
+    "test": {
+      "env": [
+        "DATABASE_URL",
+        "SEED_TENANT_ID",
+        "SEED_ORG_NAME",
+        "SEED_TRADE_SLUG"
+      ]
     }
   }
 }

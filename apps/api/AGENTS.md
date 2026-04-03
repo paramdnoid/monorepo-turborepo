@@ -20,7 +20,7 @@ pnpm exec turbo run check-types --filter=api
 pnpm --filter api run e2e:keycloak   # ACCESS_TOKEN=… (echtes Keycloak-Token)
 pnpm --filter api run verify:runbook-prereqs   # API läuft? /health + /ready (ohne Token)
 pnpm --filter api run runbook:phase1           # Prächeck; mit ACCESS_TOKEN=… auch e2e:keycloak
-pnpm --filter api run check:auth-env         # Issuer/JWKS prüfen (nach AUTH_* in .env.local)
+pnpm --filter api run check:auth-env         # Issuer/JWKS prüfen (nach AUTH_* in Repo-Root .env.local)
 ```
 
 `dev` baut zuerst `@repo/api-contracts` und `@repo/db` (`^build`).
@@ -29,7 +29,7 @@ pnpm --filter api run check:auth-env         # Issuer/JWKS prüfen (nach AUTH_* 
 
 | Pfad                                                                       | Rolle                                                                        |
 | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| [`src/server.ts`](./src/server.ts)                                         | Einstieg, lädt `.env` und `.env.local` unter `apps/api`, dann HTTP-Server    |
+| [`src/server.ts`](./src/server.ts)                                         | Einstieg, lädt Repo-Root `.env` und `.env.local`, dann HTTP-Server           |
 | [`src/app.ts`](./src/app.ts)                                               | Routen, `createApp()` (optional Test-Injection)                              |
 | [`src/env.ts`](./src/env.ts)                                               | Zod-Umgebungsvariablen                                                       |
 | [`src/auth/verify-token.ts`](./src/auth/verify-token.ts)                   | Keycloak JWKS + `tenant_id`-Claim                                            |
@@ -43,7 +43,7 @@ pnpm --filter api run check:auth-env         # Issuer/JWKS prüfen (nach AUTH_* 
 | [`src/routes/sync.ts`](./src/routes/sync.ts)                               | `POST /v1/sync` (Idempotenz, `project`)                                      |
 | [`src/routes/me.ts`](./src/routes/me.ts)                                   | `GET /v1/me`                                                                 |
 | [`src/db.ts`](./src/db.ts)                                                 | Lazy `DATABASE_URL` → Pool                                                   |
-| [`.env.example`](./.env.example)                                           | DB, Port, OIDC/Keycloak                                                      |
+| [`/.env.example`](../../.env.example) (Repo-Root)                          | DB, Port, OIDC/Keycloak (gemeinsam mit `web` / `desktop`)                    |
 
 ## Routen
 
@@ -62,7 +62,7 @@ pnpm --filter api run check:auth-env         # Issuer/JWKS prüfen (nach AUTH_* 
 ## Lokaler End-to-End-Ablauf (Postgres + Seed + Smoke)
 
 1. Postgres starten, z. B. `docker compose -f docker-compose.postgres.yml up -d` (siehe Repo-Root).
-2. `cp apps/api/.env.local.example apps/api/.env.local` und `DATABASE_URL` prüfen.
+2. Repo-Root: `cp .env.example .env.local` (falls noch nicht vorhanden) und `DATABASE_URL` prüfen.
 3. `./scripts/local-api-smoke.sh` — führt Migration und **`pnpm --filter api run smoke:http`** aus (Mock-JWT + echte DB, Mandant wird im Smoke angelegt; kein Keycloak).
 4. **Echtes Keycloak-Token + provisionierte Org:** siehe **[`KEYCLOAK-E2E-RUNBOOK.md`](./KEYCLOAK-E2E-RUNBOOK.md)** (`e2e:keycloak`, curl, Weg A/B für `organizations`).
 

@@ -6,6 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { Button } from "@repo/ui/button";
+import { Checkbox } from "@repo/ui/checkbox";
 import { Input } from "@repo/ui/input";
 import { Label } from "@repo/ui/label";
 
@@ -28,6 +29,9 @@ type LoginClientProps = {
   apiAuth: UiText["api"]["auth"];
   genericError: string;
   brandingTagline: string;
+  forgotPasswordHref: string;
+  /** Registrierung / Onboarding (z. B. `/onboarding`). */
+  signUpHref: string;
   native?: LoginNativeParams;
   /** Web-Session vorhanden: Desktop-OAuth ohne erneutes Passwort (OTC-Handoff). */
   hasWebSession?: boolean;
@@ -39,6 +43,8 @@ export function LoginClient({
   apiAuth,
   genericError,
   brandingTagline,
+  forgotPasswordHref,
+  signUpHref,
   native,
   hasWebSession = false,
   next,
@@ -47,6 +53,7 @@ export function LoginClient({
   const [csrfLoadError, setCsrfLoadError] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -136,6 +143,7 @@ export function LoginClient({
         username: username.trim(),
         password,
         csrf,
+        rememberMe,
         ...(next ? { next } : {}),
         ...(native
           ? {
@@ -181,40 +189,49 @@ export function LoginClient({
   }
 
   return (
-    <AuthPageShell
-      hideHero
-      heading={undefined}
-      subtitle={undefined}
-    >
-      <div className="mx-auto flex w-full max-w-md flex-col items-center gap-8">
-        <header className="text-center">
-          <Link
-            href="/"
-            className="inline-flex flex-col items-center gap-3"
-            aria-label={auth.brandHomeLabel}
-          >
-            <Image
-              src="/logo.png"
-              alt=""
-              width={BRAND_LOGO_INTRINSIC.width}
-              height={BRAND_LOGO_INTRINSIC.height}
-              priority
-              className="h-12 w-auto max-w-[56px] rounded-full object-contain shadow-sm sm:h-14 sm:max-w-[60px]"
-            />
-            <BrandWordmark
-              tagline={brandingTagline}
-              nameClassName="text-center text-2xl font-bold tracking-[0.14em] uppercase sm:text-[2.05rem]"
-              taglineClassName="mt-1 block text-[10px] font-semibold tracking-[0.22em] text-muted-foreground uppercase"
-            />
-          </Link>
-        </header>
-        <div className="w-full rounded-xl border border-border/60 bg-card/80 p-6 shadow-lg backdrop-blur-md sm:p-8">
-          <h1 className="font-sans text-xl font-semibold tracking-tight text-foreground">
-            {auth.signInCardTitle}
-          </h1>
-          <form className="mt-6 space-y-4" onSubmit={onSubmit}>
+    <AuthPageShell hideHero>
+      <section className="premium-panel animate-panel-enter rounded-[1.15rem] p-5 backdrop-blur-sm sm:p-7 md:p-8">
+        <div className="relative z-2 space-y-8">
+          <div className="space-y-3.5 pb-0.5">
+            <Link
+              href="/"
+              className="flex w-fit items-center gap-1.5"
+              aria-label={auth.brandHomeLabel}
+            >
+              <Image
+                src="/logo.png"
+                alt=""
+                width={BRAND_LOGO_INTRINSIC.width}
+                height={BRAND_LOGO_INTRINSIC.height}
+                priority
+                className="h-7 w-auto max-w-[30px] rounded-full object-contain shadow-sm"
+              />
+              <BrandWordmark
+                tagline={brandingTagline}
+                nameClassName="text-[1rem]"
+                taglineClassName="text-[7px] tracking-[0.16em]"
+              />
+            </Link>
+
+            <span className="auth-form-kicker mt-1 inline-flex">
+              <span className="auth-form-kicker-dot" />
+              {auth.signInBadge}
+            </span>
+
+            <h1 className="font-sans text-2xl leading-[0.96] font-bold tracking-tight text-foreground sm:text-3xl">
+              {auth.signInCardTitle}
+            </h1>
+            <p className="text-muted-foreground max-w-lg text-sm leading-relaxed sm:text-[0.9375rem]">
+              {auth.signInDescription}
+            </p>
+          </div>
+
+          <form className="space-y-5" onSubmit={onSubmit}>
             <div className="space-y-2">
-              <Label htmlFor="login-username" className="auth-label text-foreground">
+              <Label
+                htmlFor="login-username"
+                className="auth-label block text-foreground"
+              >
                 {auth.usernameOrEmailLabel}
               </Label>
               <Input
@@ -226,14 +243,25 @@ export function LoginClient({
                 required
                 value={username}
                 onChange={(ev) => setUsername(ev.target.value)}
-                className="h-11"
+                className="h-10"
                 disabled={busy || (!csrf && !native)}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="login-password" className="auth-label text-foreground">
-                {auth.passwordLabel}
-              </Label>
+              <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-1.5">
+                <Label
+                  htmlFor="login-password"
+                  className="auth-label block text-foreground"
+                >
+                  {auth.passwordLabel}
+                </Label>
+                <Link
+                  href={forgotPasswordHref}
+                  className="text-xs font-medium text-primary underline-offset-4 hover:underline"
+                >
+                  {auth.forgotPassword}
+                </Link>
+              </div>
               <div className="relative">
                 <Input
                   id="login-password"
@@ -244,7 +272,7 @@ export function LoginClient({
                   required
                   value={password}
                   onChange={(ev) => setPassword(ev.target.value)}
-                  className="h-11 pr-11"
+                  className="h-10 pr-11"
                   disabled={busy || (!csrf && !native)}
                 />
                 <button
@@ -261,6 +289,22 @@ export function LoginClient({
                 </button>
               </div>
             </div>
+
+            <div className="flex items-start gap-2.5 pt-0.5">
+              <Checkbox
+                id="login-remember"
+                checked={rememberMe}
+                onCheckedChange={(v) => setRememberMe(v === true)}
+                disabled={busy || (!csrf && !native)}
+              />
+              <label
+                htmlFor="login-remember"
+                className="cursor-pointer text-sm leading-snug text-foreground select-none"
+              >
+                {auth.rememberMeLabel}
+              </label>
+            </div>
+
             {csrfLoadError ? (
               <p className="text-sm text-destructive" role="alert">
                 {genericError}
@@ -271,22 +315,35 @@ export function LoginClient({
                 {error}
               </p>
             ) : null}
-            <Button
-              type="submit"
-              className="h-11 w-full"
-              disabled={busy || (!csrf && !native)}
-            >
-              {!csrf && !csrfLoadError && !native
-                ? auth.signInPending
-                : busy
-                  ? native && hasWebSession
-                    ? auth.signInDesktopHandoff
-                    : auth.signInPending
-                  : auth.signInSubmit}
-            </Button>
+
+            <div className="space-y-6 pt-1">
+              <Button
+                type="submit"
+                className="h-10 w-full text-[0.9375rem] font-semibold"
+                disabled={busy || (!csrf && !native)}
+              >
+                {!csrf && !csrfLoadError && !native
+                  ? auth.signInPending
+                  : busy
+                    ? native && hasWebSession
+                      ? auth.signInDesktopHandoff
+                      : auth.signInPending
+                    : auth.signInSubmit}
+              </Button>
+
+              <p className="text-muted-foreground border-border/60 border-t pt-6 text-center text-sm leading-relaxed">
+                {auth.noAccountQuestion}{" "}
+                <Link
+                  href={signUpHref}
+                  className="font-medium text-primary underline-offset-4 hover:underline"
+                >
+                  {auth.signUpCta}
+                </Link>
+              </p>
+            </div>
           </form>
         </div>
-      </div>
+      </section>
     </AuthPageShell>
   );
 }

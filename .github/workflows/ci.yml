@@ -64,16 +64,14 @@ jobs:
         run: pnpm exec turbo boundaries
 
       # PRs: only changed packages + dependents (--affected). main: full run.
-      - name: Lint, typecheck, build
+      # lint + lint:design-guardrails in einem turbo run (Root-Task //#lint:design-guardrails).
+      - name: Lint, design guardrails, typecheck, build
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            pnpm exec turbo run lint check-types build --affected
+            pnpm exec turbo run lint lint:design-guardrails check-types build --affected
           else
-            pnpm exec turbo run lint check-types build
+            pnpm exec turbo run lint lint:design-guardrails check-types build
           fi
-
-      - name: Design guardrails
-        run: pnpm exec turbo run lint:design-guardrails
 
       # PRs: install Chromium only if turbo would run @repo/playwright-web#e2e (saves time when web/UI unchanged).
       - name: Plan Playwright E2E

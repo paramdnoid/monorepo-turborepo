@@ -6,8 +6,9 @@ import { fileURLToPath } from "node:url";
 import { createApp } from "./app.js";
 
 const apiRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
-loadEnv({ path: join(apiRoot, ".env") });
-loadEnv({ path: join(apiRoot, ".env.local") });
+const repoRoot = join(apiRoot, "../..");
+loadEnv({ path: join(repoRoot, ".env") });
+loadEnv({ path: join(repoRoot, ".env.local"), override: true });
 
 const app = createApp();
 const port = Number(process.env.PORT ?? "4000");

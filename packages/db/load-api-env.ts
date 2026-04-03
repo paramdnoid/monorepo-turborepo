@@ -6,14 +6,14 @@ import { fileURLToPath } from "node:url";
 const dbPackageRoot = dirname(fileURLToPath(import.meta.url));
 
 /**
- * Lädt `apps/api/.env` und `apps/api/.env.local` (wie die API), damit
+ * Lädt `.env` und `.env.local` am Repository-Root (wie `apps/api/src/server.ts`), damit
  * `db:migrate` / optional `db:seed` dieselbe `DATABASE_URL` verwenden.
- * Pfad relativ zu diesem Paket: `packages/db` → `../../apps/api`.
+ * Pfad relativ zu diesem Paket: `packages/db` → `../..` (Monorepo-Root).
  */
 export function loadApiEnv(): void {
-  const apiDir = join(dbPackageRoot, "../../apps/api");
-  const envPath = join(apiDir, ".env");
-  const envLocalPath = join(apiDir, ".env.local");
+  const repoRoot = join(dbPackageRoot, "../..");
+  const envPath = join(repoRoot, ".env");
+  const envLocalPath = join(repoRoot, ".env.local");
 
   if (existsSync(envPath)) {
     config({ path: envPath });

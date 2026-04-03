@@ -25,9 +25,8 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# env files — keep .env.example versioned; secrets in .env.local
+# env — zentral im Repo-Root (siehe `/.env.example`); lokale Werte in `/.env.local`
 .env*
-!.env.example
 
 # vercel
 .vercel
