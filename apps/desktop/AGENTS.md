@@ -36,9 +36,11 @@ pnpm exec turbo run check-types --filter=desktop
 
 **Icons aktualisieren:** `pnpm generate:electron-icons` (Root) oder `pnpm --filter desktop run generate:electron-icons`. **`pnpm run dist`** / **`dist:dir`** rufen die Generierung automatisch vor dem Packen auf.
 
-## Distribution (macOS): „beschädigt“ / Gatekeeper
+## Distribution (macOS): „beschädigt“ / Gatekeeper / Start-Crash
 
-Öffentliche **Pre-Releases** ohne Apple **Developer ID** nutzen in [`package.json`](./package.json) unter `build.mac` **`identity: null`** (u. a. Workaround für Start-Crashes unter macOS 26 mit electron-builder). Downloads sind dann **nicht** von Apple verifiziert.
+**Electron** ist auf **37.x** gepinnt (`package.json` / `build.electronVersion`) — **Electron 34** konnte unter **macOS 26** beim Start in `ElectronMain`/V8 mit `EXC_BREAKPOINT` abstürzen; ein höheres Chromium/V8 hilft hier.
+
+Öffentliche **Pre-Releases** ohne Apple **Developer ID** nutzen unter `build.mac` zusätzlich **`identity: null`** (electron-builder-Workaround, s. [electron/electron#49522](https://github.com/electron/electron/issues/49522)). Downloads sind dann **nicht** von Apple verifiziert.
 
 - **Symptom:** Nach dem Download meldet macOS, die **.app** sei **beschädigt** — oft **kein** kaputter Build, sondern **Gatekeeper** + Quarantäne.
 - **Nutzer:** App aus dem DMG nach **Programme** ziehen, dann **Rechtsklick → Öffnen** (beim ersten Mal), oder im Terminal:  
