@@ -193,6 +193,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@next/env':
+        specifier: 16.2.0
+        version: 16.2.0
       '@repo/api-contracts':
         specifier: workspace:*
         version: link:../../packages/api-contracts
@@ -241,6 +244,9 @@ importers:
       server-only:
         specifier: ^0.0.1
         version: 0.0.1
+      sonner:
+        specifier: ^2.0.7
+        version: 2.0.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       zod:
         specifier: ^4.3.6
         version: 4.3.6
@@ -14735,6 +14741,11 @@ snapshots:
     dependencies:
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
+
+  sonner@2.0.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3):
+    dependencies:
+      react: 19.2.3
+      react-dom: 19.2.3(react@19.2.3)
 
   source-map-js@1.2.1: {}
 

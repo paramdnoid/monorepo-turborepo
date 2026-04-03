@@ -12,6 +12,7 @@
     "test": "tsx --test \"lib/**/*.test.ts\" \"app/**/*.test.ts\""
   },
   "dependencies": {
+    "@next/env": "16.2.0",
     "@repo/api-contracts": "workspace:*",
     "@repo/brand": "workspace:*",
     "@repo/db": "workspace:*",
@@ -28,6 +29,7 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "server-only": "^0.0.1",
+    "sonner": "^2.0.7",
     "zod": "^4.3.6"
   },
   "devDependencies": {
