@@ -40,6 +40,8 @@ pnpm exec turbo run check-types --filter=desktop
 
 **Electron** ist auf **37.x** gepinnt (`package.json` / `build.electronVersion`) — **Electron 34** konnte unter **macOS 26** beim Start in `ElectronMain`/V8 mit `EXC_BREAKPOINT` abstürzen; ein höheres Chromium/V8 hilft hier.
 
+Unter **macOS** setzt `main.ts` **kein** Fenster-/Dock-Icon aus der **PNG** (`@repo/brand/logo`) — nur **Windows/Linux** nutzen diese Datei; das Bundle-Icon kommt von **`resources/icon.icns`** (electron-builder). Sonst kann Chromiums **rust_png**-Pfad beim Start noch abstürzen (Stack wie in [electron/electron#49522](https://github.com/electron/electron/issues/49522)).
+
 Öffentliche **Pre-Releases** ohne Apple **Developer ID** nutzen unter `build.mac` zusätzlich **`identity: null`** (electron-builder-Workaround, s. [electron/electron#49522](https://github.com/electron/electron/issues/49522)). Downloads sind dann **nicht** von Apple verifiziert.
 
 - **Symptom:** Nach dem Download meldet macOS, die **.app** sei **beschädigt** — oft **kein** kaputter Build, sondern **Gatekeeper** + Quarantäne.

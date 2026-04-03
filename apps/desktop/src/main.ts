@@ -34,8 +34,9 @@ function loadRenderer(win: BrowserWindow): void {
 }
 
 function createWindow(): void {
+  /* macOS 26: PNG über icon:/Dock triggert früh rust_png/V8-Abstürze (vgl. electron#49522). Bundle-Icon aus electron-builder reicht. */
   const win = new BrowserWindow({
-    icon: appIconPath,
+    ...(process.platform !== "darwin" ? { icon: appIconPath } : {}),
     width: 1280,
     height: 720,
     webPreferences: {
@@ -61,9 +62,6 @@ async function openMainWindowWhenSignedIn(): Promise<void> {
 }
 
 app.whenReady().then(() => {
-  if (process.platform === "darwin") {
-    app.dock?.setIcon(appIconPath);
-  }
   ipcMain.handle(IPC_CHANNELS.ping, () => "pong");
   ipcMain.handle(IPC_CHANNELS.quitApp, () => {
     app.quit();
