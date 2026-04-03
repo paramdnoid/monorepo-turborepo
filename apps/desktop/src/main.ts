@@ -62,7 +62,7 @@ async function openMainWindowWhenSignedIn(): Promise<void> {
 
 app.whenReady().then(() => {
   if (process.platform === "darwin") {
-    app.dock.setIcon(appIconPath);
+    app.dock?.setIcon(appIconPath);
   }
   ipcMain.handle(IPC_CHANNELS.ping, () => "pong");
   ipcMain.handle(IPC_CHANNELS.quitApp, () => {
