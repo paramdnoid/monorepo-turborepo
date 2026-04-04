@@ -202,7 +202,7 @@ export function DesktopLayout() {
           </div>
         </header>
         <main className="flex flex-1 flex-col gap-4 overflow-auto p-6">
-          <section className="rounded-xl border bg-card p-6 text-card-foreground shadow-sm">
+          <section className="rounded-lg border bg-card p-6 text-card-foreground shadow-sm">
             <h2 className="mb-2 text-lg font-semibold tracking-tight">
               Willkommen
             </h2>
@@ -219,7 +219,7 @@ export function DesktopLayout() {
             </p>
           </section>
 
-          <section className="rounded-xl border bg-card p-6 text-card-foreground shadow-sm">
+          <section className="rounded-lg border bg-card p-6 text-card-foreground shadow-sm">
             <h2 className="mb-2 text-lg font-semibold tracking-tight">
               Anmeldung (OIDC / Keycloak)
             </h2>
@@ -302,7 +302,7 @@ export function DesktopLayout() {
           </section>
 
           {auth?.status === "signed_in" ? (
-            <section className="rounded-xl border bg-card p-6 text-card-foreground shadow-sm">
+            <section className="rounded-lg border bg-card p-6 text-card-foreground shadow-sm">
               <h2 className="mb-2 text-lg font-semibold tracking-tight">
                 API{" "}
                 <code className="rounded bg-muted px-1.5 py-0.5 text-sm font-normal">

@@ -6,12 +6,12 @@ Context for applications under `apps/`: **Next.js** (`web`), the **Hono** API (`
 
 ## Apps at a glance
 
-| Package   | Stack           | Role                        | Port / notes          | Turbo `--filter` |
-| --------- | --------------- | --------------------------- | --------------------- | ---------------- |
-| `web`     | Next.js 16.2    | Primary web application     | 3000                  | `web`            |
-| `api`     | Hono + Drizzle  | Backend HTTP API            | 4000 (default `PORT`) | `api`            |
-| `desktop` | Electron + TS   | Desktop shell (IPC)         | — (native window)     | `desktop`        |
-| `mobile`  | Expo + RN       | Mobile app (iOS / Android)  | Expo / Metro          | `mobile`         |
+| Package   | Stack          | Role                       | Port / notes          | Turbo `--filter` |
+| --------- | -------------- | -------------------------- | --------------------- | ---------------- |
+| `web`     | Next.js 16.2   | Primary web application    | 3000                  | `web`            |
+| `api`     | Hono + Drizzle | Backend HTTP API           | 4000 (default `PORT`) | `api`            |
+| `desktop` | Electron + TS  | Desktop shell (IPC)        | — (native window)     | `desktop`        |
+| `mobile`  | Expo + RN      | Mobile app (iOS / Android) | Expo / Metro          | `mobile`         |
 
 Use **`pnpm exec turbo run <task> --filter=<name>`** with the filter column value (see root [`AGENTS.md`](../AGENTS.md) for the full workspace name table). In scripts and CI, always **`turbo run`**, not the `turbo <task>` shorthand.
 
@@ -19,12 +19,12 @@ Use **`pnpm exec turbo run <task> --filter=<name>`** with the filter column valu
 
 ## Choosing an app
 
-| Goal                                          | Where to work                                            |
-| --------------------------------------------- | -------------------------------------------------------- |
-| User-facing product / main Next experience    | **`web`** — [`web/AGENTS.md`](web/AGENTS.md)             |
-| Backend API, Health, DB, Sync-Endpunkte       | **`api`** — [`api/AGENTS.md`](api/AGENTS.md)             |
-| Desktop-Fenster, Main/Preload, lokale IPC     | **`desktop`** — [`desktop/AGENTS.md`](desktop/AGENTS.md) |
-| iOS / Android (Expo)                          | **`mobile`** — [`mobile/AGENTS.md`](mobile/AGENTS.md)    |
+| Goal                                       | Where to work                                            |
+| ------------------------------------------ | -------------------------------------------------------- |
+| User-facing product / main Next experience | **`web`** — [`web/AGENTS.md`](web/AGENTS.md)             |
+| Backend API, Health, DB, Sync-Endpunkte    | **`api`** — [`api/AGENTS.md`](api/AGENTS.md)             |
+| Desktop-Fenster, Main/Preload, lokale IPC  | **`desktop`** — [`desktop/AGENTS.md`](desktop/AGENTS.md) |
+| iOS / Android (Expo)                       | **`mobile`** — [`mobile/AGENTS.md`](mobile/AGENTS.md)    |
 
 ## Next.js (`web`)
 
@@ -56,6 +56,6 @@ Shared Geist Sans / Geist Mono (`.woff` + `next/font/local`) live in **[`package
 
 Per-app notes: **[`web/AGENTS.md`](web/AGENTS.md)**.
 
-## Monorepo context
+## Monorepo
 
-Repo-wide commands and stack: **[`../AGENTS.md`](../AGENTS.md)**.
+Repo-weite Regeln: **[`../AGENTS.md`](../AGENTS.md)** · Agent-/Skill-Index: **[`../.agents/README.md`](../.agents/README.md)** (u. a. **Web Interface Guidelines** im Root).

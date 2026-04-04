@@ -16,3 +16,16 @@ export const projectUpdatePayloadSchema = z.object({
 export const projectDeletePayloadSchema = z.object({
   id: z.string().uuid(),
 });
+
+/** GET `/v1/projects` — Liste fuer Mandanten. */
+export const projectListItemSchema = z.object({
+  id: z.string().uuid(),
+  title: z.string(),
+  createdAt: z.string(),
+});
+
+export type ProjectListItem = z.infer<typeof projectListItemSchema>;
+
+export const projectsListResponseSchema = z.object({
+  projects: z.array(projectListItemSchema),
+});

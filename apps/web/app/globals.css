@@ -224,3 +224,21 @@
   );
   backdrop-filter: blur(14px);
 }
+
+/* Sales documents: print-optimized HTML preview */
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  .sales-print-document {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .sales-print-table tbody tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}

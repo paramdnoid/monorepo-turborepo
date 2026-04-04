@@ -26,4 +26,4 @@ Tests use Node’s test runner via **`tsx --test`** (see `package.json` → `tes
 
 ## Monorepo
 
-Root context: **[`../../AGENTS.md`](../../AGENTS.md)**.
+Repo-weit & Skills: **[`../../AGENTS.md`](../../AGENTS.md)** · **[`../../.agents/README.md`](../../.agents/README.md)**.

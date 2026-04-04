@@ -22,7 +22,9 @@
         "DATABASE_URL",
         "KEYCLOAK_BASE_URL",
         "NODE_ENV",
-        "PORT"
+        "PORT",
+        "PROJECT_ASSETS_DIR",
+        "PROJECT_ASSETS_MAX_MB"
       ]
     },
     "build": {
@@ -43,7 +45,9 @@
         "AUTH_KEYCLOAK_REALM",
         "AUTH_OIDC_ISSUER",
         "AUTH_OIDC_AUDIENCE",
-        "AUTH_TENANT_CLAIM"
+        "AUTH_TENANT_CLAIM",
+        "PROJECT_ASSETS_DIR",
+        "PROJECT_ASSETS_MAX_MB"
       ]
     },
     "lint": {

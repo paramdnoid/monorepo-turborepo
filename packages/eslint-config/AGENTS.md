@@ -6,12 +6,12 @@
 
 Shared **ESLint v9 flat configs** for the monorepo (`@repo/eslint-config`). Entry points:
 
-| Export                               | File                       | Used by                                                                                        |
-| ------------------------------------ | -------------------------- | ---------------------------------------------------------------------------------------------- |
-| `@repo/eslint-config/base`           | `base.js`                  | Rarely imported directly; building block                                                       |
-| `@repo/eslint-config/next-js`        | `next.js` (`nextJsConfig`) | [`apps/web`](../../apps/web/eslint.config.mjs)                                                 |
+| Export                               | File                       | Used by                                                                                                      |
+| ------------------------------------ | -------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `@repo/eslint-config/base`           | `base.js`                  | Rarely imported directly; building block                                                                     |
+| `@repo/eslint-config/next-js`        | `next.js` (`nextJsConfig`) | [`apps/web`](../../apps/web/eslint.config.mjs)                                                               |
 | `@repo/eslint-config/react-internal` | `react-internal.js`        | [`packages/ui`](../../packages/ui/eslint.config.mjs), [`apps/desktop`](../../apps/desktop/eslint.config.mjs) |
-| `@repo/eslint-config/react-native`   | `react-native.js`          | [`apps/mobile`](../../apps/mobile/eslint.config.mjs) (ohne `eslint-plugin-turbo`)              |
+| `@repo/eslint-config/react-native`   | `react-native.js`          | [`apps/mobile`](../../apps/mobile/eslint.config.mjs) (ohne `eslint-plugin-turbo`)                            |
 
 `next.js` also wires a local custom plugin from [`design-guardrails-plugin.js`](./design-guardrails-plugin.js) that enforces starter-page content contracts for:
 
@@ -25,6 +25,6 @@ This package has **no** `lint` script; ESLint is validated when you run `pnpm li
 
 - [`README.md`](./README.md) for install/usage snippets.
 
-## Monorepo context
+## Monorepo
 
-Repo-wide commands: **[`../../AGENTS.md`](../../AGENTS.md)**.
+Repo-weit (Lint/Guardrails + **Web Interface Guidelines** für UI) & Skills: **[`../../AGENTS.md`](../../AGENTS.md)** · **[`../../.agents/README.md`](../../.agents/README.md)**.

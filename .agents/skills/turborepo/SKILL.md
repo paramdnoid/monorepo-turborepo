@@ -12,6 +12,12 @@ metadata:
   version: 2.8.22-canary.6
 ---
 
+## Dieses Repository (`zgwerkrepo`)
+
+**Zuerst** [`AGENTS.md`](../../../AGENTS.md) im Repo-Root: Workspace-**Filter** (`web`, `api`, …), `pnpm`, CI, Abschnitte **Turborepo (Kurzreferenz für Agents)** und **Web Interface Guidelines**. Skill-Überblick: [`README.md`](../../README.md) (Ordner `.agents/`).
+
+Dieses Skill liefert **generische** Turborepo-Details, Anti-Patterns und die Referenz unter `references/`. Bei Widerspruch zur Root-Doku gewinnt **`AGENTS.md`** (projektspezifisch).
+
 # Turborepo Skill
 
 Build system for JavaScript/TypeScript monorepos. Turborepo caches task outputs and runs tasks in parallel based on dependency graph.

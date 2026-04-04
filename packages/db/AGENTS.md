@@ -24,4 +24,4 @@ pnpm --filter @repo/db run db:seed
 
 ## Monorepo
 
-Root: **[`../../AGENTS.md`](../../AGENTS.md)**.
+Repo-weit & Skills: **[`../../AGENTS.md`](../../AGENTS.md)** · **[`../../.agents/README.md`](../../.agents/README.md)**.

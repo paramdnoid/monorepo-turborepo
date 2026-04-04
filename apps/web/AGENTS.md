@@ -6,21 +6,24 @@
 
 ## Key paths
 
-| Path | Role |
-| ---- | ---- |
-| [`app/layout.tsx`](app/layout.tsx) | Root layout: Geist, `<Providers>`, `LocaleProvider`, `generateMetadata` — **Favicons** über [`app/favicon.ico`](app/favicon.ico), [`app/icon.png`](app/icon.png), [`app/apple-icon.png`](app/apple-icon.png) (aus `@repo/brand` via `pnpm generate:icons`) |
-| [`app/page.tsx`](app/page.tsx) | Landing: marketing sections, JSON-LD, `getUiText` / `getServerLocale` |
-| [`app/onboarding/`](app/onboarding/) | Onboarding wizard (server page + client components) |
-| [`app/legal/`](app/legal/) | Imprint, privacy, terms (`layout` + `SiteFooter` / `LegalHeader`) |
-| [`app/api/onboarding/`](app/api/onboarding/) | `register`, `complete-billing` route handlers |
-| [`lib/db.ts`](lib/db.ts) | Server-only Postgres (`DATABASE_URL`) für `@repo/db` |
-| [`lib/provision-organization.ts`](lib/provision-organization.ts) | Nach Sign-up: Zeile in `organizations` (idempotent) |
-| [`content/`](content/) | `ui-text`, `faqs`, `features`, `steps`, `trades` (copy and data) |
-| [`components/marketing/`](components/marketing/) | Landing sections, header, footer, FAQ dialog |
-| [`components/onboarding/`](components/onboarding/) | Onboarding UI + app-local `ToggleGroup` (premium variant) |
-| [`lib/i18n/`](lib/i18n/), [`lib/auth/`](lib/auth/), [`lib/trades/`](lib/trades/) | Locale, session cookie/JWT, trade ids |
-| [`app/globals.css`](app/globals.css) | Imports `@repo/ui` globals + product utilities (panels, hero, legal scrollbar) |
-| [`/.env.example`](../../.env.example) am Repo-Root | Platzhalter für Web, API und Desktop; **lokal:** `.env.local` im Repo-Root (nicht committen) |
+| Path                                                                             | Role                                                                                                                                                                                                                                                                                     |
+| -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`app/layout.tsx`](app/layout.tsx)                                               | Root layout: Geist, `<Providers>`, `LocaleProvider`, `generateMetadata` — **Favicons** über [`app/favicon.ico`](app/favicon.ico), [`app/icon.png`](app/icon.png), [`app/apple-icon.png`](app/apple-icon.png) (aus `@repo/brand` via `pnpm generate:icons`)                               |
+| [`app/page.tsx`](app/page.tsx)                                                   | Landing: marketing sections, JSON-LD, `getUiText` / `getServerLocale`                                                                                                                                                                                                                    |
+| [`app/onboarding/`](app/onboarding/)                                             | Onboarding wizard (server page + client components)                                                                                                                                                                                                                                      |
+| [`app/legal/`](app/legal/)                                                       | Imprint, privacy, terms (`layout` + `SiteFooter` / `LegalHeader`)                                                                                                                                                                                                                        |
+| [`app/api/onboarding/`](app/api/onboarding/)                                     | `register`, `complete-billing` route handlers                                                                                                                                                                                                                                            |
+| [`lib/db.ts`](lib/db.ts)                                                         | Server-only Postgres (`DATABASE_URL`) für `@repo/db`                                                                                                                                                                                                                                     |
+| [`lib/provision-organization.ts`](lib/provision-organization.ts)                 | Nach Sign-up: Zeile in `organizations` (idempotent)                                                                                                                                                                                                                                      |
+| [`content/`](content/)                                                           | `ui-text`, `faqs`, `features`, `steps`, `trades`, `customers-module`, `sales-module`, `workforce-module` (copy and data)                                                                                                                                                                 |
+| [`components/marketing/`](components/marketing/)                                 | Landing sections, header, footer, FAQ dialog                                                                                                                                                                                                                                             |
+| [`components/onboarding/`](components/onboarding/)                               | Onboarding UI + app-local `ToggleGroup` (premium variant)                                                                                                                                                                                                                                |
+| [`lib/i18n/`](lib/i18n/), [`lib/auth/`](lib/auth/), [`lib/trades/`](lib/trades/) | Locale, session cookie/JWT, trade ids                                                                                                                                                                                                                                                    |
+| [`app/globals.css`](app/globals.css)                                             | Imports `@repo/ui` globals + product utilities (panels, hero, legal scrollbar)                                                                                                                                                                                                           |
+| [`app/web/`](app/web/)                                                           | Authentifizierte Shell unter `/web`: u. a. `/web/customers`, `/web/sales` (quotes, invoices, print preview), `/web/employees`, `/web/scheduling` (global, `content/workforce-module.ts`), `/web/painter/…` (branchenspezifisch Maler; Slug `maler` in `content/trades`), `/web/settings` |
+| [`app/api/web/`](app/api/web/)                                                   | **BFF:** Next.js Route Handler proxy zu `apps/api` (`/v1/…`); Domains spiegeln API (z. B. `employees`, `scheduling`, `sales`, `customers`, …)                                                                                                                                            |
+| [`app/api/auth/`](app/api/auth/)                                                 | Session-/Token-/CSRF-/Login-Flows für das Web (nicht die gleiche Oberfläche wie `/v1` in der API)                                                                                                                                                                                        |
+| [`/.env.example`](../../.env.example) am Repo-Root                               | Platzhalter für Web, API und Desktop; **lokal:** `.env.local` im Repo-Root (nicht committen)                                                                                                                                                                                             |
 
 ## Mandanten-Provision und `DATABASE_URL`
 
@@ -42,6 +45,12 @@ End-to-End mit echtem Keycloak: [`../api/KEYCLOAK-E2E-RUNBOOK.md`](../api/KEYCLO
 - `@repo/db`, `@repo/api-contracts` — serverseitig: Mandanten-Provision nach Registrierung (gleiche DB wie `apps/api`)
 - Direct: `zod`, Stripe packages, `lucide-react`, `framer-motion`, `radix-ui`, `next-themes`, `class-variance-authority`, `server-only`
 
+## Next.js API (BFF und Auth)
+
+- **`app/api/web/*`:** Server-side **BFF** — ruft die Hono-API unter **`apps/api`** auf (typisch `GET`/`POST`/`PATCH`/`DELETE` zu `/v1/…` mit Session/Cookie oder Weiterleitung der Auth). UI unter `/web` spricht oft diese Routen an, nicht die API direkt aus dem Browser.
+- **`app/api/auth/*`:** Web-spezifische **Auth-Hilfsrouten** (Login, Token, CSRF, E-Mail-Verifikation, …) — parallel zum Keycloak/OIDC-Setup; siehe Dateien unter `app/api/auth/`.
+- **Parität:** Neue Produkt-Endpunkte in der API brauchen oft einen passenden Handler unter `app/api/web/…` und ggf. Anpassungen in [`apps/api/src/app.ts`](../../apps/api/src/app.ts).
+
 ## Commands
 
 From repo root (Turbo package name is **`web`**):
@@ -53,4 +62,8 @@ pnpm exec turbo run lint --filter=web
 pnpm exec turbo run check-types --filter=web
 ```
 
-Shared Next.js structure: **[`../AGENTS.md`](../AGENTS.md)**. Monorepo-wide: **[`../../AGENTS.md`](../../AGENTS.md)**.
+## Monorepo
+
+- **UI / A11y:** [**Web Interface Guidelines**](../../AGENTS.md#web-interface-guidelines) (Root-`AGENTS.md`).
+- **Next.js unter `apps/`:** [`../AGENTS.md`](../AGENTS.md).
+- **Repo-weit & Skills:** [`../../AGENTS.md`](../../AGENTS.md) · [`.agents/README.md`](../../.agents/README.md).

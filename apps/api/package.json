@@ -19,17 +19,23 @@
   "dependencies": {
     "@hono/node-server": "^1.19.9",
     "@repo/api-contracts": "workspace:*",
+    "@repo/bmecat": "workspace:*",
+    "@repo/datanorm": "workspace:*",
+    "@repo/datev-export": "workspace:*",
     "@repo/db": "workspace:*",
+    "@repo/gaeb": "workspace:*",
     "dotenv": "^17.3.1",
     "drizzle-orm": "^0.45.1",
     "hono": "^4.11.7",
     "jose": "^6.2.2",
+    "pdfkit": "^0.18.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
     "@types/node": "^22.15.3",
+    "@types/pdfkit": "^0.17.5",
     "eslint": "^9.39.1",
     "tsx": "^4.21.0",
     "typescript": "5.9.2"

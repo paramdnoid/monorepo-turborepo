@@ -15,6 +15,20 @@ const nextConfig = {
     "@repo/fonts",
     "@repo/brand",
   ],
+  async redirects() {
+    return [
+      {
+        source: "/web/painter/employee-management",
+        destination: "/web/employees",
+        permanent: true,
+      },
+      {
+        source: "/web/painter/scheduling",
+        destination: "/web/scheduling",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

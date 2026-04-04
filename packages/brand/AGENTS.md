@@ -20,15 +20,15 @@ pnpm generate:icons
 
 ## Consumers
 
-| App / area | Usage                                                                                        |
-| ---------- | -------------------------------------------------------------------------------------------- |
-| `web`      | `import brandLogo from "@repo/brand/logo"` — `layout.tsx` `metadata.icons`, homepage `Image` |
+| App / area | Usage                                                                                                                    |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `web`      | `import brandLogo from "@repo/brand/logo"` — `layout.tsx` `metadata.icons`, homepage `Image`                             |
 | `desktop`  | `require.resolve("@repo/brand/logo")` — window icon; `package.json` → electron-builder `icon` paths to `assets/logo.png` |
 
 ## Tasks
 
 No `lint` / `check-types` / `build` — validation runs through dependent apps.
 
-## Monorepo context
+## Monorepo
 
-Navigation: **[`../../AGENTS.md`](../../AGENTS.md)**.
+Repo-weit & Skills: **[`../../AGENTS.md`](../../AGENTS.md)** · **[`../../.agents/README.md`](../../.agents/README.md)**.

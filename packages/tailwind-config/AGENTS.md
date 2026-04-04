@@ -19,4 +19,4 @@ Typically referenced from **`@repo/ui`**, Next apps, and **`apps/desktop`** as a
 
 ## Monorepo
 
-Root context: **[`../../AGENTS.md`](../../AGENTS.md)**. Shared UI tokens and globals: [`packages/ui/AGENTS.md`](../ui/AGENTS.md).
+Shared UI: [`packages/ui/AGENTS.md`](../ui/AGENTS.md) · Repo-weit & Skills: [`../../AGENTS.md`](../../AGENTS.md) · [`../../.agents/README.md`](../../.agents/README.md).

@@ -191,7 +191,7 @@ export function HeroSection() {
                       prefersReducedMotion ? "" : tilt3d,
                     )}
                   >
-                    <div className="hero-dashboard-frame overflow-hidden rounded-xl ring-0">
+                    <div className="hero-dashboard-frame overflow-hidden rounded-lg ring-0">
                       <Image
                         src="/hero-dashboard-light.png"
                         alt={text.dashboardPreviewAlt}
