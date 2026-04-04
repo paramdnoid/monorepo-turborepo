@@ -288,7 +288,7 @@ export function SalesInvoiceCreateDialog({
                       setMasterCustomerId(v === "__none__" ? "" : v)
                     }
                   >
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger className="w-full" aria-label={fc.masterCustomer}>
                       <SelectValue placeholder={fc.noMasterCustomer} />
                     </SelectTrigger>
                     <SelectContent>
@@ -351,7 +351,7 @@ export function SalesInvoiceCreateDialog({
                 value={status}
                 onValueChange={(v) => setStatus(v as SalesInvoiceStatus)}
               >
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full" aria-label={tc.status}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -384,7 +384,7 @@ export function SalesInvoiceCreateDialog({
                 }
                 disabled={lockQuoteSelection}
               >
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full" aria-label={fc.linkQuote}>
                   <SelectValue placeholder={fc.noneQuote} />
                 </SelectTrigger>
                 <SelectContent>
@@ -406,7 +406,7 @@ export function SalesInvoiceCreateDialog({
                     setProjectId(v === "__none__" ? "" : v)
                   }
                 >
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger className="w-full" aria-label={fc.linkProject}>
                     <SelectValue placeholder={fc.noneProject} />
                   </SelectTrigger>
                   <SelectContent>
@@ -627,7 +627,7 @@ export function SalesInvoiceEditForm({
             }
           }}
         >
-          <SelectTrigger className="w-full">
+          <SelectTrigger className="w-full" aria-label={fc.masterCustomer}>
             <SelectValue placeholder={fc.noMasterCustomer} />
           </SelectTrigger>
           <SelectContent>
@@ -686,7 +686,7 @@ export function SalesInvoiceEditForm({
           value={status}
           onValueChange={(v) => setStatus(v as SalesInvoiceStatus)}
         >
-          <SelectTrigger className="w-full">
+          <SelectTrigger className="w-full" aria-label={tc.status}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -725,7 +725,7 @@ export function SalesInvoiceEditForm({
           value={quoteId === "" ? "__none__" : quoteId}
           onValueChange={(v) => setQuoteId(v === "__none__" ? "" : v)}
         >
-          <SelectTrigger className="w-full">
+          <SelectTrigger className="w-full" aria-label={fc.linkQuote}>
             <SelectValue placeholder={fc.noneQuote} />
           </SelectTrigger>
           <SelectContent>
@@ -744,7 +744,7 @@ export function SalesInvoiceEditForm({
           value={projectId === "" ? "__none__" : projectId}
           onValueChange={(v) => setProjectId(v === "__none__" ? "" : v)}
         >
-          <SelectTrigger className="w-full">
+          <SelectTrigger className="w-full" aria-label={fc.linkProject}>
             <SelectValue placeholder={fc.noneProject} />
           </SelectTrigger>
           <SelectContent>

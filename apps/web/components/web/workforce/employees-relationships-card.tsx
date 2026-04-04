@@ -177,7 +177,7 @@ export function EmployeesRelationshipsCard({
                   setKind(v as "MUTUALLY_EXCLUSIVE" | "MENTOR_TRAINEE")
                 }
               >
-                <SelectTrigger>
+                <SelectTrigger aria-label={t.relationshipKindLabel}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -189,7 +189,7 @@ export function EmployeesRelationshipsCard({
             <div className="grid gap-2">
               <Label>{t.relationshipCounterpartLabel}</Label>
               <Select value={targetId} onValueChange={setTargetId}>
-                <SelectTrigger>
+                <SelectTrigger aria-label={t.relationshipCounterpartLabel}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -202,8 +202,12 @@ export function EmployeesRelationshipsCard({
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label>{t.relationshipNoteLabel}</Label>
-              <Input value={note} onChange={(ev) => setNote(ev.target.value)} />
+              <Label htmlFor="relationship-note">{t.relationshipNoteLabel}</Label>
+              <Input
+                id="relationship-note"
+                value={note}
+                onChange={(ev) => setNote(ev.target.value)}
+              />
             </div>
             <div>
               <Button type="button" onClick={() => void addRelationship()} disabled={busy || !targetId}>

@@ -1122,7 +1122,7 @@ export function EmployeesDetailContent({
                             patchSlot(r.clientId, { weekday: Number(v) })
                           }
                         >
-                          <SelectTrigger className="w-full">
+                          <SelectTrigger className="w-full" aria-label={t.weekdayLabel}>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>

@@ -29,11 +29,13 @@ type AttachmentRow = {
   createdAt: string;
 };
 
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
+function formatBytes(bytes: number, locale: Locale): string {
+  const numberFormatter = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 });
+
+  if (bytes < 1024) return `${numberFormatter.format(bytes)} B`;
   const kb = bytes / 1024;
-  if (kb < 1024) return `${kb.toFixed(1)} KB`;
-  return `${(kb / 1024).toFixed(1)} MB`;
+  if (kb < 1024) return `${numberFormatter.format(kb)} KB`;
+  return `${numberFormatter.format(kb / 1024)} MB`;
 }
 
 export function EmployeesFilesCard({
@@ -268,7 +270,7 @@ export function EmployeesFilesCard({
                 >
                   <div>
                     <p className="text-sm font-medium">{a.filename}</p>
-                    <p className="text-xs text-muted-foreground">{formatBytes(a.byteSize)}</p>
+                    <p className="text-xs text-muted-foreground">{formatBytes(a.byteSize, locale)}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <Button type="button" variant="outline" size="sm" asChild>

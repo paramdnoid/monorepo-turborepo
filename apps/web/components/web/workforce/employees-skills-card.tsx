@@ -139,6 +139,7 @@ export function EmployeesSkillsCard({
               value={newSkillName}
               onChange={(ev) => setNewSkillName(ev.target.value)}
               placeholder={t.skillsCreatePlaceholder}
+              aria-label={t.skillsCreatePlaceholder}
             />
             <Button type="button" variant="secondary" onClick={() => void addSkill()} disabled={busy}>
               {t.skillsCreateCatalog}

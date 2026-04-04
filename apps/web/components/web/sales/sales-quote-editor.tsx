@@ -204,7 +204,7 @@ export function SalesQuoteCreateDialog({
                   setMasterCustomerId(v === "__none__" ? "" : v)
                 }
               >
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full" aria-label={fc.masterCustomer}>
                   <SelectValue placeholder={fc.noMasterCustomer} />
                 </SelectTrigger>
                 <SelectContent>
@@ -263,7 +263,7 @@ export function SalesQuoteCreateDialog({
                 value={status}
                 onValueChange={(v) => setStatus(v as SalesQuoteStatus)}
               >
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full" aria-label={tc.status}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -302,7 +302,7 @@ export function SalesQuoteCreateDialog({
                   setProjectId(v === "__none__" ? "" : v)
                 }
               >
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full" aria-label={fc.linkProject}>
                   <SelectValue placeholder={fc.noneProject} />
                 </SelectTrigger>
                 <SelectContent>
@@ -477,7 +477,7 @@ export function SalesQuoteEditForm({
             }
           }}
         >
-          <SelectTrigger className="w-full">
+          <SelectTrigger className="w-full" aria-label={fc.masterCustomer}>
             <SelectValue placeholder={fc.noMasterCustomer} />
           </SelectTrigger>
           <SelectContent>
@@ -536,7 +536,7 @@ export function SalesQuoteEditForm({
           value={status}
           onValueChange={(v) => setStatus(v as SalesQuoteStatus)}
         >
-          <SelectTrigger className="w-full">
+          <SelectTrigger className="w-full" aria-label={tc.status}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -584,7 +584,7 @@ export function SalesQuoteEditForm({
           value={projectId === "" ? "__none__" : projectId}
           onValueChange={(v) => setProjectId(v === "__none__" ? "" : v)}
         >
-          <SelectTrigger className="w-full">
+          <SelectTrigger className="w-full" aria-label={fc.linkProject}>
             <SelectValue placeholder={fc.noneProject} />
           </SelectTrigger>
           <SelectContent>
