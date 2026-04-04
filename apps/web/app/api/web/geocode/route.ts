@@ -48,6 +48,34 @@ function streetFromProperties(p: Record<string, unknown>): string {
   return typeof p.name === "string" ? p.name.trim() : "";
 }
 
+function pointWgs84FromFeature(feature: unknown): {
+  latitude: number;
+  longitude: number;
+} | null {
+  if (typeof feature !== "object" || feature === null) {
+    return null;
+  }
+  const f = feature as { geometry?: unknown };
+  const g = f.geometry;
+  if (!g || typeof g !== "object") {
+    return null;
+  }
+  const geom = g as { type?: unknown; coordinates?: unknown };
+  if (geom.type !== "Point" || !Array.isArray(geom.coordinates)) {
+    return null;
+  }
+  const c = geom.coordinates;
+  if (c.length < 2) {
+    return null;
+  }
+  const longitude = Number(c[0]);
+  const latitude = Number(c[1]);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return null;
+  }
+  return { latitude, longitude };
+}
+
 function mapOrsFeature(feature: unknown): GeocodeSuggestionPayload | null {
   if (typeof feature !== "object" || feature === null) {
     return null;
@@ -80,6 +108,7 @@ function mapOrsFeature(feature: unknown): GeocodeSuggestionPayload | null {
   if (!street && !city) {
     return null;
   }
+  const ll = pointWgs84FromFeature(feature);
   return {
     recipientName: recipientName || street || "—",
     street: street || "—",
@@ -88,6 +117,8 @@ function mapOrsFeature(feature: unknown): GeocodeSuggestionPayload | null {
     country,
     label: null,
     addressLine2: null,
+    latitude: ll?.latitude ?? null,
+    longitude: ll?.longitude ?? null,
   };
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { Button } from "@repo/ui/button";
 import { Input } from "@repo/ui/input";
 import { Label } from "@repo/ui/label";
@@ -18,6 +18,8 @@ export type GeocodeApplyPayload = {
   country: string;
   label: string | null;
   addressLine2: string | null;
+  latitude: number | null;
+  longitude: number | null;
 };
 
 type CustomerAddressGeocodeControlsProps = {
@@ -27,11 +29,20 @@ type CustomerAddressGeocodeControlsProps = {
   onApply: (s: GeocodeApplyPayload) => void;
 };
 
+function suggestionSummary(s: GeocodeSuggestionPayload): string {
+  const line1 = [s.street, `${s.postalCode} ${s.city}`.trim()]
+    .filter(Boolean)
+    .join(", ");
+  const head = s.recipientName.trim() || line1;
+  return head.length > 120 ? `${head.slice(0, 117)}…` : head;
+}
+
 export function CustomerAddressGeocodeControls({
   locale,
   defaultQuery = "",
   onApply,
 }: CustomerAddressGeocodeControlsProps) {
+  const qId = useId();
   const g = getCustomersGeocodeCopy(locale);
   const [query, setQuery] = useState(defaultQuery);
   const [busy, setBusy] = useState(false);
@@ -92,22 +103,27 @@ export function CustomerAddressGeocodeControls({
   }
 
   if (configured === false) {
-    return null;
+    return (
+      <div className="rounded-lg border border-dashed border-muted-foreground/25 bg-muted/15 p-3">
+        <p className="text-xs text-muted-foreground">{g.notConfiguredHint}</p>
+      </div>
+    );
   }
 
   return (
     <div className="grid gap-2 rounded-lg border border-dashed bg-muted/20 p-3">
       <div className="grid gap-1">
-        <Label className="text-xs font-medium text-muted-foreground">
+        <Label className="text-xs font-medium text-muted-foreground" htmlFor={qId}>
           {g.lookupLabel}
         </Label>
         <p className="text-xs text-muted-foreground">{g.lookupHint}</p>
       </div>
       <div className="flex flex-wrap gap-2">
         <Input
+          id={qId}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder={locale === "en" ? "Street, city …" : "Strasse, Ort …"}
+          placeholder={g.queryPlaceholder}
           className="min-w-[200px] flex-1"
         />
         <Button
@@ -122,30 +138,45 @@ export function CustomerAddressGeocodeControls({
       </div>
       {msg ? <p className="text-xs text-muted-foreground">{msg}</p> : null}
       {suggestions.length > 0 ? (
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="w-fit"
-          onClick={() => {
-            const first = suggestions[0];
-            if (first) {
-              onApply({
-                recipientName: first.recipientName,
-                street: first.street,
-                postalCode: first.postalCode,
-                city: first.city,
-                country: first.country,
-                label: first.label,
-                addressLine2: first.addressLine2,
-              });
-              setSuggestions([]);
-              setMsg(null);
-            }
-          }}
-        >
-          {g.applyFirst}
-        </Button>
+        <div className="grid gap-2">
+          <p className="text-xs font-medium text-muted-foreground">
+            {g.suggestionsHeading}
+          </p>
+          <ul className="grid max-h-48 gap-1 overflow-y-auto pr-1">
+            {suggestions.map((s, idx) => (
+              <li key={`${s.street}-${s.postalCode}-${idx}`}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-auto min-h-9 w-full whitespace-normal py-2 text-left text-xs font-normal"
+                  onClick={() => {
+                    onApply({
+                      recipientName: s.recipientName,
+                      street: s.street,
+                      postalCode: s.postalCode,
+                      city: s.city,
+                      country: s.country,
+                      label: s.label,
+                      addressLine2: s.addressLine2,
+                      latitude: s.latitude,
+                      longitude: s.longitude,
+                    });
+                    setSuggestions([]);
+                    setMsg(null);
+                  }}
+                >
+                  <span className="flex w-full items-start justify-between gap-2">
+                    <span className="line-clamp-2">{suggestionSummary(s)}</span>
+                    <span className="shrink-0 font-medium text-primary">
+                      {g.applyThis}
+                    </span>
+                  </span>
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </div>
       ) : null}
     </div>
   );

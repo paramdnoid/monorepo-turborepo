@@ -156,6 +156,23 @@ export function createCustomersListHandler(getDb: () => Db | undefined) {
       c.req.query("includeArchived") === "1" ||
       c.req.query("includeArchived") === "true";
 
+    const limitRaw = c.req.query("limit");
+    const offsetRaw = c.req.query("offset");
+    let limit = 25;
+    let offset = 0;
+    if (limitRaw !== undefined && limitRaw !== "") {
+      const n = Number(limitRaw);
+      if (Number.isFinite(n)) {
+        limit = Math.min(500, Math.max(1, Math.trunc(n)));
+      }
+    }
+    if (offsetRaw !== undefined && offsetRaw !== "") {
+      const n = Number(offsetRaw);
+      if (Number.isFinite(n)) {
+        offset = Math.max(0, Math.trunc(n));
+      }
+    }
+
     const conditions: SQL[] = [eq(customers.tenantId, auth.tenantId)];
     if (!includeArchived) {
       conditions.push(isNull(customers.archivedAt));
@@ -167,12 +184,20 @@ export function createCustomersListHandler(getDb: () => Db | undefined) {
       );
     }
 
+    const [countRow] = await db
+      .select({ n: sql<number>`cast(count(*) as int)` })
+      .from(customers)
+      .where(and(...conditions));
+
+    const total = countRow?.n ?? 0;
+
     const custRows = await db
       .select()
       .from(customers)
       .where(and(...conditions))
       .orderBy(asc(customers.displayName))
-      .limit(500);
+      .limit(limit)
+      .offset(offset);
 
     const ids = custRows.map((r) => r.id);
     const addrByCustomer = new Map<
@@ -201,6 +226,107 @@ export function createCustomersListHandler(getDb: () => Db | undefined) {
         createdAt: r.createdAt.toISOString(),
         updatedAt: r.updatedAt.toISOString(),
       })),
+      total,
+    });
+  };
+}
+
+/** Mandantenweite Adressliste (Join Kunde + Adresse), paginiert. */
+export function createCustomerAddressesListHandler(
+  getDb: () => Db | undefined,
+) {
+  return async (c: Context) => {
+    const auth = c.get("auth");
+    if (!auth) {
+      return c.json({ error: "missing_auth" }, 500);
+    }
+    const db = getDb();
+    if (!db) {
+      return c.json({ error: "database_unavailable" }, 503);
+    }
+
+    const qRaw = c.req.query("q")?.trim() ?? "";
+    const includeArchived =
+      c.req.query("includeArchived") === "1" ||
+      c.req.query("includeArchived") === "true";
+
+    const limitRaw = c.req.query("limit");
+    const offsetRaw = c.req.query("offset");
+    let limit = 25;
+    let offset = 0;
+    if (limitRaw !== undefined && limitRaw !== "") {
+      const n = Number(limitRaw);
+      if (Number.isFinite(n)) {
+        limit = Math.min(500, Math.max(1, Math.trunc(n)));
+      }
+    }
+    if (offsetRaw !== undefined && offsetRaw !== "") {
+      const n = Number(offsetRaw);
+      if (Number.isFinite(n)) {
+        offset = Math.max(0, Math.trunc(n));
+      }
+    }
+
+    const conditions: SQL[] = [eq(customers.tenantId, auth.tenantId)];
+    if (!includeArchived) {
+      conditions.push(isNull(customers.archivedAt));
+    }
+    if (qRaw.length > 0) {
+      const pattern = `%${qRaw.replace(/%/g, "\\%").replace(/_/g, "\\_")}%`;
+      conditions.push(
+        sql`(
+          ${customers.displayName} ilike ${pattern} escape '\\'
+          or ${customers.customerNumber} ilike ${pattern} escape '\\'
+          or ${customerAddresses.recipientName} ilike ${pattern} escape '\\'
+          or ${customerAddresses.street} ilike ${pattern} escape '\\'
+          or ${customerAddresses.postalCode} ilike ${pattern} escape '\\'
+          or ${customerAddresses.city} ilike ${pattern} escape '\\'
+          or coalesce(${customerAddresses.label}, '') ilike ${pattern} escape '\\'
+          or coalesce(${customerAddresses.addressLine2}, '') ilike ${pattern} escape '\\'
+        )`,
+      );
+    }
+
+    const whereClause = and(...conditions);
+
+    const [countRow] = await db
+      .select({ n: sql<number>`cast(count(${customerAddresses.id}) as int)` })
+      .from(customerAddresses)
+      .innerJoin(customers, eq(customerAddresses.customerId, customers.id))
+      .where(whereClause);
+
+    const total = countRow?.n ?? 0;
+
+    const joined = await db
+      .select({ cust: customers, addr: customerAddresses })
+      .from(customerAddresses)
+      .innerJoin(customers, eq(customerAddresses.customerId, customers.id))
+      .where(whereClause)
+      .orderBy(
+        asc(customers.displayName),
+        sql`(case when ${customerAddresses.isDefault} then 0 else 1 end)`,
+        sql`(case ${customerAddresses.kind}
+          when 'billing' then 0
+          when 'shipping' then 1
+          when 'site' then 2
+          else 3 end)`,
+        asc(customerAddresses.city),
+        asc(customerAddresses.street),
+      )
+      .limit(limit)
+      .offset(offset);
+
+    return c.json({
+      rows: joined.map(({ cust, addr }) => ({
+        customerId: cust.id,
+        displayName: cust.displayName,
+        customerNumber: cust.customerNumber ?? null,
+        customerArchivedAt: cust.archivedAt
+          ? cust.archivedAt.toISOString()
+          : null,
+        address: mapAddressRow(addr),
+      })),
+      total,
     });
   };
 }

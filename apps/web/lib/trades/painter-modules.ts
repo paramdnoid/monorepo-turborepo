@@ -6,8 +6,6 @@ export const PAINTER_MODULE_SEGMENTS = [
   "area-calculation",
   "gaeb-support",
   "digital-project-folders",
-  "employee-management",
-  "scheduling",
   "substrate-inspection",
   "resource-management-wholesale",
   "datev-interface",
@@ -18,16 +16,14 @@ export const PAINTER_MODULE_SEGMENTS = [
 export type PainterModuleSegment = (typeof PAINTER_MODULE_SEGMENTS)[number];
 
 const ICON_BY_SEGMENT: Record<PainterModuleSegment, string> = {
-  "area-calculation": "Ruler",
-  "gaeb-support": "FileSpreadsheet",
-  "digital-project-folders": "FolderOpen",
-  "employee-management": "Users",
-  scheduling: "CalendarDays",
-  "substrate-inspection": "Layers",
-  "resource-management-wholesale": "PackageSearch",
-  "datev-interface": "FileOutput",
-  "color-management": "Palette",
-  "room-book-bill-of-quantities": "Building2",
+  "area-calculation": "RulerDimensionLine",
+  "gaeb-support": "Table2",
+  "digital-project-folders": "FolderKanban",
+  "substrate-inspection": "BrickWall",
+  "resource-management-wholesale": "Warehouse",
+  "datev-interface": "FileDigit",
+  "color-management": "SwatchBook",
+  "room-book-bill-of-quantities": "LandPlot",
 };
 
 export function getAllPainterModuleSegments(): readonly PainterModuleSegment[] {

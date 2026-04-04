@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { getServerLocale } from "@/lib/i18n/server-locale";
 
-import { WebSettingsContent } from "../web-settings-content";
+import { WebSettingsContent } from "@/components/web/settings/web-settings-content";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getServerLocale();

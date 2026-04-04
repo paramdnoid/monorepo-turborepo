@@ -118,7 +118,7 @@ export function SchedulingContent({
       <>
         Assignments will use your{" "}
         <Link
-          href="/web/painter/employee-management"
+          href="/web/employees"
           className="font-medium text-primary underline underline-offset-4 hover:text-foreground"
         >
           employee roster
@@ -129,7 +129,7 @@ export function SchedulingContent({
       <>
         Einsaetze knuepfen spaeter an die{" "}
         <Link
-          href="/web/painter/employee-management"
+          href="/web/employees"
           className="font-medium text-primary underline underline-offset-4 hover:text-foreground"
         >
           Mitarbeiterverwaltung

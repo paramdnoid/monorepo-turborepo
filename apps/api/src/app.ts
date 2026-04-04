@@ -67,8 +67,15 @@ import {
   createCustomerDetailHandler,
   createCustomerPatchHandler,
   createCustomerPostHandler,
+  createCustomerAddressesListHandler,
   createCustomersListHandler,
 } from "./routes/customers.js";
+import {
+  createEmployeeDetailHandler,
+  createEmployeePatchHandler,
+  createEmployeePostHandler,
+  createEmployeesListHandler,
+} from "./routes/employees.js";
 import {
   createDatevBookingsExportHandler,
   createDatevSettingsGetHandler,
@@ -139,12 +146,17 @@ export function createApp(options?: CreateAppOptions) {
   const datevSettingsPatch = createDatevSettingsPatchHandler(getDb);
   const datevBookingsExport = createDatevBookingsExportHandler(getDb);
   const customersList = createCustomersListHandler(getDb);
+  const customerAddressesList = createCustomerAddressesListHandler(getDb);
   const customerPost = createCustomerPostHandler(getDb);
   const customerDetail = createCustomerDetailHandler(getDb);
   const customerPatch = createCustomerPatchHandler(getDb);
   const customerAddressPost = createCustomerAddressPostHandler(getDb);
   const customerAddressPatch = createCustomerAddressPatchHandler(getDb);
   const customerAddressDelete = createCustomerAddressDeleteHandler(getDb);
+  const employeesList = createEmployeesListHandler(getDb);
+  const employeePost = createEmployeePostHandler(getDb);
+  const employeeDetail = createEmployeeDetailHandler(getDb);
+  const employeePatch = createEmployeePatchHandler(getDb);
 
   const app = new Hono();
 
@@ -231,6 +243,7 @@ export function createApp(options?: CreateAppOptions) {
   v1.post("/organization/logo", orgMiddleware, organizationLogoPost);
   v1.patch("/organization", orgMiddleware, organizationPatch);
   v1.get("/customers", orgMiddleware, customersList);
+  v1.get("/customers/addresses", orgMiddleware, customerAddressesList);
   v1.post("/customers", orgMiddleware, customerPost);
   v1.get("/customers/:id", orgMiddleware, customerDetail);
   v1.patch("/customers/:id", orgMiddleware, customerPatch);
@@ -245,6 +258,10 @@ export function createApp(options?: CreateAppOptions) {
     orgMiddleware,
     customerAddressDelete,
   );
+  v1.get("/employees", orgMiddleware, employeesList);
+  v1.post("/employees", orgMiddleware, employeePost);
+  v1.get("/employees/:id", orgMiddleware, employeeDetail);
+  v1.patch("/employees/:id", orgMiddleware, employeePatch);
   v1.get("/datev/settings", orgMiddleware, datevSettingsGet);
   v1.patch("/datev/settings", orgMiddleware, datevSettingsPatch);
   v1.get("/datev/export/bookings.csv", orgMiddleware, datevBookingsExport);

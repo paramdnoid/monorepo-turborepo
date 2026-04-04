@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { getCustomersHeaderMeta } from "@/content/customers-module";
 import { getServerLocale } from "@/lib/i18n/server-locale";
 
-import { CustomersCustomerDetailContent } from "../customers-customer-detail-content";
+import { CustomersCustomerDetailContent } from "@/components/web/customers/customers-customer-detail-content";
 
 type PageProps = { params: Promise<{ id: string }> };
 

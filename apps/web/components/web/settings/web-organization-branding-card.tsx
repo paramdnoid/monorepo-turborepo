@@ -25,7 +25,7 @@ import {
 import { Input } from "@repo/ui/input";
 import { Textarea } from "@repo/ui/textarea";
 
-import { useWebApp } from "./web-app-context";
+import { useWebApp } from "@/components/web/shell/web-app-context";
 
 export function WebOrganizationBrandingCard() {
   const { session } = useWebApp();

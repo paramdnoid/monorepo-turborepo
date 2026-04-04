@@ -7,7 +7,9 @@ import {
 export async function fetchSalesCustomerOptions(): Promise<
   { id: string; label: string }[]
 > {
-  const res = await fetch("/api/web/customers", { credentials: "include" });
+  const res = await fetch("/api/web/customers?limit=500&offset=0", {
+    credentials: "include",
+  });
   if (!res.ok) {
     return [];
   }

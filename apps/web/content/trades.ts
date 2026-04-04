@@ -154,54 +154,42 @@ const tradesDe: Trade[] = [
       {
         label: "Flaechenkalkulation",
         description: "m2-basierte Preiskalkulation fuer Maler- und Lackierarbeiten.",
-        icon: "Ruler",
+        icon: "RulerDimensionLine",
       },
       {
         label: "GAEB-Unterstuetzung",
         description: "Import und Export von GAEB-Dateien fuer Ausschreibungen.",
-        icon: "FileSpreadsheet",
+        icon: "Table2",
       },
       {
         label: "Digitale Projektmappen",
         description: "Alle Projektdokumente, Plaene und Fotos an einem Ort.",
-        icon: "FolderOpen",
-      },
-      {
-        label: "Mitarbeiterverwaltung",
-        description:
-          "Stammdaten, Qualifikationen und Verfuegbarkeit — Grundlage fuer die Terminplanung.",
-        icon: "Users",
-      },
-      {
-        label: "Terminplanung",
-        description:
-          "Einsaetze, Kundenbesuche und Teamkapazitaeten in einer Plantafel buchen.",
-        icon: "CalendarDays",
+        icon: "FolderKanban",
       },
       {
         label: "Untergrundpruefung & Schichtaufbau",
         description: "Dokumentation von Untergruenden und Beschichtungssystemen.",
-        icon: "Layers",
+        icon: "BrickWall",
       },
       {
         label: "Ressourcenmanagement & Grosshandel",
         description: "DATANORM- und IDS-CONNECT-Import von Artikellisten und Preisen.",
-        icon: "PackageSearch",
+        icon: "Warehouse",
       },
       {
         label: "DATEV-Schnittstelle",
         description: "Buchhaltungsexport im DATEV-Format fuer den Steuerberater.",
-        icon: "FileOutput",
+        icon: "FileDigit",
       },
       {
         label: "Farbtonverwaltung",
         description: "RAL- und NCS-Farbtonsysteme fuer praezise Farbauswahl.",
-        icon: "Palette",
+        icon: "SwatchBook",
       },
       {
         label: "Raumbuch & Leistungsverzeichnis",
         description: "Raumweise Erfassung von Flaechen und automatische LV-Erstellung.",
-        icon: "Building2",
+        icon: "LandPlot",
       },
     ],
     coreFeatures: [...coreBase, digitalSignature],
@@ -386,54 +374,42 @@ const tradesEn: Trade[] = [
       {
         label: "Area costing",
         description: "m²-based price calculation for painting and coating work.",
-        icon: "Ruler",
+        icon: "RulerDimensionLine",
       },
       {
         label: "GAEB support",
         description: "Import and export GAEB files for tenders.",
-        icon: "FileSpreadsheet",
+        icon: "Table2",
       },
       {
         label: "Digital project folders",
         description: "All project documents, plans, and photos in one place.",
-        icon: "FolderOpen",
-      },
-      {
-        label: "Employee management",
-        description:
-          "Master data, qualifications, and availability — the basis for scheduling.",
-        icon: "Users",
-      },
-      {
-        label: "Scheduling",
-        description:
-          "Book field jobs, customer visits, and team capacity on one planning board.",
-        icon: "CalendarDays",
+        icon: "FolderKanban",
       },
       {
         label: "Substrate checks & coating layers",
         description: "Document substrates and coating systems.",
-        icon: "Layers",
+        icon: "BrickWall",
       },
       {
         label: "Resource management & wholesale",
         description: "Import product lists and prices via DATANORM and IDS CONNECT.",
-        icon: "PackageSearch",
+        icon: "Warehouse",
       },
       {
         label: "DATEV interface",
         description: "Export accounting data in DATEV format for tax advisory.",
-        icon: "FileOutput",
+        icon: "FileDigit",
       },
       {
         label: "Color management",
         description: "RAL and NCS systems for precise color selection.",
-        icon: "Palette",
+        icon: "SwatchBook",
       },
       {
         label: "Room book & bill of quantities",
         description: "Room-level area capture and automatic BOQ generation.",
-        icon: "Building2",
+        icon: "LandPlot",
       },
     ],
     coreFeatures: [

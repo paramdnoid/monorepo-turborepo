@@ -3,11 +3,19 @@
 import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { BookUser, LayoutDashboard } from "lucide-react";
+import { LayoutGrid } from "lucide-react";
 
 import { TradeFeatureIcon } from "@/components/marketing/trades/trade-feature-icon";
 import { getSalesHeaderMeta, getSalesSidebarCopy } from "@/content/sales-module";
-import { getCustomersHeaderMeta, getCustomersSidebarCopy } from "@/content/customers-module";
+import {
+  getCustomersHeaderMeta,
+  getCustomersSidebarCopy,
+  isCustomersSidebarListActive,
+} from "@/content/customers-module";
+import {
+  getWorkforceHeaderMeta,
+  getWorkforceSidebarCopy,
+} from "@/content/workforce-module";
 import type { Locale } from "@/lib/i18n/locale";
 import {
   getPainterModuleBySegment,
@@ -78,6 +86,10 @@ function getHeaderMeta(
   if (customersMeta) {
     return customersMeta;
   }
+  const workforceMeta = getWorkforceHeaderMeta(p, locale);
+  if (workforceMeta) {
+    return workforceMeta;
+  }
   if (p.startsWith("/web/painter/")) {
     const rest = p.slice("/web/painter/".length);
     const segment = rest.split("/")[0] ?? "";
@@ -122,6 +134,11 @@ export function WebShell({ webSession, children }: WebShellProps) {
 
   const customersSidebar = useMemo(
     () => getCustomersSidebarCopy(webSession.locale),
+    [webSession.locale],
+  );
+
+  const workforceSidebar = useMemo(
+    () => getWorkforceSidebarCopy(webSession.locale),
     [webSession.locale],
   );
 
@@ -176,7 +193,7 @@ export function WebShell({ webSession, children }: WebShellProps) {
   if (salesPrintPreview) {
     return (
       <WebAppProvider value={appValue}>
-        <div className="min-h-svh min-w-0 bg-muted/30 p-6 print:bg-white print:p-0">
+        <div className="min-h-svh min-w-0 p-6 print:bg-white print:p-0">
           {children}
         </div>
       </WebAppProvider>
@@ -202,7 +219,7 @@ export function WebShell({ webSession, children }: WebShellProps) {
                       isActive={overviewActive}
                     >
                       <Link href="/web">
-                        <LayoutDashboard />
+                        <LayoutGrid />
                         <span>Übersicht</span>
                       </Link>
                     </SidebarMenuButton>
@@ -217,8 +234,10 @@ export function WebShell({ webSession, children }: WebShellProps) {
                 <SidebarMenu>
                   {customersSidebar.items.map((item) => {
                     const isActive =
-                      pathname === item.href ||
-                      pathname.startsWith(`${item.href}/`);
+                      item.href === "/web/customers/list"
+                        ? isCustomersSidebarListActive(item.href, pathname)
+                        : pathname === item.href ||
+                          pathname.startsWith(`${item.href}/`);
                     return (
                       <SidebarMenuItem key={item.href}>
                         <SidebarMenuButton
@@ -227,7 +246,7 @@ export function WebShell({ webSession, children }: WebShellProps) {
                           isActive={isActive}
                         >
                           <Link href={item.href}>
-                            <BookUser />
+                            <TradeFeatureIcon name={item.icon} variant="nav" />
                             <span className="truncate">{item.label}</span>
                           </Link>
                         </SidebarMenuButton>
@@ -244,10 +263,8 @@ export function WebShell({ webSession, children }: WebShellProps) {
                 <SidebarMenu>
                   {salesSidebar.items.map((item) => {
                     const isActive =
-                      item.href === "/web/sales"
-                        ? pathname === "/web/sales"
-                        : pathname === item.href ||
-                          pathname.startsWith(`${item.href}/`);
+                      pathname === item.href ||
+                      pathname.startsWith(`${item.href}/`);
                     return (
                       <SidebarMenuItem key={item.href}>
                         <SidebarMenuButton
@@ -256,7 +273,34 @@ export function WebShell({ webSession, children }: WebShellProps) {
                           isActive={isActive}
                         >
                           <Link href={item.href}>
-                            <TradeFeatureIcon name={item.icon} />
+                            <TradeFeatureIcon name={item.icon} variant="nav" />
+                            <span className="truncate">{item.label}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            <SidebarGroup>
+              <SidebarGroupLabel>{workforceSidebar.groupLabel}</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {workforceSidebar.items.map((item) => {
+                    const isActive =
+                      pathname === item.href ||
+                      pathname.startsWith(`${item.href}/`);
+                    return (
+                      <SidebarMenuItem key={item.href}>
+                        <SidebarMenuButton
+                          asChild
+                          tooltip={item.tooltip}
+                          isActive={isActive}
+                        >
+                          <Link href={item.href}>
+                            <TradeFeatureIcon name={item.icon} variant="nav" />
                             <span className="truncate">{item.label}</span>
                           </Link>
                         </SidebarMenuButton>
@@ -286,7 +330,10 @@ export function WebShell({ webSession, children }: WebShellProps) {
                           isActive={isActive}
                         >
                           <Link href={href}>
-                            <TradeFeatureIcon name={feature.icon} />
+                            <TradeFeatureIcon
+                              name={feature.icon}
+                              variant="nav"
+                            />
                             <span className="truncate">{feature.label}</span>
                           </Link>
                         </SidebarMenuButton>
@@ -317,7 +364,7 @@ export function WebShell({ webSession, children }: WebShellProps) {
               </p>
             </div>
           </header>
-          <main className="flex min-h-0 min-w-0 flex-1 flex-col gap-6 overflow-auto bg-muted/30 p-6">
+          <main className="flex min-h-0 min-w-0 flex-1 flex-col gap-6 overflow-auto p-6">
             {children}
           </main>
         </SidebarInset>

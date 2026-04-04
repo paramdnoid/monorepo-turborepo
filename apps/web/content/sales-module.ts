@@ -1,7 +1,7 @@
 import type { Locale } from "@/lib/i18n/locale";
 
 /** Lucide icon names supported by `TradeFeatureIcon`. */
-export type SalesNavIconName = "Receipt" | "FileText";
+export type SalesNavIconName = "FilePenLine" | "Banknote";
 
 export type SalesNavItem = {
   href: string;
@@ -15,7 +15,7 @@ export type SalesSidebarCopy = {
   items: SalesNavItem[];
 };
 
-export type SalesPageKind = "overview" | "quotes" | "invoices";
+export type SalesPageKind = "quotes" | "invoices";
 
 type HeaderPair = { title: string; subtitle: string };
 
@@ -40,10 +40,6 @@ type SalesMessages = {
     senderHint: string;
     vatIdLabel: string;
     taxNumberLabel: string;
-  };
-  placeholder: {
-    noteTitle: string;
-    noteBody: string;
   };
   salesTable: {
     docNumber: string;
@@ -120,30 +116,20 @@ const de: SalesMessages = {
     groupLabel: "Belege",
     items: [
       {
-        href: "/web/sales",
-        label: "Übersicht Belege",
-        tooltip: "Übersicht Belege",
-        icon: "Receipt",
-      },
-      {
         href: "/web/sales/quotes",
         label: "Angebote",
         tooltip: "Angebote",
-        icon: "FileText",
+        icon: "FilePenLine",
       },
       {
         href: "/web/sales/invoices",
         label: "Rechnungen",
         tooltip: "Rechnungen",
-        icon: "Receipt",
+        icon: "Banknote",
       },
     ],
   },
   headers: {
-    overview: {
-      title: "Belege",
-      subtitle: "Angebots- & Rechnungswesen — gewerkeübergreifend",
-    },
     quotes: {
       title: "Angebote",
       subtitle: "Kalkulation, Varianten und Freigaben (Vorschau)",
@@ -183,11 +169,6 @@ const de: SalesMessages = {
       "Vollstaendige Absenderadresse und Steuerdaten hinterlegen Sie unter Einstellungen.",
     vatIdLabel: "USt-IdNr.",
     taxNumberLabel: "Steuernummer",
-  },
-  placeholder: {
-    noteTitle: "Hinweis",
-    noteBody:
-      "Angebote und Rechnungen: Kopfdaten, Projektbezug und Positionen in der UI. HTML-Druckvorschau im Browser; serverseitiges PDF ueber den Button \"PDF herunterladen (Server)\". Buchhaltungs-CSV (DATEV-orientiert) unter Modul „DATEV-Schnittstelle\".",
   },
   salesTable: {
     docNumber: "Nummer",
@@ -266,30 +247,20 @@ const en: SalesMessages = {
     groupLabel: "Quotes & invoicing",
     items: [
       {
-        href: "/web/sales",
-        label: "Documents overview",
-        tooltip: "Documents overview",
-        icon: "Receipt",
-      },
-      {
         href: "/web/sales/quotes",
         label: "Quotes",
         tooltip: "Quotes",
-        icon: "FileText",
+        icon: "FilePenLine",
       },
       {
         href: "/web/sales/invoices",
         label: "Invoices",
         tooltip: "Invoices",
-        icon: "Receipt",
+        icon: "Banknote",
       },
     ],
   },
   headers: {
-    overview: {
-      title: "Documents",
-      subtitle: "Quoting & invoicing — all trades",
-    },
     quotes: {
       title: "Quotes",
       subtitle: "Costing, variants and approvals (preview)",
@@ -329,11 +300,6 @@ const en: SalesMessages = {
       "Add a full sender address and tax IDs under Settings (company / documents header).",
     vatIdLabel: "VAT ID",
     taxNumberLabel: "Tax number",
-  },
-  placeholder: {
-    noteTitle: "Note",
-    noteBody:
-      "Quotes and invoices: headers, project link and line items in the UI. HTML print preview in the browser; server-generated PDF via the \"Download PDF (server)\" button. Accounting export will follow.",
   },
   salesTable: {
     docNumber: "No.",
@@ -425,7 +391,9 @@ export function getSalesHeaderMeta(
   const parts = rest.replace(/^\//, "").split("/").filter(Boolean);
 
   const m = messages(locale).headers;
-  if (parts.length === 0) return m.overview;
+  if (parts.length === 0) {
+    return m.quotes;
+  }
   if (parts[0] === "quotes") {
     if (parts.length >= 3 && parts[2] === "print") return m.quotesPrint;
     return parts.length >= 2 ? m.quotesDetail : m.quotes;
@@ -434,11 +402,7 @@ export function getSalesHeaderMeta(
     if (parts.length >= 3 && parts[2] === "print") return m.invoicesPrint;
     return parts.length >= 2 ? m.invoicesDetail : m.invoices;
   }
-  return m.overview;
-}
-
-export function getSalesPlaceholderCopy(locale: Locale) {
-  return messages(locale).placeholder;
+  return m.quotes;
 }
 
 export function getSalesPageTitle(

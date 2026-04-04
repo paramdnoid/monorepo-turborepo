@@ -47,6 +47,25 @@ export type CustomerListItem = z.infer<typeof customerListItemSchema>;
 
 export const customersListResponseSchema = z.object({
   customers: z.array(customerListItemSchema),
+  /** Gesamtanzahl fuer die aktuelle Filterkombination (Suche / archiviert). */
+  total: z.number().int().nonnegative(),
+});
+
+/** Eine Adresszeile in der mandantenweiten Adressliste (mit Kundenbezug). */
+export const customerAddressBookRowSchema = z.object({
+  customerId: z.string().uuid(),
+  displayName: z.string(),
+  customerNumber: z.string().nullable(),
+  customerArchivedAt: z.string().nullable(),
+  address: customerAddressSchema,
+});
+
+export type CustomerAddressBookRow = z.infer<typeof customerAddressBookRowSchema>;
+
+export const customersAddressesListResponseSchema = z.object({
+  rows: z.array(customerAddressBookRowSchema),
+  /** Gesamtanzahl fuer die aktuelle Filterkombination (Suche / archiviert). */
+  total: z.number().int().nonnegative(),
 });
 
 export const customerDetailSchema = z.object({

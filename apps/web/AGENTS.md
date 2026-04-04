@@ -15,12 +15,12 @@
 | [`app/api/onboarding/`](app/api/onboarding/) | `register`, `complete-billing` route handlers |
 | [`lib/db.ts`](lib/db.ts) | Server-only Postgres (`DATABASE_URL`) für `@repo/db` |
 | [`lib/provision-organization.ts`](lib/provision-organization.ts) | Nach Sign-up: Zeile in `organizations` (idempotent) |
-| [`content/`](content/) | `ui-text`, `faqs`, `features`, `steps`, `trades` (copy and data) |
+| [`content/`](content/) | `ui-text`, `faqs`, `features`, `steps`, `trades`, `customers-module`, `sales-module`, `workforce-module` (copy and data) |
 | [`components/marketing/`](components/marketing/) | Landing sections, header, footer, FAQ dialog |
 | [`components/onboarding/`](components/onboarding/) | Onboarding UI + app-local `ToggleGroup` (premium variant) |
 | [`lib/i18n/`](lib/i18n/), [`lib/auth/`](lib/auth/), [`lib/trades/`](lib/trades/) | Locale, session cookie/JWT, trade ids |
 | [`app/globals.css`](app/globals.css) | Imports `@repo/ui` globals + product utilities (panels, hero, legal scrollbar) |
-| [`app/web/`](app/web/) | Authentifizierte Shell unter `/web`: u. a. `/web/customers`, `/web/sales` (quotes, invoices, print preview), `/web/painter/…` (Gewerk Slug bleibt `maler` in `content/trades`), `/web/settings` |
+| [`app/web/`](app/web/) | Authentifizierte Shell unter `/web`: u. a. `/web/customers`, `/web/sales` (quotes, invoices, print preview), `/web/employees`, `/web/scheduling` (global, `content/workforce-module.ts`), `/web/painter/…` (branchenspezifisch Maler; Slug `maler` in `content/trades`), `/web/settings` |
 | [`/.env.example`](../../.env.example) am Repo-Root | Platzhalter für Web, API und Desktop; **lokal:** `.env.local` im Repo-Root (nicht committen) |
 
 ## Mandanten-Provision und `DATABASE_URL`

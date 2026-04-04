@@ -6,7 +6,7 @@ import { validateWebAccessTokenSession } from "@/lib/auth/validate-web-session";
 import { getServerLocale } from "@/lib/i18n/server-locale";
 import { getSidebarBrandTagline } from "@/lib/trades/sidebar-brand-tagline";
 
-import { WebShell } from "./web-shell";
+import { WebShell } from "@/components/web/shell/web-shell";
 
 /** Cookie + JWT-`exp` müssen pro Request geprüft werden — kein statischer Cache. */
 export const dynamic = "force-dynamic";

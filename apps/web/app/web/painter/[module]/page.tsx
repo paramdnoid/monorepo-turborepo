@@ -6,13 +6,11 @@ import {
   getPainterModuleBySegment,
 } from "@/lib/trades/painter-modules";
 import { getServerLocale } from "@/lib/i18n/server-locale";
-import { ColorManagementContent } from "../color-management-content";
-import { DatevInterfaceContent } from "../datev-interface-content";
-import { DigitalProjectFoldersContent } from "../digital-project-folders-content";
-import { EmployeeManagementContent } from "../employee-management-content";
-import { GaebSupportContent } from "../gaeb-support-content";
-import { ResourceManagementWholesaleContent } from "../resource-management-wholesale-content";
-import { SchedulingContent } from "../scheduling-content";
+import { ColorManagementContent } from "@/components/web/painter/color-management-content";
+import { DatevInterfaceContent } from "@/components/web/painter/datev-interface-content";
+import { DigitalProjectFoldersContent } from "@/components/web/painter/digital-project-folders-content";
+import { GaebSupportContent } from "@/components/web/painter/gaeb-support-content";
+import { ResourceManagementWholesaleContent } from "@/components/web/painter/resource-management-wholesale-content";
 
 type PainterModulePageProps = {
   params: Promise<{ module: string }>;
@@ -43,14 +41,6 @@ export default async function PainterModulePage({ params }: PainterModulePagePro
   const entry = getPainterModuleBySegment(locale, segment);
   if (!entry) {
     notFound();
-  }
-
-  if (segment === "employee-management") {
-    return <EmployeeManagementContent locale={locale} />;
-  }
-
-  if (segment === "scheduling") {
-    return <SchedulingContent locale={locale} feature={entry.feature} />;
   }
 
   if (segment === "datev-interface") {

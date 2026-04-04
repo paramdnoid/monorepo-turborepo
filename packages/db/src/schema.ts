@@ -1,10 +1,13 @@
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import {
   boolean,
+  doublePrecision,
+  index,
   integer,
   jsonb,
   pgTable,
   text,
+  time,
   timestamp,
   unique,
   uuid,
@@ -119,6 +122,70 @@ export const customerAddresses = pgTable("customer_addresses", {
     .defaultNow()
     .notNull(),
 });
+
+/**
+ * Mitarbeiter je Mandant (Workforce / Planung).
+ * Private Adresse inkl. optionaler Koordinaten — nur intern, nicht fuer Kundenbelege.
+ */
+export const employees = pgTable("employees", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  tenantId: text("tenant_id")
+    .notNull()
+    .references(() => organizations.tenantId, { onDelete: "cascade" }),
+  displayName: text("display_name").notNull(),
+  roleLabel: text("role_label"),
+  notes: text("notes"),
+  privateAddressLabel: text("private_address_label"),
+  privateAddressLine2: text("private_address_line2"),
+  privateRecipientName: text("private_recipient_name"),
+  privateStreet: text("private_street"),
+  privatePostalCode: text("private_postal_code"),
+  privateCity: text("private_city"),
+  privateCountry: text("private_country"),
+  latitude: doublePrecision("latitude"),
+  longitude: doublePrecision("longitude"),
+  geocodedAt: timestamp("geocoded_at", { withTimezone: true }),
+  /** `manual` | `ors` — Freitext in DB, Validierung in API. */
+  geocodeSource: text("geocode_source"),
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+/**
+ * Woechentliche Verfuegbarkeit: mehrere Slots pro Tag moeglich.
+ * `weekday`: 0 = Sonntag .. 6 = Samstag (wie JavaScript Date#getDay()).
+ */
+export const employeeAvailabilityRules = pgTable(
+  "employee_availability_rules",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    employeeId: uuid("employee_id")
+      .notNull()
+      .references(() => employees.id, { onDelete: "cascade" }),
+    /** 0–6; 0 = Sonntag (JS-Konvention). */
+    weekday: integer("weekday").notNull(),
+    /** Ortszeit Mandant (ohne TZ in DB). */
+    startTime: time("start_time").notNull(),
+    endTime: time("end_time").notNull(),
+    sortIndex: integer("sort_index").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    employeeIdIdx: index("employee_availability_rules_employee_id_idx").on(
+      t.employeeId,
+    ),
+  }),
+);
 
 /**
  * Dateien der digitalen Projektmappe (Metadaten); Blob liegt auf dem API-Dateisystem.

@@ -26,7 +26,7 @@ import { Switch } from "@repo/ui/switch";
 
 import { updateNotificationPreferences } from "@/app/web/actions/settings";
 
-import { useWebApp } from "./web-app-context";
+import { useWebApp } from "@/components/web/shell/web-app-context";
 import { WebOrganizationBrandingCard } from "./web-organization-branding-card";
 
 export function WebSettingsContent() {

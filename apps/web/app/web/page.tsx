@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { getServerLocale } from "@/lib/i18n/server-locale";
 
-import { WebOverviewContent } from "./web-overview-content";
+import { WebOverviewContent } from "@/components/web/overview/web-overview-content";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getServerLocale();

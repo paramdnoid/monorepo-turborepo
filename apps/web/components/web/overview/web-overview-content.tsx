@@ -10,9 +10,9 @@ import { TradeFeatureIcon } from "@/components/marketing/trades/trade-feature-ic
 import { getCustomersOverviewCopy } from "@/content/customers-module";
 import { getPainterModulesOrdered } from "@/lib/trades/painter-modules";
 
-import type { WebDesktopAuthState } from "./web-desktop-bridge";
-import { useWebApp } from "./web-app-context";
-import { DesktopDownloadCard } from "./desktop-download-card";
+import { DesktopDownloadCard } from "@/components/web/overview/desktop-download-card";
+import { useWebApp } from "@/components/web/shell/web-app-context";
+import type { WebDesktopAuthState } from "@/lib/web-desktop-bridge";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_WEB_API_BASE_URL ?? "http://127.0.0.1:4000";
@@ -193,7 +193,7 @@ export function WebOverviewContent() {
         </p>
         <div className="grid gap-3 sm:grid-cols-2">
           <Link
-            href="/web/customers"
+            href="/web/customers/list"
             className="flex gap-3 rounded-lg border border-transparent bg-muted/30 p-4 transition-colors hover:border-border hover:bg-muted/50"
           >
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/8 ring-1 ring-primary/10">
@@ -206,7 +206,7 @@ export function WebOverviewContent() {
             </div>
           </Link>
           <Link
-            href="/web/sales"
+            href="/web/sales/quotes"
             className="flex gap-3 rounded-lg border border-transparent bg-muted/30 p-4 transition-colors hover:border-border hover:bg-muted/50"
           >
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/8 ring-1 ring-primary/10">

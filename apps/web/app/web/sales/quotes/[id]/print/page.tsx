@@ -12,9 +12,9 @@ import { validateWebAccessTokenSession } from "@/lib/auth/validate-web-session";
 import { getServerLocale } from "@/lib/i18n/server-locale";
 import { Button } from "@repo/ui/button";
 
-import { SalesDocumentPrint } from "../../../sales-document-print";
-import { SalesPrintToolbar } from "../../../sales-print-toolbar";
-import { fetchQuoteForPrint } from "../../../sales-print-fetch";
+import { SalesDocumentPrint } from "@/components/web/sales/sales-document-print";
+import { SalesPrintToolbar } from "@/components/web/sales/sales-print-toolbar";
+import { fetchQuoteForPrint } from "@/components/web/sales/sales-print-fetch";
 
 export const dynamic = "force-dynamic";
 

@@ -6,7 +6,7 @@ import {
 } from "@/content/sales-module";
 import { getServerLocale } from "@/lib/i18n/server-locale";
 
-import { SalesList } from "../sales-list";
+import { SalesList } from "@/components/web/sales/sales-list";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getServerLocale();

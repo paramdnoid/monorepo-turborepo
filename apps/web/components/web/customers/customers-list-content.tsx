@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useState,
+} from "react";
 import Link from "next/link";
 import { customersListResponseSchema } from "@repo/api-contracts";
 import type { z } from "zod";
@@ -27,13 +33,61 @@ import {
 } from "@repo/ui/table";
 
 import {
+  formatCustomersPaginationRange,
   getCustomersDetailCopy,
   getCustomersKindLabel,
   getCustomersListCopy,
 } from "@/content/customers-module";
 import type { Locale } from "@/lib/i18n/locale";
+import { parseResponseJson } from "@/lib/parse-response-json";
 
+import {
+  CustomerAddressManualFields,
+  type CustomerAddressManualValues,
+} from "./customer-address-manual-fields";
 import { CustomerAddressGeocodeControls } from "./customer-address-geocode-controls";
+
+const PAGE_SIZE = 25;
+
+type ListFetchState = {
+  debouncedQ: string;
+  includeArchived: boolean;
+  pageIndex: number;
+  reloadNonce: number;
+};
+
+type ListFetchAction =
+  | { type: "setDebouncedQ"; q: string }
+  | { type: "setIncludeArchived"; value: boolean }
+  | { type: "setPageIndex"; pageIndex: number }
+  | { type: "bumpReload" };
+
+function listFetchReducer(
+  state: ListFetchState,
+  action: ListFetchAction,
+): ListFetchState {
+  switch (action.type) {
+    case "setDebouncedQ":
+      if (state.debouncedQ === action.q) {
+        return state;
+      }
+      return { ...state, debouncedQ: action.q, pageIndex: 0 };
+    case "setIncludeArchived":
+      if (state.includeArchived === action.value) {
+        return state;
+      }
+      return { ...state, includeArchived: action.value, pageIndex: 0 };
+    case "setPageIndex":
+      if (state.pageIndex === action.pageIndex) {
+        return state;
+      }
+      return { ...state, pageIndex: action.pageIndex };
+    case "bumpReload":
+      return { ...state, reloadNonce: state.reloadNonce + 1 };
+    default:
+      return state;
+  }
+}
 
 type ListItem = z.infer<typeof customersListResponseSchema>["customers"][number];
 
@@ -86,88 +140,117 @@ export function CustomersListContent({ locale }: CustomersListContentProps) {
   const copy = getCustomersListCopy(locale);
   const dCopy = getCustomersDetailCopy(locale);
   const [searchInput, setSearchInput] = useState("");
-  const [appliedQuery, setAppliedQuery] = useState("");
-  const [includeArchived, setIncludeArchived] = useState(false);
+  const [fetchState, fetchDispatch] = useReducer(listFetchReducer, {
+    debouncedQ: "",
+    includeArchived: false,
+    pageIndex: 0,
+    reloadNonce: 0,
+  });
+  const { debouncedQ, includeArchived, pageIndex, reloadNonce } = fetchState;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<ListItem[]>([]);
+  const [total, setTotal] = useState(0);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [createBusy, setCreateBusy] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState("");
   const [customerNumber, setCustomerNumber] = useState("");
-  const [addrLabel, setAddrLabel] = useState("");
-  const [addrLine2, setAddrLine2] = useState("");
-  const [addrRecipient, setAddrRecipient] = useState("");
-  const [addrStreet, setAddrStreet] = useState("");
-  const [addrPostal, setAddrPostal] = useState("");
-  const [addrCity, setAddrCity] = useState("");
-  const [addrCountry, setAddrCountry] = useState("DE");
+  const [addrManual, setAddrManual] = useState<CustomerAddressManualValues>({
+    label: "",
+    line2: "",
+    recipient: "",
+    street: "",
+    postal: "",
+    city: "",
+    country: "DE",
+  });
 
   const geocodeDefaultQuery = useMemo(
     () =>
-      [addrStreet, addrPostal, addrCity].filter(Boolean).join(", ").trim(),
-    [addrStreet, addrPostal, addrCity],
+      [addrManual.street, addrManual.postal, addrManual.city]
+        .filter(Boolean)
+        .join(", ")
+        .trim(),
+    [addrManual.street, addrManual.postal, addrManual.city],
   );
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      fetchDispatch({ type: "setDebouncedQ", q: searchInput.trim() });
+    }, 400);
+    return () => clearTimeout(t);
+  }, [searchInput]);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     const params = new URLSearchParams();
-    if (appliedQuery) {
-      params.set("q", appliedQuery);
+    params.set("limit", String(PAGE_SIZE));
+    params.set("offset", String(pageIndex * PAGE_SIZE));
+    if (debouncedQ) {
+      params.set("q", debouncedQ);
     }
     if (includeArchived) {
       params.set("includeArchived", "1");
     }
-    const url =
-      params.size > 0
-        ? `/api/web/customers?${params.toString()}`
-        : "/api/web/customers";
+    const url = `/api/web/customers?${params.toString()}`;
     try {
       const res = await fetch(url, { credentials: "include" });
       const text = await res.text();
       if (!res.ok) {
         setError(copy.loadError);
         setRows([]);
+        setTotal(0);
         return;
       }
-      const json: unknown = JSON.parse(text);
+      const json = parseResponseJson(text);
+      if (json === null) {
+        setError(copy.loadError);
+        setRows([]);
+        setTotal(0);
+        return;
+      }
       const parsed = customersListResponseSchema.safeParse(json);
       if (!parsed.success) {
         setError(copy.loadError);
         setRows([]);
+        setTotal(0);
         return;
       }
       setRows(parsed.data.customers);
+      setTotal(parsed.data.total);
     } catch {
       setError(copy.loadError);
       setRows([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
-  }, [appliedQuery, copy.loadError, includeArchived]);
+  }, [copy.loadError, debouncedQ, includeArchived, pageIndex]);
 
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, reloadNonce]);
 
-  async function handleSearchSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setAppliedQuery(searchInput.trim());
+  function flushSearchNow() {
+    const q = searchInput.trim();
+    fetchDispatch({ type: "setDebouncedQ", q });
   }
 
   function openCreate() {
     setDisplayName("");
     setCustomerNumber("");
-    setAddrLabel("");
-    setAddrLine2("");
-    setAddrRecipient("");
-    setAddrStreet("");
-    setAddrPostal("");
-    setAddrCity("");
-    setAddrCountry("DE");
+    setAddrManual({
+      label: "",
+      line2: "",
+      recipient: "",
+      street: "",
+      postal: "",
+      city: "",
+      country: "DE",
+    });
     setCreateError(null);
     setCreateOpen(true);
   }
@@ -179,18 +262,18 @@ export function CustomersListContent({ locale }: CustomersListContentProps) {
       setCreateError(dCopy.validation);
       return;
     }
-    const hasAddr =
-      addrRecipient.trim() &&
-      addrStreet.trim() &&
-      addrPostal.trim() &&
-      addrCity.trim();
+    const r = addrManual.recipient.trim();
+    const st = addrManual.street.trim();
+    const plz = addrManual.postal.trim();
+    const ct = addrManual.city.trim();
+    const hasAddr = r && st && plz && ct;
     if (
-      (addrRecipient.trim() ||
-        addrStreet.trim() ||
-        addrPostal.trim() ||
-        addrCity.trim() ||
-        addrLabel.trim() ||
-        addrLine2.trim()) &&
+      (r ||
+        st ||
+        plz ||
+        ct ||
+        addrManual.label.trim() ||
+        addrManual.line2.trim()) &&
       !hasAddr
     ) {
       setCreateError(dCopy.validation);
@@ -200,18 +283,20 @@ export function CustomersListContent({ locale }: CustomersListContentProps) {
     try {
       const body: Record<string, unknown> = {
         displayName: displayName.trim(),
-        customerNumber: customerNumber.trim() === "" ? null : customerNumber.trim(),
+        customerNumber:
+          customerNumber.trim() === "" ? null : customerNumber.trim(),
       };
       if (hasAddr) {
         body.defaultAddress = {
           kind: "billing",
-          label: addrLabel.trim() === "" ? null : addrLabel.trim(),
-          addressLine2: addrLine2.trim() === "" ? null : addrLine2.trim(),
-          recipientName: addrRecipient.trim(),
-          street: addrStreet.trim(),
-          postalCode: addrPostal.trim(),
-          city: addrCity.trim(),
-          country: addrCountry.trim().toUpperCase() || "DE",
+          label: addrManual.label.trim() === "" ? null : addrManual.label.trim(),
+          addressLine2:
+            addrManual.line2.trim() === "" ? null : addrManual.line2.trim(),
+          recipientName: r,
+          street: st,
+          postalCode: plz,
+          city: ct,
+          country: addrManual.country.trim().toUpperCase() || "DE",
           isDefault: true,
         };
       }
@@ -230,36 +315,98 @@ export function CustomersListContent({ locale }: CustomersListContentProps) {
         return;
       }
       setCreateOpen(false);
-      await load();
+      fetchDispatch({ type: "setPageIndex", pageIndex: 0 });
+      fetchDispatch({ type: "bumpReload" });
     } finally {
       setCreateBusy(false);
     }
   }
 
+  const rangeLabel =
+    total === 0
+      ? formatCustomersPaginationRange(locale, 0, 0, 0)
+      : formatCustomersPaginationRange(
+          locale,
+          pageIndex * PAGE_SIZE + 1,
+          Math.min((pageIndex + 1) * PAGE_SIZE, total),
+          total,
+        );
+
+  const hasPrev = pageIndex > 0;
+  const hasNext = (pageIndex + 1) * PAGE_SIZE < total;
+
   return (
     <div className="w-full min-w-0 space-y-6">
-      <div className="flex flex-wrap items-end gap-4">
-        <form onSubmit={handleSearchSubmit} className="flex min-w-[240px] flex-1 gap-2">
-          <Input
-            placeholder={copy.searchPlaceholder}
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            className="max-w-md"
-          />
-          <Button type="submit" variant="secondary">
-            {locale === "en" ? "Search" : "Suchen"}
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-end gap-4">
+          <div className="flex min-w-[240px] flex-1 flex-col gap-1">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                flushSearchNow();
+              }}
+              className="flex flex-wrap gap-2"
+            >
+              <Input
+                placeholder={copy.searchPlaceholder}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                className="max-w-md"
+                aria-describedby="customers-search-hint"
+              />
+              <Button type="submit" variant="secondary">
+                {copy.search}
+              </Button>
+            </form>
+            <p id="customers-search-hint" className="text-xs text-muted-foreground">
+              {copy.searchAutoHint}
+            </p>
+          </div>
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
+            <Checkbox
+              checked={includeArchived}
+              onCheckedChange={(v) =>
+                fetchDispatch({ type: "setIncludeArchived", value: v === true })
+              }
+            />
+            {copy.includeArchived}
+          </label>
+          <Button type="button" onClick={openCreate}>
+            {copy.newCustomer}
           </Button>
-        </form>
-        <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
-          <Checkbox
-            checked={includeArchived}
-            onCheckedChange={(v) => setIncludeArchived(v === true)}
-          />
-          {copy.includeArchived}
-        </label>
-        <Button type="button" onClick={openCreate}>
-          {copy.newCustomer}
-        </Button>
+        </div>
+        {total > 0 && !loading ? (
+          <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
+            <span>{rangeLabel}</span>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={!hasPrev || loading}
+                onClick={() =>
+                  fetchDispatch({
+                    type: "setPageIndex",
+                    pageIndex: Math.max(0, pageIndex - 1),
+                  })
+                }
+              >
+                {copy.paginationPrev}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={!hasNext || loading}
+                onClick={() =>
+                  fetchDispatch({ type: "setPageIndex", pageIndex: pageIndex + 1 })
+                }
+              >
+                {copy.paginationNext}
+              </Button>
+            </div>
+          </div>
+        ) : null}
       </div>
 
       {error ? (
@@ -343,92 +490,46 @@ export function CustomersListContent({ locale }: CustomersListContentProps) {
                 />
               </div>
               <p className="text-xs font-medium text-muted-foreground">
-                {getCustomersKindLabel(locale, "billing")} (optional)
+                {getCustomersKindLabel(locale, "billing")} (
+                {copy.billingAddressOptional})
               </p>
               <CustomerAddressGeocodeControls
                 locale={locale}
                 defaultQuery={geocodeDefaultQuery}
                 onApply={(s) => {
-                  setAddrRecipient(s.recipientName);
-                  setAddrStreet(s.street);
-                  setAddrPostal(s.postalCode);
-                  setAddrCity(s.city);
-                  setAddrCountry(s.country);
-                  if (s.label?.trim()) {
-                    setAddrLabel(s.label.trim());
-                  }
-                  if (s.addressLine2?.trim()) {
-                    setAddrLine2(s.addressLine2.trim());
-                  }
+                  setAddrManual((prev) => ({
+                    ...prev,
+                    recipient: s.recipientName,
+                    street: s.street,
+                    postal: s.postalCode,
+                    city: s.city,
+                    country: s.country,
+                    label: s.label?.trim() ? s.label.trim() : prev.label,
+                    line2: s.addressLine2?.trim()
+                      ? s.addressLine2.trim()
+                      : prev.line2,
+                  }));
                 }}
               />
-              <div className="grid gap-2">
-                <Label htmlFor="c-al">{dCopy.addressLabel}</Label>
-                <Input
-                  id="c-al"
-                  value={addrLabel}
-                  onChange={(e) => setAddrLabel(e.target.value)}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="c-a2">{dCopy.addressLine2}</Label>
-                <Input
-                  id="c-a2"
-                  value={addrLine2}
-                  onChange={(e) => setAddrLine2(e.target.value)}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="c-ar">{dCopy.recipientName}</Label>
-                <Input
-                  id="c-ar"
-                  value={addrRecipient}
-                  onChange={(e) => setAddrRecipient(e.target.value)}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="c-st">{dCopy.street}</Label>
-                <Input
-                  id="c-st"
-                  value={addrStreet}
-                  onChange={(e) => setAddrStreet(e.target.value)}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="grid gap-2">
-                  <Label htmlFor="c-plz">{dCopy.postalCode}</Label>
-                  <Input
-                    id="c-plz"
-                    value={addrPostal}
-                    onChange={(e) => setAddrPostal(e.target.value)}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="c-ci">{dCopy.city}</Label>
-                  <Input
-                    id="c-ci"
-                    value={addrCity}
-                    onChange={(e) => setAddrCity(e.target.value)}
-                  />
-                </div>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="c-land">{dCopy.country}</Label>
-                <Input
-                  id="c-land"
-                  value={addrCountry}
-                  onChange={(e) => setAddrCountry(e.target.value)}
-                  maxLength={2}
-                  className="uppercase"
-                />
-              </div>
+              <CustomerAddressManualFields
+                locale={locale}
+                idPrefix="c"
+                values={addrManual}
+                onChange={(patch) =>
+                  setAddrManual((prev) => ({ ...prev, ...patch }))
+                }
+              />
             </div>
             <DialogFooter>
-              <Button type="button" variant="ghost" onClick={() => setCreateOpen(false)}>
-                {locale === "en" ? "Cancel" : "Abbrechen"}
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setCreateOpen(false)}
+              >
+                {copy.cancel}
               </Button>
               <Button type="submit" disabled={createBusy}>
-                {locale === "en" ? "Create" : "Anlegen"}
+                {copy.create}
               </Button>
             </DialogFooter>
           </form>

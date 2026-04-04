@@ -6,7 +6,7 @@ import {
 } from "@/content/sales-module";
 import { getServerLocale } from "@/lib/i18n/server-locale";
 
-import { SalesDetail } from "../../sales-detail";
+import { SalesDetail } from "@/components/web/sales/sales-detail";
 
 type PageProps = { params: Promise<{ id: string }> };
 
