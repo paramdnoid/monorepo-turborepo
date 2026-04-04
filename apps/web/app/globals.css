@@ -224,3 +224,21 @@
   );
   backdrop-filter: blur(14px);
 }
+
+/* Belege: druckoptimierte HTML-Vorschau */
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  .beleg-druck-dokument {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .beleg-druck-tabelle tbody tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}

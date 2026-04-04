@@ -4,6 +4,14 @@ import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { LayoutDashboard } from "lucide-react";
+
+import { TradeFeatureIcon } from "@/components/marketing/trades/trade-feature-icon";
+import { getBelegeHeaderMeta, getBelegeSidebarCopy } from "@/content/belege-module";
+import type { Locale } from "@/lib/i18n/locale";
+import {
+  getMalerModuleBySegment,
+  getMalerModulesOrdered,
+} from "@/lib/trades/maler-modules";
 import {
   Sidebar,
   SidebarBrand,
@@ -40,7 +48,14 @@ function normalizePath(pathname: string): string {
   return pathname;
 }
 
-function getHeaderMeta(pathname: string): { title: string; subtitle: string } {
+function isBelegePrintPreviewPath(pathname: string): boolean {
+  return /^\/web\/belege\/(angebote|rechnungen)\/[^/]+\/druck$/.test(pathname);
+}
+
+function getHeaderMeta(
+  pathname: string,
+  locale: Locale,
+): { title: string; subtitle: string } {
   const p = normalizePath(pathname);
   if (p === "/web/settings" || p.startsWith("/web/settings/")) {
     return {
@@ -54,6 +69,31 @@ function getHeaderMeta(pathname: string): { title: string; subtitle: string } {
       subtitle: "Next.js · shadcn Sidebar-Layout (Radix Nova)",
     };
   }
+  const belegeMeta = getBelegeHeaderMeta(p, locale);
+  if (belegeMeta) {
+    return belegeMeta;
+  }
+  if (p.startsWith("/web/maler/")) {
+    const rest = p.slice("/web/maler/".length);
+    const segment = rest.split("/")[0] ?? "";
+    if (segment) {
+      const mod = getMalerModuleBySegment(locale, segment);
+      if (mod) {
+        return {
+          title: mod.feature.label,
+          subtitle: mod.feature.description,
+        };
+      }
+    }
+    return {
+      title:
+        locale === "en" ? "Painter & decorator" : "Maler & Tapezierer",
+      subtitle:
+        locale === "en"
+          ? "Industry-specific modules"
+          : "Branchenspezifische Module",
+    };
+  }
   return {
     title: "App",
     subtitle: "ZunftGewerk Web",
@@ -63,7 +103,17 @@ function getHeaderMeta(pathname: string): { title: string; subtitle: string } {
 export function WebShell({ webSession, children }: WebShellProps) {
   const router = useRouter();
   const pathname = normalizePath(usePathname());
-  const { title, subtitle } = getHeaderMeta(pathname);
+  const { title, subtitle } = getHeaderMeta(pathname, webSession.locale);
+
+  const malerModules = useMemo(
+    () => getMalerModulesOrdered(webSession.locale),
+    [webSession.locale],
+  );
+
+  const belegeSidebar = useMemo(
+    () => getBelegeSidebarCopy(webSession.locale),
+    [webSession.locale],
+  );
 
   const [authBusy, setAuthBusy] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -111,10 +161,21 @@ export function WebShell({ webSession, children }: WebShellProps) {
   );
 
   const overviewActive = pathname === "/web";
+  const belegePrintPreview = isBelegePrintPreviewPath(pathname);
+
+  if (belegePrintPreview) {
+    return (
+      <WebAppProvider value={appValue}>
+        <div className="min-h-svh min-w-0 bg-muted/30 p-6 print:bg-white print:p-0">
+          {children}
+        </div>
+      </WebAppProvider>
+    );
+  }
 
   return (
     <WebAppProvider value={appValue}>
-      <SidebarProvider>
+      <SidebarProvider className="min-w-0">
         <Sidebar collapsible="icon" variant="inset">
           <SidebarHeader className="border-sidebar-border">
             <SidebarBrand tagline={webSession.brandTagline} />
@@ -139,6 +200,65 @@ export function WebShell({ webSession, children }: WebShellProps) {
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
+
+            <SidebarGroup>
+              <SidebarGroupLabel>{belegeSidebar.groupLabel}</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {belegeSidebar.items.map((item) => {
+                    const isActive =
+                      item.href === "/web/belege"
+                        ? pathname === "/web/belege"
+                        : pathname === item.href ||
+                          pathname.startsWith(`${item.href}/`);
+                    return (
+                      <SidebarMenuItem key={item.href}>
+                        <SidebarMenuButton
+                          asChild
+                          tooltip={item.tooltip}
+                          isActive={isActive}
+                        >
+                          <Link href={item.href}>
+                            <TradeFeatureIcon name={item.icon} />
+                            <span className="truncate">{item.label}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            <SidebarGroup>
+              <SidebarGroupLabel>
+                {webSession.locale === "en"
+                  ? "Painter & decorator"
+                  : "Maler & Tapezierer"}
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {malerModules.map(({ segment, href, feature }) => {
+                    const isActive =
+                      pathname === href || pathname.startsWith(`${href}/`);
+                    return (
+                      <SidebarMenuItem key={segment}>
+                        <SidebarMenuButton
+                          asChild
+                          tooltip={feature.label}
+                          isActive={isActive}
+                        >
+                          <Link href={href}>
+                            <TradeFeatureIcon name={feature.icon} />
+                            <span className="truncate">{feature.label}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
           </SidebarContent>
           <WebUserMenu
             webSession={webSession}
@@ -148,15 +268,19 @@ export function WebShell({ webSession, children }: WebShellProps) {
           <SidebarRail />
         </Sidebar>
         <SidebarInset>
-          <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
-            <SidebarTrigger className="-ml-1" />
-            <Separator orientation="vertical" className="mr-2 h-4" />
-            <div className="flex flex-1 flex-col gap-0.5">
-              <h1 className="text-sm font-medium leading-none">{title}</h1>
-              <p className="text-xs text-muted-foreground">{subtitle}</p>
+          <header className="flex h-14 min-w-0 shrink-0 items-center gap-2 border-b px-4">
+            <SidebarTrigger className="-ml-1 shrink-0" />
+            <Separator orientation="vertical" className="mr-2 h-4 shrink-0" />
+            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+              <h1 className="truncate text-sm font-medium leading-none">
+                {title}
+              </h1>
+              <p className="truncate text-xs text-muted-foreground">
+                {subtitle}
+              </p>
             </div>
           </header>
-          <main className="flex flex-1 flex-col gap-4 overflow-auto p-6">
+          <main className="flex min-h-0 min-w-0 flex-1 flex-col gap-6 overflow-auto bg-muted/30 p-6">
             {children}
           </main>
         </SidebarInset>

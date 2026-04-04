@@ -157,19 +157,9 @@ const tradesDe: Trade[] = [
         icon: "Ruler",
       },
       {
-        label: "Ressourcenmanagement & Grosshandel",
-        description: "DATANORM- und IDS-CONNECT-Import von Artikellisten und Preisen.",
-        icon: "PackageSearch",
-      },
-      {
         label: "GAEB-Unterstuetzung",
         description: "Import und Export von GAEB-Dateien fuer Ausschreibungen.",
         icon: "FileSpreadsheet",
-      },
-      {
-        label: "DATEV-Schnittstelle",
-        description: "Buchhaltungsexport im DATEV-Format fuer den Steuerberater.",
-        icon: "FileOutput",
       },
       {
         label: "Digitale Projektmappen",
@@ -177,14 +167,36 @@ const tradesDe: Trade[] = [
         icon: "FolderOpen",
       },
       {
-        label: "Farbtonverwaltung",
-        description: "RAL- und NCS-Farbtonsysteme fuer praezise Farbauswahl.",
-        icon: "Palette",
+        label: "Mitarbeiterverwaltung",
+        description:
+          "Stammdaten, Qualifikationen und Verfuegbarkeit — Grundlage fuer die Terminplanung.",
+        icon: "Users",
+      },
+      {
+        label: "Terminplanung",
+        description:
+          "Einsaetze, Kundenbesuche und Teamkapazitaeten in einer Plantafel buchen.",
+        icon: "CalendarDays",
       },
       {
         label: "Untergrundpruefung & Schichtaufbau",
         description: "Dokumentation von Untergruenden und Beschichtungssystemen.",
         icon: "Layers",
+      },
+      {
+        label: "Ressourcenmanagement & Grosshandel",
+        description: "DATANORM- und IDS-CONNECT-Import von Artikellisten und Preisen.",
+        icon: "PackageSearch",
+      },
+      {
+        label: "DATEV-Schnittstelle",
+        description: "Buchhaltungsexport im DATEV-Format fuer den Steuerberater.",
+        icon: "FileOutput",
+      },
+      {
+        label: "Farbtonverwaltung",
+        description: "RAL- und NCS-Farbtonsysteme fuer praezise Farbauswahl.",
+        icon: "Palette",
       },
       {
         label: "Raumbuch & Leistungsverzeichnis",
@@ -377,19 +389,9 @@ const tradesEn: Trade[] = [
         icon: "Ruler",
       },
       {
-        label: "Resource management & wholesale",
-        description: "Import product lists and prices via DATANORM and IDS CONNECT.",
-        icon: "PackageSearch",
-      },
-      {
         label: "GAEB support",
         description: "Import and export GAEB files for tenders.",
         icon: "FileSpreadsheet",
-      },
-      {
-        label: "DATEV interface",
-        description: "Export accounting data in DATEV format for tax advisory.",
-        icon: "FileOutput",
       },
       {
         label: "Digital project folders",
@@ -397,14 +399,36 @@ const tradesEn: Trade[] = [
         icon: "FolderOpen",
       },
       {
-        label: "Color management",
-        description: "RAL and NCS systems for precise color selection.",
-        icon: "Palette",
+        label: "Employee management",
+        description:
+          "Master data, qualifications, and availability — the basis for scheduling.",
+        icon: "Users",
+      },
+      {
+        label: "Scheduling",
+        description:
+          "Book field jobs, customer visits, and team capacity on one planning board.",
+        icon: "CalendarDays",
       },
       {
         label: "Substrate checks & coating layers",
         description: "Document substrates and coating systems.",
         icon: "Layers",
+      },
+      {
+        label: "Resource management & wholesale",
+        description: "Import product lists and prices via DATANORM and IDS CONNECT.",
+        icon: "PackageSearch",
+      },
+      {
+        label: "DATEV interface",
+        description: "Export accounting data in DATEV format for tax advisory.",
+        icon: "FileOutput",
+      },
+      {
+        label: "Color management",
+        description: "RAL and NCS systems for precise color selection.",
+        icon: "Palette",
       },
       {
         label: "Room book & bill of quantities",

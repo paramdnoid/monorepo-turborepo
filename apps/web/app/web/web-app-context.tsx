@@ -2,6 +2,8 @@
 
 import { createContext, useContext } from "react";
 
+import type { Locale } from "@/lib/i18n/locale";
+
 export type WebShellSession = {
   name: string;
   email: string;
@@ -10,6 +12,8 @@ export type WebShellSession = {
   brandTagline: string;
   /** Handwerk / Zunft aus dem Token, falls vorhanden. */
   tradeSlug: string | null;
+  /** UI-Sprache (Server), u. a. für Maler-Modul-Navigation. */
+  locale: Locale;
 };
 
 export type WebAppContextValue = {

@@ -47,6 +47,7 @@ export default async function WebAppLayout({
         avatar: user.avatar,
         brandTagline,
         tradeSlug: user.session.tradeSlug,
+        locale,
       }}
     >
       {children}

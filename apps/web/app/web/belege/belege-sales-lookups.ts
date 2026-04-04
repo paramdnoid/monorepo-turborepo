@@ -1,0 +1,46 @@
+import {
+  projectsListResponseSchema,
+  salesQuotesListResponseSchema,
+} from "@repo/api-contracts";
+
+export async function fetchBelegeProjectOptions(): Promise<
+  { id: string; title: string }[]
+> {
+  try {
+    const res = await fetch("/api/web/projects", { credentials: "include" });
+    if (!res.ok) return [];
+    const json: unknown = await res.json();
+    const parsed = projectsListResponseSchema.safeParse(json);
+    return parsed.success ? parsed.data.projects : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function fetchBelegeQuoteLinkOptions(): Promise<
+  { id: string; label: string }[]
+> {
+  try {
+    const res = await fetch("/api/web/sales/quotes", { credentials: "include" });
+    if (!res.ok) return [];
+    const json: unknown = await res.json();
+    const parsed = salesQuotesListResponseSchema.safeParse(json);
+    if (!parsed.success) return [];
+    return parsed.data.quotes.map((q) => ({
+      id: q.id,
+      label: `${q.documentNumber} · ${q.customerLabel}`,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+export async function buildProjectTitleMap(): Promise<Map<string, string>> {
+  const rows = await fetchBelegeProjectOptions();
+  return new Map(rows.map((p) => [p.id, p.title]));
+}
+
+export async function buildQuoteLinkLabelMap(): Promise<Map<string, string>> {
+  const rows = await fetchBelegeQuoteLinkOptions();
+  return new Map(rows.map((q) => [q.id, q.label]));
+}

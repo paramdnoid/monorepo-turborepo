@@ -11,6 +11,11 @@ declare module "hono" {
       tenantId: string;
       name: string;
       tradeSlug: string;
+      senderAddress: string | null;
+      vatId: string | null;
+      taxNumber: string | null;
+      logoStorageRelativePath: string | null;
+      logoContentType: string | null;
       createdAt: Date;
     };
   }

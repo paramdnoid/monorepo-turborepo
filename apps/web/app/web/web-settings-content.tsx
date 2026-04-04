@@ -27,6 +27,7 @@ import { Switch } from "@repo/ui/switch";
 import { updateNotificationPreferences } from "@/app/web/actions/settings";
 
 import { useWebApp } from "./web-app-context";
+import { WebOrganizationBrandingCard } from "./web-organization-branding-card";
 
 export function WebSettingsContent() {
   const { session, logout, logoutBusy, logoutError } = useWebApp();
@@ -115,6 +116,8 @@ export function WebSettingsContent() {
           </FieldGroup>
         </CardContent>
       </Card>
+
+      <WebOrganizationBrandingCard />
 
       <Card>
         <CardHeader>

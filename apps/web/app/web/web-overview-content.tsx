@@ -1,9 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@repo/ui/alert";
 import { Button } from "@repo/ui/button";
+
+import { TradeFeatureIcon } from "@/components/marketing/trades/trade-feature-icon";
+import { getMalerModulesOrdered } from "@/lib/trades/maler-modules";
 
 import type { WebDesktopAuthState } from "./web-desktop-bridge";
 import { useWebApp } from "./web-app-context";
@@ -13,6 +17,9 @@ const API_BASE =
   process.env.NEXT_PUBLIC_WEB_API_BASE_URL ?? "http://127.0.0.1:4000";
 
 const WEB_ME_PATH = "/api/auth/backend-me";
+
+/** Nur in der Entwicklung: Roh-JSON von `/api/auth/backend-me` bzw. `/v1/me` (nicht in Produktion nötig). */
+const SHOW_BACKEND_ME_DEBUG = process.env.NODE_ENV === "development";
 
 function formatBackendMeError(status: number, body: string): string {
   try {
@@ -44,6 +51,10 @@ function formatBackendMeError(status: number, body: string): string {
 
 export function WebOverviewContent() {
   const { session: webSession, logout, logoutBusy, logoutError } = useWebApp();
+  const malerModules = useMemo(
+    () => getMalerModulesOrdered(webSession.locale),
+    [webSession.locale],
+  );
   const [ipcStatus, setIpcStatus] = useState<string>("…");
   const [isElectronShell, setIsElectronShell] = useState(false);
   const [auth, setAuth] = useState<WebDesktopAuthState | null>(null);
@@ -83,6 +94,12 @@ export function WebOverviewContent() {
   }, [refreshAuth]);
 
   useEffect(() => {
+    if (!SHOW_BACKEND_ME_DEBUG) {
+      setMeJson(null);
+      setMeError(null);
+      setMeSource(null);
+      return;
+    }
     if (auth === null) {
       setMeJson(null);
       setMeError(null);
@@ -162,6 +179,40 @@ export function WebOverviewContent() {
         </p>
       </section>
 
+      <section className="rounded-xl border bg-card p-6 text-card-foreground shadow-sm">
+        <h2 className="mb-1 text-lg font-semibold tracking-tight">
+          {webSession.locale === "en"
+            ? "Painter & decorator"
+            : "Maler & Tapezierer"}
+        </h2>
+        <p className="mb-4 text-sm text-muted-foreground">
+          {webSession.locale === "en"
+            ? "Open a module to explore the preview."
+            : "Module öffnen, um die Vorschau zu erkunden."}
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {malerModules.map(({ href, feature, segment }) => (
+            <Link
+              key={segment}
+              href={href}
+              className="flex gap-3 rounded-lg border border-transparent bg-muted/30 p-4 transition-colors hover:border-border hover:bg-muted/50"
+            >
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/8 ring-1 ring-primary/10">
+                <TradeFeatureIcon name={feature.icon} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium leading-tight">
+                  {feature.label}
+                </p>
+                <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                  {feature.description}
+                </p>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
+
       <DesktopDownloadCard isElectronShell={isElectronShell} />
 
       <section className="rounded-xl border bg-card p-6 text-card-foreground shadow-sm">
@@ -206,7 +257,7 @@ export function WebOverviewContent() {
         </div>
       </section>
 
-      {auth !== null ? (
+      {SHOW_BACKEND_ME_DEBUG && auth !== null ? (
         <section className="rounded-xl border bg-card p-6 text-card-foreground shadow-sm">
           <h2 className="mb-2 text-lg font-semibold tracking-tight">
             API{" "}
@@ -230,7 +281,7 @@ export function WebOverviewContent() {
               </AlertDescription>
             </Alert>
           ) : (
-            <pre className="max-h-64 overflow-auto rounded-md bg-muted p-3 text-xs">
+            <pre className="max-h-64 min-w-0 w-full overflow-x-auto overflow-y-auto rounded-md bg-muted p-3 text-xs">
               {meJson ?? "Lade …"}
             </pre>
           )}

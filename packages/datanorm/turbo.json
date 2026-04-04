@@ -1,0 +1,9 @@
+{
+  "extends": ["//"],
+  "tags": ["pkg"],
+  "tasks": {
+    "build": {
+      "outputs": ["dist/**"]
+    }
+  }
+}

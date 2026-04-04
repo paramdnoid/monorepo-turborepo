@@ -1,5 +1,7 @@
 import type { Context } from "hono";
 
+import { mapOrgToMeOrganization } from "./organization.js";
+
 export function meHandler(c: Context) {
   const auth = c.get("auth");
   const org = c.get("organization");
@@ -10,10 +12,6 @@ export function meHandler(c: Context) {
   return c.json({
     sub: auth.sub,
     tenantId: auth.tenantId,
-    organization: {
-      id: org.id,
-      name: org.name,
-      tradeSlug: org.tradeSlug,
-    },
+    organization: mapOrgToMeOrganization(org),
   });
 }

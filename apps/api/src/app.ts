@@ -11,7 +11,59 @@ import type { AuthContext } from "./auth/verify-token.js";
 import { loadEnv } from "./env.js";
 import { getOptionalDb } from "./db.js";
 import { requestContextMiddleware } from "./middleware/request-context.js";
+import {
+  createCatalogImportDetailHandler,
+  createCatalogImportPatchHandler,
+  createCatalogImportPostHandler,
+  createCatalogImportsListHandler,
+  createCatalogSupplierPostHandler,
+  createCatalogSuppliersListHandler,
+} from "./routes/catalog.js";
+import {
+  createGaebDetailHandler,
+  createGaebExportGetHandler,
+  createGaebImportPostHandler,
+  createGaebListHandler,
+  createGaebPatchHandler,
+} from "./routes/gaeb.js";
 import { meHandler } from "./routes/me.js";
+import {
+  createOrganizationLogoGetHandler,
+  createOrganizationLogoPostHandler,
+  createOrganizationPatchHandler,
+} from "./routes/organization.js";
+import {
+  createProjectAssetDeleteHandler,
+  createProjectAssetDownloadHandler,
+  createProjectAssetPostHandler,
+  createProjectAssetsListHandler,
+} from "./routes/project-assets.js";
+import { createProjectsListHandler } from "./routes/projects.js";
+import {
+  createSalesInvoiceDetailHandler,
+  createSalesInvoiceLineDeleteHandler,
+  createSalesInvoiceLinePatchHandler,
+  createSalesInvoiceLinePostHandler,
+  createSalesInvoiceLinesReorderHandler,
+  createSalesInvoicePatchHandler,
+  createSalesInvoicePdfHandler,
+  createSalesInvoicePostHandler,
+  createSalesInvoicesListHandler,
+  createSalesQuoteDetailHandler,
+  createSalesQuoteLineDeleteHandler,
+  createSalesQuoteLinePatchHandler,
+  createSalesQuoteLinePostHandler,
+  createSalesQuoteLinesReorderHandler,
+  createSalesQuotePatchHandler,
+  createSalesQuotePdfHandler,
+  createSalesQuotePostHandler,
+  createSalesQuotesListHandler,
+} from "./routes/sales.js";
+import {
+  createDatevBookingsExportHandler,
+  createDatevSettingsGetHandler,
+  createDatevSettingsPatchHandler,
+} from "./routes/datev.js";
 import { createSyncHandler } from "./routes/sync.js";
 
 function isDevEnv(): boolean {
@@ -34,6 +86,46 @@ export function createApp(options?: CreateAppOptions) {
   const authMiddleware = createAuthMiddleware(verify);
   const orgMiddleware = createOrgMiddleware(getDb);
   const syncHandler = createSyncHandler(getDb);
+  const projectsListHandler = createProjectsListHandler(getDb);
+  const gaebImportPost = createGaebImportPostHandler(getDb);
+  const gaebListHandler = createGaebListHandler(getDb);
+  const gaebDetailHandler = createGaebDetailHandler(getDb);
+  const gaebPatchHandler = createGaebPatchHandler(getDb);
+  const gaebExportGet = createGaebExportGetHandler(getDb);
+  const projectAssetsList = createProjectAssetsListHandler(getDb);
+  const projectAssetPost = createProjectAssetPostHandler(getDb);
+  const projectAssetDownload = createProjectAssetDownloadHandler(getDb);
+  const projectAssetDelete = createProjectAssetDeleteHandler(getDb);
+  const catalogSuppliersList = createCatalogSuppliersListHandler(getDb);
+  const catalogSupplierPost = createCatalogSupplierPostHandler(getDb);
+  const catalogImportPost = createCatalogImportPostHandler(getDb);
+  const catalogImportsList = createCatalogImportsListHandler(getDb);
+  const catalogImportDetail = createCatalogImportDetailHandler(getDb);
+  const catalogImportPatch = createCatalogImportPatchHandler(getDb);
+  const salesQuotesList = createSalesQuotesListHandler(getDb);
+  const salesQuotePost = createSalesQuotePostHandler(getDb);
+  const salesQuoteLinePost = createSalesQuoteLinePostHandler(getDb);
+  const salesQuoteLinesReorder = createSalesQuoteLinesReorderHandler(getDb);
+  const salesQuoteLinePatch = createSalesQuoteLinePatchHandler(getDb);
+  const salesQuoteLineDelete = createSalesQuoteLineDeleteHandler(getDb);
+  const salesQuoteDetail = createSalesQuoteDetailHandler(getDb);
+  const salesQuotePdf = createSalesQuotePdfHandler(getDb);
+  const salesQuotePatch = createSalesQuotePatchHandler(getDb);
+  const salesInvoicesList = createSalesInvoicesListHandler(getDb);
+  const salesInvoicePost = createSalesInvoicePostHandler(getDb);
+  const salesInvoiceLinePost = createSalesInvoiceLinePostHandler(getDb);
+  const salesInvoiceLinesReorder = createSalesInvoiceLinesReorderHandler(getDb);
+  const salesInvoiceLinePatch = createSalesInvoiceLinePatchHandler(getDb);
+  const salesInvoiceLineDelete = createSalesInvoiceLineDeleteHandler(getDb);
+  const salesInvoiceDetail = createSalesInvoiceDetailHandler(getDb);
+  const salesInvoicePdf = createSalesInvoicePdfHandler(getDb);
+  const salesInvoicePatch = createSalesInvoicePatchHandler(getDb);
+  const organizationPatch = createOrganizationPatchHandler(getDb);
+  const organizationLogoPost = createOrganizationLogoPostHandler(getDb);
+  const organizationLogoGet = createOrganizationLogoGetHandler();
+  const datevSettingsGet = createDatevSettingsGetHandler(getDb);
+  const datevSettingsPatch = createDatevSettingsPatchHandler(getDb);
+  const datevBookingsExport = createDatevBookingsExportHandler(getDb);
 
   const app = new Hono();
 
@@ -52,7 +144,7 @@ export function createApp(options?: CreateAppOptions) {
     cors({
       origin: corsOrigins,
       allowHeaders: ["Authorization", "Content-Type"],
-      allowMethods: ["GET", "POST", "OPTIONS", "HEAD"],
+      allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
       maxAge: 86400,
     }),
   );
@@ -116,7 +208,79 @@ export function createApp(options?: CreateAppOptions) {
   const v1 = new Hono();
   v1.use("*", authMiddleware);
   v1.get("/me", orgMiddleware, meHandler);
+  v1.get("/organization/logo", orgMiddleware, organizationLogoGet);
+  v1.post("/organization/logo", orgMiddleware, organizationLogoPost);
+  v1.patch("/organization", orgMiddleware, organizationPatch);
+  v1.get("/datev/settings", orgMiddleware, datevSettingsGet);
+  v1.patch("/datev/settings", orgMiddleware, datevSettingsPatch);
+  v1.get("/datev/export/bookings.csv", orgMiddleware, datevBookingsExport);
   v1.post("/sync", orgMiddleware, syncHandler);
+  v1.get("/projects", orgMiddleware, projectsListHandler);
+  v1.get(
+    "/projects/:projectId/assets/:assetId",
+    orgMiddleware,
+    projectAssetDownload,
+  );
+  v1.delete(
+    "/projects/:projectId/assets/:assetId",
+    orgMiddleware,
+    projectAssetDelete,
+  );
+  v1.get("/projects/:projectId/assets", orgMiddleware, projectAssetsList);
+  v1.post("/projects/:projectId/assets", orgMiddleware, projectAssetPost);
+  v1.post("/gaeb/imports", orgMiddleware, gaebImportPost);
+  v1.get("/gaeb/imports", orgMiddleware, gaebListHandler);
+  v1.get("/gaeb/imports/:id", orgMiddleware, gaebDetailHandler);
+  v1.patch("/gaeb/imports/:id", orgMiddleware, gaebPatchHandler);
+  v1.get("/gaeb/imports/:id/export", orgMiddleware, gaebExportGet);
+  v1.get("/catalog/suppliers", orgMiddleware, catalogSuppliersList);
+  v1.post("/catalog/suppliers", orgMiddleware, catalogSupplierPost);
+  v1.post("/catalog/imports", orgMiddleware, catalogImportPost);
+  v1.get("/catalog/imports", orgMiddleware, catalogImportsList);
+  v1.get("/catalog/imports/:id", orgMiddleware, catalogImportDetail);
+  v1.patch("/catalog/imports/:id", orgMiddleware, catalogImportPatch);
+  v1.get("/sales/quotes", orgMiddleware, salesQuotesList);
+  v1.post("/sales/quotes", orgMiddleware, salesQuotePost);
+  v1.post("/sales/quotes/:id/lines", orgMiddleware, salesQuoteLinePost);
+  v1.put(
+    "/sales/quotes/:id/lines/reorder",
+    orgMiddleware,
+    salesQuoteLinesReorder,
+  );
+  v1.patch(
+    "/sales/quotes/:id/lines/:lineId",
+    orgMiddleware,
+    salesQuoteLinePatch,
+  );
+  v1.delete(
+    "/sales/quotes/:id/lines/:lineId",
+    orgMiddleware,
+    salesQuoteLineDelete,
+  );
+  v1.get("/sales/quotes/:id/pdf", orgMiddleware, salesQuotePdf);
+  v1.get("/sales/quotes/:id", orgMiddleware, salesQuoteDetail);
+  v1.patch("/sales/quotes/:id", orgMiddleware, salesQuotePatch);
+  v1.get("/sales/invoices", orgMiddleware, salesInvoicesList);
+  v1.post("/sales/invoices", orgMiddleware, salesInvoicePost);
+  v1.post("/sales/invoices/:id/lines", orgMiddleware, salesInvoiceLinePost);
+  v1.put(
+    "/sales/invoices/:id/lines/reorder",
+    orgMiddleware,
+    salesInvoiceLinesReorder,
+  );
+  v1.patch(
+    "/sales/invoices/:id/lines/:lineId",
+    orgMiddleware,
+    salesInvoiceLinePatch,
+  );
+  v1.delete(
+    "/sales/invoices/:id/lines/:lineId",
+    orgMiddleware,
+    salesInvoiceLineDelete,
+  );
+  v1.get("/sales/invoices/:id/pdf", orgMiddleware, salesInvoicePdf);
+  v1.get("/sales/invoices/:id", orgMiddleware, salesInvoiceDetail);
+  v1.patch("/sales/invoices/:id", orgMiddleware, salesInvoicePatch);
 
   app.route("/v1", v1);
 
