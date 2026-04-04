@@ -41,11 +41,13 @@ export async function GET(request: Request, context: RouteContext) {
       },
     );
     const bodyText = await res.text();
+    const etag = res.headers.get("etag");
     return new NextResponse(bodyText, {
       status: res.status,
       headers: {
         "Content-Type": res.headers.get("content-type") ?? "application/json",
         "Cache-Control": "private, no-store",
+        ...(etag ? { ETag: etag } : {}),
       },
     });
   } catch {
@@ -77,6 +79,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 
   try {
+    const ifMatch = request.headers.get("if-match");
     const res = await fetch(
       `${API_BASE}/v1/employees/${encodeURIComponent(id)}`,
       {
@@ -84,8 +87,50 @@ export async function PATCH(request: Request, context: RouteContext) {
         headers: {
           Authorization: `Bearer ${session.token}`,
           "Content-Type": "application/json",
+          ...(ifMatch ? { "If-Match": ifMatch } : {}),
         },
         body,
+      },
+    );
+    const bodyText = await res.text();
+    const etag = res.headers.get("etag");
+    return new NextResponse(bodyText, {
+      status: res.status,
+      headers: {
+        "Content-Type": res.headers.get("content-type") ?? "application/json",
+        "Cache-Control": "private, no-store",
+        ...(etag ? { ETag: etag } : {}),
+      },
+    });
+  } catch {
+    return NextResponse.json(
+      { error: text.api.auth.loginAuthServiceUnavailable },
+      noStoreInit({ status: 503 }),
+    );
+  }
+}
+
+export async function DELETE(request: Request, context: RouteContext) {
+  const { id } = await context.params;
+  const locale = getRequestLocale(request);
+  const text = getUiText(locale);
+
+  const session = await validateWebAccessTokenSession();
+  if (!session.ok) {
+    return NextResponse.json(
+      { error: text.api.auth.bffSessionInvalid },
+      noStoreInit({ status: 401 }),
+    );
+  }
+
+  try {
+    const res = await fetch(
+      `${API_BASE}/v1/employees/${encodeURIComponent(id)}`,
+      {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${session.token}`,
+        },
       },
     );
     const bodyText = await res.text();

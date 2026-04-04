@@ -54,7 +54,7 @@ export function DesktopDownloadCard({
 
   if (isElectronShell) {
     return (
-      <section className="rounded-xl border bg-card p-6 text-card-foreground shadow-sm">
+      <section className="rounded-lg border bg-card p-6 text-card-foreground shadow-sm">
         <h2 className="mb-2 text-lg font-semibold tracking-tight">{t.title}</h2>
         <p className="text-sm text-muted-foreground">{t.inElectron}</p>
       </section>
@@ -78,7 +78,7 @@ export function DesktopDownloadCard({
         : t.archLabels.unknown;
 
   return (
-    <section className="rounded-xl border bg-card p-6 text-card-foreground shadow-sm">
+    <section className="rounded-lg border bg-card p-6 text-card-foreground shadow-sm">
       <h2 className="mb-2 text-lg font-semibold tracking-tight">{t.title}</h2>
       <p className="mb-4 text-sm text-muted-foreground">{t.description}</p>
 

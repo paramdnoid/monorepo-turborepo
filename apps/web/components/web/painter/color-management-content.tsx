@@ -302,7 +302,7 @@ export function ColorManagementContent({ locale }: { locale: Locale }) {
           </div>
 
           <div className="space-y-4">
-            <div className="rounded-xl border bg-card p-4">
+            <div className="rounded-lg border bg-card p-4">
               <h3 className="text-sm font-semibold tracking-tight">{t.detail}</h3>
               {system === "ral" && selectedRal ? (
                 <div className="mt-3 space-y-3">

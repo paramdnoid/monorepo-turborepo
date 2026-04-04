@@ -167,7 +167,7 @@ export function WebOverviewContent() {
 
   return (
     <>
-      <section className="rounded-xl border bg-card p-6 text-card-foreground shadow-sm">
+      <section className="rounded-lg border bg-card p-6 text-card-foreground shadow-sm">
         <h2 className="mb-2 text-lg font-semibold tracking-tight">
           Willkommen
         </h2>
@@ -184,7 +184,7 @@ export function WebOverviewContent() {
         </p>
       </section>
 
-      <section className="rounded-xl border bg-card p-6 text-card-foreground shadow-sm">
+      <section className="rounded-lg border bg-card p-6 text-card-foreground shadow-sm">
         <h2 className="mb-1 text-lg font-semibold tracking-tight">
           {customersOverview.stampTitle}
         </h2>
@@ -196,7 +196,7 @@ export function WebOverviewContent() {
             href="/web/customers/list"
             className="flex gap-3 rounded-lg border border-transparent bg-muted/30 p-4 transition-colors hover:border-border hover:bg-muted/50"
           >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/8 ring-1 ring-primary/10">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/8 ring-1 ring-primary/10">
               <BookUser className="size-5 text-primary" aria-hidden />
             </div>
             <div className="min-w-0">
@@ -209,7 +209,7 @@ export function WebOverviewContent() {
             href="/web/sales/quotes"
             className="flex gap-3 rounded-lg border border-transparent bg-muted/30 p-4 transition-colors hover:border-border hover:bg-muted/50"
           >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/8 ring-1 ring-primary/10">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/8 ring-1 ring-primary/10">
               <Receipt className="size-5 text-primary" aria-hidden />
             </div>
             <div className="min-w-0">
@@ -221,7 +221,7 @@ export function WebOverviewContent() {
         </div>
       </section>
 
-      <section className="rounded-xl border bg-card p-6 text-card-foreground shadow-sm">
+      <section className="rounded-lg border bg-card p-6 text-card-foreground shadow-sm">
         <h2 className="mb-1 text-lg font-semibold tracking-tight">
           {webSession.locale === "en"
             ? "Painter & decorator"
@@ -239,7 +239,7 @@ export function WebOverviewContent() {
               href={href}
               className="flex gap-3 rounded-lg border border-transparent bg-muted/30 p-4 transition-colors hover:border-border hover:bg-muted/50"
             >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/8 ring-1 ring-primary/10">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/8 ring-1 ring-primary/10">
                 <TradeFeatureIcon name={feature.icon} />
               </div>
               <div className="min-w-0">
@@ -257,7 +257,7 @@ export function WebOverviewContent() {
 
       <DesktopDownloadCard isElectronShell={isElectronShell} />
 
-      <section className="rounded-xl border bg-card p-6 text-card-foreground shadow-sm">
+      <section className="rounded-lg border bg-card p-6 text-card-foreground shadow-sm">
         <h2 className="mb-2 text-lg font-semibold tracking-tight">
           Anmeldung (Web / Keycloak)
         </h2>
@@ -300,7 +300,7 @@ export function WebOverviewContent() {
       </section>
 
       {SHOW_BACKEND_ME_DEBUG && auth !== null ? (
-        <section className="rounded-xl border bg-card p-6 text-card-foreground shadow-sm">
+        <section className="rounded-lg border bg-card p-6 text-card-foreground shadow-sm">
           <h2 className="mb-2 text-lg font-semibold tracking-tight">
             API{" "}
             <code className="rounded bg-muted px-1.5 py-0.5 text-sm font-normal">

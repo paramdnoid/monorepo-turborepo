@@ -418,7 +418,7 @@ export function CustomersListContent({ locale }: CustomersListContentProps) {
       {loading ? (
         <ListTableSkeleton />
       ) : rows.length === 0 ? (
-        <div className="flex flex-col items-start gap-4 rounded-xl border border-dashed bg-card/50 p-8">
+        <div className="flex flex-col items-start gap-4 rounded-lg border border-dashed bg-card/50 p-8">
           <p className="text-sm text-muted-foreground">{copy.empty}</p>
           <Button type="button" onClick={openCreate}>
             {copy.newCustomer}

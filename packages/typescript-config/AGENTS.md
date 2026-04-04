@@ -15,10 +15,24 @@ Shared **`tsconfig` JSON bases** (no `package.json` `exports`; consumers referen
 
 ## Who extends what
 
-| Consumer                                                       | Extends                                      |
-| -------------------------------------------------------------- | -------------------------------------------- |
-| [`apps/web/tsconfig.json`](../../apps/web/tsconfig.json)       | `@repo/typescript-config/nextjs.json`        |
-| [`packages/ui/tsconfig.json`](../../packages/ui/tsconfig.json) | `@repo/typescript-config/react-library.json` |
+| Consumer                                                                               | Extends              |
+| -------------------------------------------------------------------------------------- | -------------------- |
+| [`apps/web/tsconfig.json`](../../apps/web/tsconfig.json)                               | `nextjs.json`        |
+| [`apps/api/tsconfig.json`](../../apps/api/tsconfig.json)                               | `node-library.json`  |
+| [`apps/desktop/tsconfig.json`](../../apps/desktop/tsconfig.json)                       | `node-library.json`  |
+| [`apps/desktop/tsconfig.renderer.json`](../../apps/desktop/tsconfig.renderer.json)     | `react-library.json` |
+| [`apps/desktop/tsconfig.preload.json`](../../apps/desktop/tsconfig.preload.json)       | `node-library.json`  |
+| [`packages/ui/tsconfig.json`](../../packages/ui/tsconfig.json)                         | `react-library.json` |
+| [`packages/electron/tsconfig.json`](../../packages/electron/tsconfig.json)             | `node-library.json`  |
+| [`packages/db/tsconfig.json`](../../packages/db/tsconfig.json)                         | `node-library.json`  |
+| [`packages/api-contracts/tsconfig.json`](../../packages/api-contracts/tsconfig.json)   | `node-library.json`  |
+| [`packages/playwright-web/tsconfig.json`](../../packages/playwright-web/tsconfig.json) | `base.json`          |
+| [`packages/datev-export/tsconfig.json`](../../packages/datev-export/tsconfig.json)     | `node-library.json`  |
+| [`packages/gaeb/tsconfig.json`](../../packages/gaeb/tsconfig.json)                     | `node-library.json`  |
+| [`packages/bmecat/tsconfig.json`](../../packages/bmecat/tsconfig.json)                 | `node-library.json`  |
+| [`packages/datanorm/tsconfig.json`](../../packages/datanorm/tsconfig.json)             | `node-library.json`  |
+
+(Alle Pfade relativ zu `@repo/typescript-config` via `extends`-Name in der jeweiligen `tsconfig.json`.)
 
 ## Tasks
 
@@ -29,6 +43,6 @@ pnpm exec turbo run check-types --filter=web
 pnpm exec turbo run check-types --filter=@repo/ui
 ```
 
-## Monorepo context
+## Monorepo
 
-Repo-wide commands: **[`../../AGENTS.md`](../../AGENTS.md)**.
+Repo-weit & Skills: **[`../../AGENTS.md`](../../AGENTS.md)** · **[`../../.agents/README.md`](../../.agents/README.md)**.

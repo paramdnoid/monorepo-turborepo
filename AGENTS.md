@@ -1,10 +1,24 @@
 # AGENTS.md
 
-This file provides context for AI coding agents working in this repository. **Start here**, then follow links to app- or package-local `AGENTS.md` files for task-specific detail.
+This file provides context for AI coding agents working in this repository. **Start here**, then open app- or package-local `AGENTS.md` only for path-specific detail.
+
+## Agent- und Skill-Setup
+
+| Was                                                          | Wo                                                    |
+| ------------------------------------------------------------ | ----------------------------------------------------- |
+| **Repo-Regeln** (Stack, Turbo, CI, Env, Web-UI-Richtlinien)  | Diese Datei                                           |
+| **Skill-Index** (Turborepo-Skill, Lockfile, Lesereihenfolge) | [`.agents/README.md`](.agents/README.md)              |
+| **Paket-/App-Kontext**                                       | jeweiliges `AGENTS.md` unter `apps/` oder `packages/` |
+
+**Lesereihenfolge:** zuerst diese Datei → bei Bedarf `.agents/README.md` → dann das `AGENTS.md` des bearbeiteten Ordners.
+
+## Documentation language
+
+Root and most `packages/*/AGENTS.md` files are **English** for consistency with stack tooling. Some **`apps/*/AGENTS.md`** files use **German** where they were written for the same team — prefer **one language per file** when adding new sections; gradual alignment to English is fine.
 
 ## Project Overview
 
-Turborepo monorepo containing one Next.js application, one HTTP API (`apps/api`), one Electron desktop app (`apps/desktop`), an Expo mobile app (`apps/mobile`), and shared internal packages under `packages/`. Root package name: `zgwerkrepo`. Uses pnpm workspaces for dependency management and Turborepo for orchestrating builds and tasks across packages.
+Turborepo monorepo containing one Next.js application, one HTTP API (`apps/api`), one Electron desktop app (`apps/desktop`), an Expo mobile app (`apps/mobile`), and shared internal packages under `packages/` (including integration libraries **DATEV export**, **GAEB**, **BMEcat**, **DATANORM** consumed by `api`). Root package name: `zgwerkrepo`. Uses pnpm workspaces for dependency management and Turborepo for orchestrating builds and tasks across packages.
 
 **Bootstrap:** clone the repo, then run `pnpm install` once at the repository root to install all workspace dependencies.
 
@@ -31,6 +45,10 @@ Turborepo **`--filter`** values must match each package’s **`name`** in its `p
 | `@repo/tailwind-config`   | `packages/tailwind-config`   | Shared Tailwind v4 styles + PostCSS for apps / `@repo/ui` |
 | `@repo/playwright-web`    | `packages/playwright-web`    | Playwright E2E against `web` (depends on `web` workspace) |
 | `@repo/electron`          | `packages/electron`          | Shared IPC channels & desktop API types for `desktop`     |
+| `@repo/datev-export`      | `packages/datev-export`      | DATEV CSV/bookings export (Node lib; used by `api`)       |
+| `@repo/gaeb`              | `packages/gaeb`              | GAEB XML parse/serialize (used by `api`)                  |
+| `@repo/bmecat`            | `packages/bmecat`            | BMEcat XML catalog parsing (used by `api`)                |
+| `@repo/datanorm`          | `packages/datanorm`          | DATANORM text/ZIP parsing (used by `api`)                 |
 
 **Examples:**
 
@@ -43,44 +61,31 @@ pnpm exec turbo run check-types --filter=@repo/ui
 
 **Turborepo conventions:** In `package.json` scripts, CI, and docs, prefer **`turbo run <task>`** (not the `turbo <task>` shorthand). Task implementations live in **each package’s `package.json`**; shared task shape is declared in root [`turbo.json`](turbo.json). Per-package overrides use **`turbo.json` next to that package** with `"extends": ["//"]`. The only root-only Turbo task here is **`lint:design-guardrails`** (design guardrails script; registered under the workspace root). For pull requests, CI uses **`turbo run … --affected`** so only changed packages and dependents run.
 
-## Agent navigation (what to open for which task)
+## Navigation für Agents
 
-| If you are…                                     | Read                                                                                                                              |
-| ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| Choosing or comparing apps                      | [`apps/AGENTS.md`](apps/AGENTS.md)                                                                                                |
-| Mobile (Expo)                                   | [`apps/mobile/AGENTS.md`](apps/mobile/AGENTS.md)                                                                                  |
-| Desktop (Electron)                              | [`apps/desktop/AGENTS.md`](apps/desktop/AGENTS.md); shared IPC/types [`packages/electron/AGENTS.md`](packages/electron/AGENTS.md) |
-| Primary product / marketing site (Next)         | [`apps/web/AGENTS.md`](apps/web/AGENTS.md)                                                                                        |
-| Shared React components, tokens, `globals.css`  | [`packages/ui/AGENTS.md`](packages/ui/AGENTS.md)                                                                                  |
-| Shared local fonts (Geist) for Next.js layouts  | [`packages/fonts/AGENTS.md`](packages/fonts/AGENTS.md)                                                                            |
-| Shared logo / app icon source (PNG)             | [`packages/brand/AGENTS.md`](packages/brand/AGENTS.md)                                                                            |
-| Shared Zod API contracts (trades, sync)         | [`packages/api-contracts/AGENTS.md`](packages/api-contracts/AGENTS.md)                                                            |
-| Drizzle schema / PostgreSQL client              | [`packages/db/AGENTS.md`](packages/db/AGENTS.md)                                                                                  |
-| ESLint rules shared across Next + UI            | [`packages/eslint-config/AGENTS.md`](packages/eslint-config/AGENTS.md)                                                            |
-| `tsconfig` bases for Next and libraries         | [`packages/typescript-config/AGENTS.md`](packages/typescript-config/AGENTS.md)                                                    |
-| Shared Tailwind / PostCSS wiring                | [`packages/tailwind-config/AGENTS.md`](packages/tailwind-config/AGENTS.md)                                                        |
-| Web E2E (Playwright)                            | [`packages/playwright-web/AGENTS.md`](packages/playwright-web/AGENTS.md)                                                          |
-
-## Where to Look Next
-
-More specific agent context lives next to the code:
-
-| Location                                                                       | Purpose                                                                             |
-| ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------- |
-| [`apps/AGENTS.md`](apps/AGENTS.md)                                             | All apps: Next.js (`web`), API (`api`), Electron (`desktop`)                       |
-| [`apps/desktop/AGENTS.md`](apps/desktop/AGENTS.md)                             | Electron desktop app                                                                |
-| [`packages/electron/AGENTS.md`](packages/electron/AGENTS.md)                   | Shared `@repo/electron` IPC / desktop API types                                     |
-| [`apps/api/AGENTS.md`](apps/api/AGENTS.md)                                     | Hono HTTP API, PostgreSQL / Drizzle                                                 |
-| [`apps/web/AGENTS.md`](apps/web/AGENTS.md)                                     | Primary web app (port 3000)                                                         |
-| [`packages/ui/AGENTS.md`](packages/ui/AGENTS.md)                               | Shared `@repo/ui` component library                                                 |
-| [`packages/fonts/AGENTS.md`](packages/fonts/AGENTS.md)                         | Shared Geist typography (`@repo/fonts`) for `web`                                 |
-| [`packages/brand/AGENTS.md`](packages/brand/AGENTS.md)                         | Shared logo / favicon (`@repo/brand`)                                               |
-| [`packages/api-contracts/AGENTS.md`](packages/api-contracts/AGENTS.md)         | Shared Zod contracts (`@repo/api-contracts`)                                        |
-| [`packages/db/AGENTS.md`](packages/db/AGENTS.md)                               | Drizzle schema & client (`@repo/db`)                                                |
-| [`packages/eslint-config/AGENTS.md`](packages/eslint-config/AGENTS.md)         | Shared ESLint configs (`@repo/eslint-config`)                                       |
-| [`packages/typescript-config/AGENTS.md`](packages/typescript-config/AGENTS.md) | Shared TypeScript bases (`@repo/typescript-config`)                                 |
-| [`packages/tailwind-config/AGENTS.md`](packages/tailwind-config/AGENTS.md)     | Shared styles + PostCSS (`@repo/tailwind-config`)                                   |
-| [`packages/playwright-web/AGENTS.md`](packages/playwright-web/AGENTS.md)       | Playwright smoke/E2E for `web` (`@repo/playwright-web`)                             |
+| Thema                                              | `AGENTS.md`                                                                                                                  |
+| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Skill-Index, Lesereihenfolge Skills                | [`.agents/README.md`](.agents/README.md)                                                                                     |
+| App-Auswahl (`web` / `api` / `desktop` / `mobile`) | [`apps/AGENTS.md`](apps/AGENTS.md)                                                                                           |
+| Primary Next.js (Port 3000), Landing, `/web`       | [`apps/web/AGENTS.md`](apps/web/AGENTS.md)                                                                                   |
+| Hono-API                                           | [`apps/api/AGENTS.md`](apps/api/AGENTS.md)                                                                                   |
+| Electron                                           | [`apps/desktop/AGENTS.md`](apps/desktop/AGENTS.md)                                                                           |
+| Expo                                               | [`apps/mobile/AGENTS.md`](apps/mobile/AGENTS.md)                                                                             |
+| IPC / Desktop-Typen (`@repo/electron`)             | [`packages/electron/AGENTS.md`](packages/electron/AGENTS.md)                                                                 |
+| UI-Bibliothek (`@repo/ui`)                         | [`packages/ui/AGENTS.md`](packages/ui/AGENTS.md)                                                                             |
+| Geist-Fonts                                        | [`packages/fonts/AGENTS.md`](packages/fonts/AGENTS.md)                                                                       |
+| Logo / Branding                                    | [`packages/brand/AGENTS.md`](packages/brand/AGENTS.md)                                                                       |
+| Zod-Verträge                                       | [`packages/api-contracts/AGENTS.md`](packages/api-contracts/AGENTS.md)                                                       |
+| Drizzle / DB                                       | [`packages/db/AGENTS.md`](packages/db/AGENTS.md)                                                                             |
+| ESLint-Configs                                     | [`packages/eslint-config/AGENTS.md`](packages/eslint-config/AGENTS.md)                                                       |
+| `tsconfig`-Basen                                   | [`packages/typescript-config/AGENTS.md`](packages/typescript-config/AGENTS.md)                                               |
+| Tailwind / PostCSS                                 | [`packages/tailwind-config/AGENTS.md`](packages/tailwind-config/AGENTS.md)                                                   |
+| Playwright E2E                                     | [`packages/playwright-web/AGENTS.md`](packages/playwright-web/AGENTS.md)                                                     |
+| DATEV-Export (`@repo/datev-export`)                | [`packages/datev-export/AGENTS.md`](packages/datev-export/AGENTS.md)                                                         |
+| GAEB (`@repo/gaeb`)                                | [`packages/gaeb/AGENTS.md`](packages/gaeb/AGENTS.md)                                                                         |
+| BMEcat (`@repo/bmecat`)                            | [`packages/bmecat/AGENTS.md`](packages/bmecat/AGENTS.md)                                                                     |
+| DATANORM (`@repo/datanorm`)                        | [`packages/datanorm/AGENTS.md`](packages/datanorm/AGENTS.md)                                                                 |
+| **Web/Desktop-UI** (A11y, UX)                      | Abschnitt **Web Interface Guidelines** unten; Umsetzung in `web` / [`packages/ui`](packages/ui/AGENTS.md) / Desktop-Renderer |
 
 ## Monorepo Structure
 
@@ -101,6 +106,10 @@ packages/
   tailwind-config/     → Shared Tailwind v4 + PostCSS (@repo/tailwind-config)
   playwright-web/      → Playwright E2E package targeting web (@repo/playwright-web)
   electron/            → Shared IPC channels & desktop API types (@repo/electron; desktop)
+  datev-export/        → DATEV bookings CSV export (@repo/datev-export; api)
+  gaeb/                → GAEB XML (@repo/gaeb; api)
+  bmecat/              → BMEcat XML (@repo/bmecat; api)
+  datanorm/            → DATANORM (@repo/datanorm; api)
 ```
 
 ## Tech Stack
@@ -197,7 +206,7 @@ Packages that define **`test`:**
 2. Register the path in [`pnpm-workspace.yaml`](pnpm-workspace.yaml) if it is not already covered by `packages/*`.
 3. Reference it from other packages with `"workspace:*"`.
 4. If the package should participate in `lint`, `check-types`, or `build`, add those scripts and confirm [`turbo.json`](turbo.json) tasks behave as expected (dependencies are `^lint`, `^check-types`, `^build` where applicable).
-5. Add an **`AGENTS.md`** in the new package and link it from this file’s **Where to Look Next** / **Agent navigation** tables.
+5. Add an **`AGENTS.md`** in the new package and link it from this file’s **Navigation für Agents** table (and from [`.agents/README.md`](.agents/README.md) if you document new skill-related workflows).
 
 ## Turbo boundaries (experimental)
 
@@ -209,3 +218,15 @@ Packages that define **`test`:**
 - `lint` and `check-types` depend on their upstream counterparts (`^lint`, `^check-types`).
 - `dev` is persistent and not cached. **`desktop#dev`** additionally depends on `^build` so workspace dependencies (including **`@repo/electron#build`**) run before the Electron dev script; use **`pnpm exec turbo run dev --filter=desktop`** from the repo root rather than only `pnpm dev` inside `apps/desktop` without Turbo. Details: [`apps/desktop/AGENTS.md`](apps/desktop/AGENTS.md).
 - Use `--filter=<package>` to scope tasks to specific packages (see **Turbo and pnpm workspace package names**).
+
+## Turborepo (Kurzreferenz für Agents)
+
+- **Package-Tasks:** Skript-Logik gehört in die **`package.json`** der jeweiligen Workspace-Pakete; das Root-**`package.json`** delegiert nur mit **`pnpm exec turbo run …`** — keine monolithischen Root-Skripte, die mehrere Apps manuell per `&&` ansteuern ([Turborepo: Package tasks](https://turborepo.dev/docs/crafting-your-repository/configuring-tasks)).
+- **`turbo run`:** In **Scripts, CI und dokumentierten Befehlen** immer **`turbo run <task>`** verwenden, nicht die Kurzform `turbo <task>` (letztere nur für interaktive Einzeiler).
+- **Geänderte Pakete:** Für PRs/lokal oft **`pnpm exec turbo run <task> --affected`** — nur geänderte Pakete und Abhängige.
+- **Paket-Overrides:** Zusätzliche Task-Konfiguration pro Paket in **`turbo.json`** neben dem Paket mit **`"extends": ["//"]`** ([Package Configurations](https://turborepo.dev/docs/reference/configuration#package-configurations)).
+- **Abhängigkeitsgraph:** Workspace-Pakete in **`package.json`** deklarieren — **`^build`** baut nur Pakete, die als Dependency eingetragen sind.
+
+## Web Interface Guidelines
+
+Für **Benutzeroberflächen** in **`apps/web`**, **`@repo/ui`** und dem **Electron-Renderer** (`apps/desktop`) gelten neben ESLint und **`lint:design-guardrails`** die **[Vercel Web Interface Guidelines](https://github.com/vercel-labs/web-interface-guidelines)** (Accessibility, Fokus, Formulare, Animation, Typografie, Performance, i18n). Die maschinenlesbare Checkliste zum Review: [`command.md`](https://raw.githubusercontent.com/vercel-labs/web-interface-guidelines/main/command.md).

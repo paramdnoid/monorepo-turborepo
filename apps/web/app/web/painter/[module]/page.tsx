@@ -70,7 +70,7 @@ export default async function PainterModulePage({ params }: PainterModulePagePro
 
   return (
     <div className="w-full min-w-0 space-y-6">
-      <section className="rounded-xl border bg-card p-6 text-card-foreground shadow-sm">
+      <section className="rounded-lg border bg-card p-6 text-card-foreground shadow-sm">
         <h3 className="mb-2 text-base font-semibold tracking-tight">
           {locale === "en" ? "Note" : "Hinweis"}
         </h3>

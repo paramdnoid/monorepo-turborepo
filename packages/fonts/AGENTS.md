@@ -8,8 +8,8 @@
 
 ## Consumers
 
-| App   | Usage                                                                                    |
-| ----- | ---------------------------------------------------------------------------------------- |
+| App   | Usage                                                                                  |
+| ----- | -------------------------------------------------------------------------------------- |
 | `web` | [`apps/web/app/layout.tsx`](../../apps/web/app/layout.tsx) imports `@repo/fonts/geist` |
 
 ## Package details
@@ -19,6 +19,6 @@
 - **`peerDependencies`:** `next` (matches the Next.js version in the apps)
 - **Tasks:** no `lint` / `check-types` / `build` scripts — validation runs via dependent Next apps.
 
-## Monorepo context
+## Monorepo
 
-Repo-wide commands and navigation: **[`../../AGENTS.md`](../../AGENTS.md)**.
+Repo-weit & Skills: **[`../../AGENTS.md`](../../AGENTS.md)** · **[`../../.agents/README.md`](../../.agents/README.md)**.

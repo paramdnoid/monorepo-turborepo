@@ -9,3 +9,4 @@ export * from "./sales.js";
 export * from "./datev.js";
 export * from "./customers.js";
 export * from "./employees.js";
+export * from "./scheduling.js";

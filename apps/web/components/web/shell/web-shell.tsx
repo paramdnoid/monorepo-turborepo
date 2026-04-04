@@ -352,7 +352,7 @@ export function WebShell({ webSession, children }: WebShellProps) {
           <SidebarRail />
         </Sidebar>
         <SidebarInset>
-          <header className="flex h-14 min-w-0 shrink-0 items-center gap-2 border-b px-4">
+          <header className="flex h-14 min-w-0 shrink-0 items-center gap-2 px-4">
             <SidebarTrigger className="-ml-1 shrink-0" />
             <Separator orientation="vertical" className="mr-2 h-4 shrink-0" />
             <div className="flex min-w-0 flex-1 flex-col gap-0.5">

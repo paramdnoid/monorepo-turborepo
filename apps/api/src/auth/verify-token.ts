@@ -19,6 +19,7 @@ export class TenantClaimMissingError extends Error {
 export type AuthContext = {
   sub: string;
   tenantId: string;
+  roles: string[];
 };
 
 /**
@@ -57,7 +58,36 @@ export function createAccessTokenVerifier(
       throw new TenantClaimMissingError();
     }
 
-    return { sub, tenantId };
+    const roles = new Set<string>();
+    const realmAccess =
+      typeof payload.realm_access === "object" && payload.realm_access !== null
+        ? (payload.realm_access as { roles?: unknown }).roles
+        : undefined;
+    if (Array.isArray(realmAccess)) {
+      for (const role of realmAccess) {
+        if (typeof role === "string" && role.trim()) {
+          roles.add(role.trim());
+        }
+      }
+    }
+    const resourceAccess =
+      typeof payload.resource_access === "object" && payload.resource_access !== null
+        ? (payload.resource_access as Record<string, { roles?: unknown }>)
+        : undefined;
+    if (resourceAccess) {
+      for (const resource of Object.values(resourceAccess)) {
+        if (!resource || !Array.isArray(resource.roles)) {
+          continue;
+        }
+        for (const role of resource.roles) {
+          if (typeof role === "string" && role.trim()) {
+            roles.add(role.trim());
+          }
+        }
+      }
+    }
+
+    return { sub, tenantId, roles: [...roles] };
   };
 }
 

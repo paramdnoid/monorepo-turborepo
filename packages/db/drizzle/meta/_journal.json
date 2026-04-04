@@ -92,6 +92,48 @@
       "when": 1775277040419,
       "tag": "0012_employees",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1775282624631,
+      "tag": "0013_condemned_roulette",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1775282878480,
+      "tag": "0014_curly_dormammu",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1775283741566,
+      "tag": "0015_cooing_emma_frost",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1775284373337,
+      "tag": "0016_big_maelstrom",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1775285116437,
+      "tag": "0017_employee_activity_events",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1775286514288,
+      "tag": "0018_mushy_thunderbolts",
+      "breakpoints": true
     }
   ]
 }

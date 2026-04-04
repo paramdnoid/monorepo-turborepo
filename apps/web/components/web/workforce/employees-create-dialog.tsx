@@ -15,6 +15,7 @@ import {
 } from "@repo/ui/dialog";
 import { Input } from "@repo/ui/input";
 import { Label } from "@repo/ui/label";
+import { Textarea } from "@repo/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -26,13 +27,18 @@ import {
 import { CustomerAddressGeocodeControls } from "@/components/web/customers/customer-address-geocode-controls";
 import {
   EMPLOYEE_CREATE_WIZARD_STEP_COUNT,
+  EMPLOYEE_NOTES_MAX_LENGTH,
   formatEmployeeCreateWizardProgress,
+  formatEmployeesNotesCharCount,
   getEmployeeCreateWizardDescription,
   getEmployeesCopy,
+  readEmployeeValidationIssues,
+  summarizeEmployeeValidationIssues,
   weekdayOptions,
 } from "@/content/employees-module";
 import type { Locale } from "@/lib/i18n/locale";
 import { parseResponseJson } from "@/lib/parse-response-json";
+import { toast } from "sonner";
 
 type AvailabilityRow = {
   clientId: string;
@@ -58,6 +64,53 @@ function parseCoord(raw: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+function normalizeTimeForCompare(t: string): string {
+  return t.length >= 8 ? t.slice(0, 5) : t;
+}
+
+function timeToMinutes(t: string): number {
+  const n = normalizeTimeForCompare(t);
+  const parts = n.split(":");
+  const h = Number(parts[0]);
+  const m = Number(parts[1]);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) {
+    return NaN;
+  }
+  return h * 60 + m;
+}
+
+function validateAvailabilitySlots(slots: AvailabilityRow[]): {
+  timeOrder: boolean;
+  overlap: boolean;
+} {
+  for (const r of slots) {
+    const a = timeToMinutes(r.startTime);
+    const b = timeToMinutes(r.endTime);
+    if (!Number.isFinite(a) || !Number.isFinite(b) || b <= a) {
+      return { timeOrder: true, overlap: false };
+    }
+  }
+  const byDay = new Map<number, AvailabilityRow[]>();
+  for (const r of slots) {
+    const list = byDay.get(r.weekday) ?? [];
+    list.push(r);
+    byDay.set(r.weekday, list);
+  }
+  for (const [, daySlots] of byDay) {
+    const sorted = [...daySlots].sort(
+      (x, y) => timeToMinutes(x.startTime) - timeToMinutes(y.startTime),
+    );
+    for (let i = 1; i < sorted.length; i++) {
+      const prev = sorted[i - 1]!;
+      const cur = sorted[i]!;
+      if (timeToMinutes(cur.startTime) < timeToMinutes(prev.endTime)) {
+        return { timeOrder: false, overlap: true };
+      }
+    }
+  }
+  return { timeOrder: false, overlap: false };
+}
+
 function stepSectionHeading(
   t: ReturnType<typeof getEmployeesCopy>,
   stepIndex: number,
@@ -80,7 +133,7 @@ export function EmployeesCreateDialog({
   locale: Locale;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreated: () => void;
+  onCreated: (employeeId: string) => void;
 }) {
   const t = getEmployeesCopy(locale);
   const formId = useId();
@@ -92,6 +145,15 @@ export function EmployeesCreateDialog({
   const [liveAnnouncement, setLiveAnnouncement] = useState("");
 
   const [displayName, setDisplayName] = useState("");
+  const [employeeNo, setEmployeeNo] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [status, setStatus] = useState<"ACTIVE" | "ONBOARDING" | "INACTIVE">("ACTIVE");
+  const [employmentType, setEmploymentType] = useState<
+    "FULL_TIME" | "PART_TIME" | "CONTRACTOR" | "APPRENTICE"
+  >("FULL_TIME");
   const [roleLabel, setRoleLabel] = useState("");
   const [notes, setNotes] = useState("");
   const [privateLabel, setPrivateLabel] = useState("");
@@ -126,6 +188,13 @@ export function EmployeesCreateDialog({
     }
     setStep(0);
     setDisplayName("");
+    setEmployeeNo("");
+    setFirstName("");
+    setLastName("");
+    setEmail("");
+    setPhone("");
+    setStatus("ACTIVE");
+    setEmploymentType("FULL_TIME");
     setRoleLabel("");
     setNotes("");
     setPrivateLabel("");
@@ -206,25 +275,51 @@ export function EmployeesCreateDialog({
     const latN = parseCoord(latitude);
     const lngN = parseCoord(longitude);
     if ((latN === null) !== (lngN === null)) {
-      setSubmitError(
+      const coordMsg =
         locale === "en"
           ? "Enter both coordinates or neither."
-          : "Bitte beide Koordinaten angeben oder leer lassen.",
-      );
+          : "Bitte beide Koordinaten angeben oder leer lassen.";
+      setSubmitError(coordMsg);
+      toast.error(coordMsg);
       setStep(1);
+      return;
+    }
+
+    const slotCheck = validateAvailabilitySlots(availability);
+    if (slotCheck.timeOrder) {
+      setSubmitError(t.availabilityTimeOrderError);
+      toast.error(t.availabilityTimeOrderError);
+      setStep(2);
+      return;
+    }
+    if (slotCheck.overlap) {
+      setSubmitError(t.availabilityOverlapError);
+      toast.error(t.availabilityOverlapError);
+      setStep(2);
       return;
     }
 
     const availabilityPayload: EmployeeAvailabilityRuleInput[] = availability.map(
       (r, idx) => ({
         weekday: r.weekday,
-        startTime: r.startTime,
-        endTime: r.endTime,
+        startTime:
+          r.startTime.length === 5 ? `${r.startTime}:00` : r.startTime,
+        endTime: r.endTime.length === 5 ? `${r.endTime}:00` : r.endTime,
+        crossesMidnight: false,
+        validFrom: null,
+        validTo: null,
         sortIndex: idx,
       }),
     );
 
     const body = {
+      employeeNo: employeeNo.trim() ? employeeNo.trim() : null,
+      firstName: firstName.trim() ? firstName.trim() : null,
+      lastName: lastName.trim() ? lastName.trim() : null,
+      email: email.trim() ? email.trim() : null,
+      phone: phone.trim() ? phone.trim() : null,
+      status,
+      employmentType,
       displayName: displayName.trim(),
       roleLabel: roleLabel.trim() ? roleLabel.trim() : null,
       notes: notes.trim() ? notes.trim() : null,
@@ -254,13 +349,40 @@ export function EmployeesCreateDialog({
       const json = parseResponseJson(text);
       const parsed = employeeDetailResponseSchema.safeParse(json);
       if (!res.ok || !parsed.success) {
-        setSubmitError(t.saveError);
+        const err =
+          typeof json === "object" && json !== null && "error" in json
+            ? (json as { error?: string }).error
+            : undefined;
+        if (err === "employee_no_taken") {
+          setSubmitError(t.employeeNoTaken);
+          toast.error(t.employeeNoTaken);
+          setStep(0);
+          return;
+        }
+        if (res.status === 403 || err === "forbidden") {
+          setSubmitError(t.saveForbidden);
+          toast.error(t.saveForbidden);
+          return;
+        }
+        if (err === "validation_error") {
+          const issues = readEmployeeValidationIssues(json);
+          const msg = issues
+            ? summarizeEmployeeValidationIssues(issues, t, locale)
+            : `${t.saveError} ${t.validationErrorHint}`;
+          setSubmitError(msg);
+          toast.error(msg);
+        } else {
+          setSubmitError(t.saveError);
+          toast.error(t.saveError);
+        }
         return;
       }
+      toast.success(t.toastEmployeeCreated);
       onOpenChange(false);
-      onCreated();
+      onCreated(parsed.data.employee.id);
     } catch {
       setSubmitError(t.saveError);
+      toast.error(t.saveError);
     } finally {
       setSubmitBusy(false);
     }
@@ -318,6 +440,101 @@ export function EmployeesCreateDialog({
                 </h2>
                 <div className="grid gap-3 sm:max-w-lg">
                   <div className="grid gap-2">
+                    <Label htmlFor={`${formId}-eno`}>{t.fieldEmployeeNo}</Label>
+                    <Input
+                      id={`${formId}-eno`}
+                      value={employeeNo}
+                      onChange={(ev) => setEmployeeNo(ev.target.value)}
+                      autoComplete="off"
+                    />
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="grid gap-2">
+                      <Label htmlFor={`${formId}-fn`}>{t.fieldFirstName}</Label>
+                      <Input
+                        id={`${formId}-fn`}
+                        value={firstName}
+                        onChange={(ev) => setFirstName(ev.target.value)}
+                        autoComplete="given-name"
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor={`${formId}-ln`}>{t.fieldLastName}</Label>
+                      <Input
+                        id={`${formId}-ln`}
+                        value={lastName}
+                        onChange={(ev) => setLastName(ev.target.value)}
+                        autoComplete="family-name"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="grid gap-2">
+                      <Label htmlFor={`${formId}-em`}>{t.fieldEmail}</Label>
+                      <Input
+                        id={`${formId}-em`}
+                        value={email}
+                        onChange={(ev) => setEmail(ev.target.value)}
+                        type="email"
+                        autoComplete="email"
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor={`${formId}-ph`}>{t.fieldPhone}</Label>
+                      <Input
+                        id={`${formId}-ph`}
+                        value={phone}
+                        onChange={(ev) => setPhone(ev.target.value)}
+                        autoComplete="tel"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="grid gap-2">
+                      <Label htmlFor={`${formId}-st`}>{t.fieldStatus}</Label>
+                      <Select
+                        value={status}
+                        onValueChange={(v) =>
+                          setStatus(v as "ACTIVE" | "ONBOARDING" | "INACTIVE")
+                        }
+                      >
+                        <SelectTrigger id={`${formId}-st`}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="ACTIVE">{t.statusActive}</SelectItem>
+                          <SelectItem value="ONBOARDING">{t.statusOnboarding}</SelectItem>
+                          <SelectItem value="INACTIVE">{t.statusInactive}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor={`${formId}-et`}>{t.fieldEmploymentType}</Label>
+                      <Select
+                        value={employmentType}
+                        onValueChange={(v) =>
+                          setEmploymentType(
+                            v as
+                              | "FULL_TIME"
+                              | "PART_TIME"
+                              | "CONTRACTOR"
+                              | "APPRENTICE",
+                          )
+                        }
+                      >
+                        <SelectTrigger id={`${formId}-et`}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="FULL_TIME">{t.employmentFullTime}</SelectItem>
+                          <SelectItem value="PART_TIME">{t.employmentPartTime}</SelectItem>
+                          <SelectItem value="CONTRACTOR">{t.employmentContractor}</SelectItem>
+                          <SelectItem value="APPRENTICE">{t.employmentApprentice}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="grid gap-2">
                     <Label htmlFor={nameFieldId}>{t.fieldDisplayName}</Label>
                     <Input
                       id={nameFieldId}
@@ -347,11 +564,21 @@ export function EmployeesCreateDialog({
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor={`${formId}-notes`}>{t.fieldNotes}</Label>
-                    <Input
+                    <Textarea
                       id={`${formId}-notes`}
                       value={notes}
                       onChange={(ev) => setNotes(ev.target.value)}
+                      maxLength={EMPLOYEE_NOTES_MAX_LENGTH}
+                      rows={3}
+                      className="min-h-18 resize-y"
                     />
+                    <p className="text-xs text-muted-foreground">
+                      {formatEmployeesNotesCharCount(
+                        locale,
+                        notes.length,
+                        EMPLOYEE_NOTES_MAX_LENGTH,
+                      )}
+                    </p>
                   </div>
                 </div>
               </section>

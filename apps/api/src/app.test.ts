@@ -13,7 +13,7 @@ test("GET /health", async () => {
 
 test("GET /ready ohne DB", async () => {
   const app = createApp({
-    verifyAccessToken: async () => ({ sub: "u1", tenantId: "t1" }),
+    verifyAccessToken: async () => ({ sub: "u1", tenantId: "t1", roles: [] }),
     getDb: () => undefined,
   });
   const res = await app.request("http://localhost/ready");
@@ -25,7 +25,7 @@ test("GET /ready ohne DB", async () => {
 
 test("GET /v1/me ohne Authorization", async () => {
   const app = createApp({
-    verifyAccessToken: async () => ({ sub: "u1", tenantId: "t1" }),
+    verifyAccessToken: async () => ({ sub: "u1", tenantId: "t1", roles: [] }),
     getDb: () => undefined,
   });
   const res = await app.request("http://localhost/v1/me");
@@ -34,7 +34,7 @@ test("GET /v1/me ohne Authorization", async () => {
 
 test("GET /v1/me mit Token aber ohne DB", async () => {
   const app = createApp({
-    verifyAccessToken: async () => ({ sub: "u1", tenantId: "t1" }),
+    verifyAccessToken: async () => ({ sub: "u1", tenantId: "t1", roles: [] }),
     getDb: () => undefined,
   });
   const res = await app.request("http://localhost/v1/me", {
@@ -47,9 +47,74 @@ test("GET /v1/me mit Token aber ohne DB", async () => {
 
 test("POST /v1/sync ohne Authorization", async () => {
   const app = createApp({
-    verifyAccessToken: async () => ({ sub: "u1", tenantId: "t1" }),
+    verifyAccessToken: async () => ({ sub: "u1", tenantId: "t1", roles: [] }),
     getDb: () => undefined,
   });
   const res = await app.request("http://localhost/v1/sync", { method: "POST" });
+  assert.equal(res.status, 401);
+});
+
+test("GET /v1/employees/export ohne Authorization", async () => {
+  const app = createApp({
+    verifyAccessToken: async () => ({ sub: "u1", tenantId: "t1", roles: [] }),
+    getDb: () => undefined,
+  });
+  const res = await app.request("http://localhost/v1/employees/export");
+  assert.equal(res.status, 401);
+});
+
+test("GET /v1/employees/export mit Token aber ohne DB", async () => {
+  const app = createApp({
+    verifyAccessToken: async () => ({ sub: "u1", tenantId: "t1", roles: [] }),
+    getDb: () => undefined,
+  });
+  const res = await app.request("http://localhost/v1/employees/export", {
+    headers: { Authorization: "Bearer fake" },
+  });
+  assert.equal(res.status, 503);
+});
+
+test("POST /v1/employees/batch ohne Authorization", async () => {
+  const app = createApp({
+    verifyAccessToken: async () => ({ sub: "u1", tenantId: "t1", roles: [] }),
+    getDb: () => undefined,
+  });
+  const res = await app.request("http://localhost/v1/employees/batch", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ employeeIds: [], archived: true }),
+  });
+  assert.equal(res.status, 401);
+});
+
+test("GET /v1/employees/skills/catalog ohne Authorization", async () => {
+  const app = createApp({
+    verifyAccessToken: async () => ({ sub: "u1", tenantId: "t1", roles: [] }),
+    getDb: () => undefined,
+  });
+  const res = await app.request("http://localhost/v1/employees/skills/catalog");
+  assert.equal(res.status, 401);
+});
+
+test("GET /v1/employees/:id/profile-image ohne Authorization", async () => {
+  const app = createApp({
+    verifyAccessToken: async () => ({ sub: "u1", tenantId: "t1", roles: [] }),
+    getDb: () => undefined,
+  });
+  const res = await app.request(
+    "http://localhost/v1/employees/00000000-0000-4000-8000-000000000001/profile-image",
+  );
+  assert.equal(res.status, 401);
+});
+
+test("POST /v1/employees/:id/attachments ohne Authorization", async () => {
+  const app = createApp({
+    verifyAccessToken: async () => ({ sub: "u1", tenantId: "t1", roles: [] }),
+    getDb: () => undefined,
+  });
+  const res = await app.request(
+    "http://localhost/v1/employees/00000000-0000-4000-8000-000000000001/attachments",
+    { method: "POST" },
+  );
   assert.equal(res.status, 401);
 });

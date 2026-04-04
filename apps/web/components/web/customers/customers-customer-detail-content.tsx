@@ -76,8 +76,8 @@ function DetailSkeleton() {
       </div>
       <Skeleton className="h-40 w-full rounded-2xl" />
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        <Skeleton className="h-52 rounded-xl" />
-        <Skeleton className="h-52 rounded-xl" />
+        <Skeleton className="h-52 rounded-lg" />
+        <Skeleton className="h-52 rounded-lg" />
       </div>
     </div>
   );
@@ -445,7 +445,7 @@ export function CustomersCustomerDetailContent({
         <div className="absolute inset-x-0 top-0 h-1 bg-linear-to-r from-primary/80 via-primary/40 to-transparent" />
         <div className="flex flex-col gap-6 p-6 sm:p-8 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex min-w-0 flex-1 gap-4">
-            <div className="hidden h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary sm:flex">
+            <div className="hidden h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary sm:flex">
               <Building2 className="size-7" aria-hidden />
             </div>
             <div className="min-w-0 space-y-4">

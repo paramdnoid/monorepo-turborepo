@@ -1,6 +1,7 @@
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import {
   boolean,
+  date,
   doublePrecision,
   index,
   integer,
@@ -132,6 +133,20 @@ export const employees = pgTable("employees", {
   tenantId: text("tenant_id")
     .notNull()
     .references(() => organizations.tenantId, { onDelete: "cascade" }),
+  /** Personalnummer; eindeutig je Mandant (NULL erlaubt). */
+  employeeNo: text("employee_no"),
+  firstName: text("first_name"),
+  lastName: text("last_name"),
+  email: text("email"),
+  phone: text("phone"),
+  /** ACTIVE | ONBOARDING | INACTIVE */
+  status: text("status").notNull().default("ACTIVE"),
+  /** FULL_TIME | PART_TIME | CONTRACTOR | APPRENTICE */
+  employmentType: text("employment_type").notNull().default("FULL_TIME"),
+  /** IANA timezone, z. B. Europe/Berlin */
+  availabilityTimeZone: text("availability_time_zone")
+    .notNull()
+    .default("Europe/Berlin"),
   displayName: text("display_name").notNull(),
   roleLabel: text("role_label"),
   notes: text("notes"),
@@ -147,6 +162,9 @@ export const employees = pgTable("employees", {
   geocodedAt: timestamp("geocoded_at", { withTimezone: true }),
   /** `manual` | `ors` — Freitext in DB, Validierung in API. */
   geocodeSource: text("geocode_source"),
+  /** Relativer Pfad unter PROJECT_ASSETS_ROOT fuer Mitarbeiter-Profilbild. */
+  profileImageStorageRelativePath: text("profile_image_storage_relative_path"),
+  profileImageContentType: text("profile_image_content_type"),
   archivedAt: timestamp("archived_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
@@ -154,7 +172,143 @@ export const employees = pgTable("employees", {
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
-});
+}, (t) => ({
+  tenantEmployeeNo: unique("employees_tenant_employee_no").on(
+    t.tenantId,
+    t.employeeNo,
+  ),
+}));
+
+/** Mandantenweiter Skill-Katalog fuer Mitarbeitende (frei definierbar). */
+export const employeeSkillsCatalog = pgTable(
+  "employee_skills_catalog",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => organizations.tenantId, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    tenantNameUnique: unique("employee_skills_catalog_tenant_name").on(
+      t.tenantId,
+      t.name,
+    ),
+    tenantArchivedIdx: index("employee_skills_catalog_tenant_archived_idx").on(
+      t.tenantId,
+      t.archivedAt,
+    ),
+  }),
+);
+
+/** N:M Zuordnung Mitarbeitende ↔ Skills. */
+export const employeeSkillLinks = pgTable(
+  "employee_skill_links",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    employeeId: uuid("employee_id")
+      .notNull()
+      .references(() => employees.id, { onDelete: "cascade" }),
+    skillId: uuid("skill_id")
+      .notNull()
+      .references(() => employeeSkillsCatalog.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    employeeSkillUnique: unique("employee_skill_links_employee_skill").on(
+      t.employeeId,
+      t.skillId,
+    ),
+    employeeIdx: index("employee_skill_links_employee_id_idx").on(t.employeeId),
+    skillIdx: index("employee_skill_links_skill_id_idx").on(t.skillId),
+  }),
+);
+
+/** Beziehungen zwischen Mitarbeitenden (z. B. Ausschluss oder Mentor/Trainee). */
+export const employeeRelationships = pgTable(
+  "employee_relationships",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => organizations.tenantId, { onDelete: "cascade" }),
+    fromEmployeeId: uuid("from_employee_id")
+      .notNull()
+      .references(() => employees.id, { onDelete: "cascade" }),
+    toEmployeeId: uuid("to_employee_id")
+      .notNull()
+      .references(() => employees.id, { onDelete: "cascade" }),
+    /** MUTUALLY_EXCLUSIVE | MENTOR_TRAINEE */
+    kind: text("kind").notNull(),
+    note: text("note"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    tenantEdgeKindUnique: unique("employee_relationships_tenant_edge_kind").on(
+      t.tenantId,
+      t.fromEmployeeId,
+      t.toEmployeeId,
+      t.kind,
+    ),
+    fromEmployeeIdx: index("employee_relationships_from_employee_idx").on(
+      t.fromEmployeeId,
+    ),
+    toEmployeeIdx: index("employee_relationships_to_employee_idx").on(
+      t.toEmployeeId,
+    ),
+    tenantKindIdx: index("employee_relationships_tenant_kind_idx").on(
+      t.tenantId,
+      t.kind,
+    ),
+  }),
+);
+
+/** Datei-Anhaenge je Mitarbeitendem; Blob liegt auf dem API-Dateisystem. */
+export const employeeAttachments = pgTable(
+  "employee_attachments",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => organizations.tenantId, { onDelete: "cascade" }),
+    employeeId: uuid("employee_id")
+      .notNull()
+      .references(() => employees.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull().default("document"),
+    filename: text("filename").notNull(),
+    contentType: text("content_type").notNull(),
+    byteSize: integer("byte_size").notNull(),
+    storageRelativePath: text("storage_relative_path").notNull(),
+    sha256: text("sha256"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    employeeCreatedIdx: index("employee_attachments_employee_created_idx").on(
+      t.employeeId,
+      t.createdAt,
+    ),
+    tenantEmployeeIdx: index("employee_attachments_tenant_employee_idx").on(
+      t.tenantId,
+      t.employeeId,
+    ),
+  }),
+);
 
 /**
  * Woechentliche Verfuegbarkeit: mehrere Slots pro Tag moeglich.
@@ -172,6 +326,14 @@ export const employeeAvailabilityRules = pgTable(
     /** Ortszeit Mandant (ohne TZ in DB). */
     startTime: time("start_time").notNull(),
     endTime: time("end_time").notNull(),
+    /**
+     * Wenn true, endet der Slot am Folgetag (z. B. 22:00–06:00).
+     * Dann ist `end_time` typischerweise kleiner als `start_time`.
+     */
+    crossesMidnight: boolean("crosses_midnight").notNull().default(false),
+    /** Optionaler Gültigkeitszeitraum für dieses Wochenmuster. */
+    validFrom: date("valid_from"),
+    validTo: date("valid_to"),
     sortIndex: integer("sort_index").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
@@ -183,6 +345,184 @@ export const employeeAvailabilityRules = pgTable(
   (t) => ({
     employeeIdIdx: index("employee_availability_rules_employee_id_idx").on(
       t.employeeId,
+    ),
+  }),
+);
+
+/**
+ * Einmalige Verfügbarkeits-Ausnahmen pro Datum (Overrides).
+ * - `isUnavailable=true`: ganzer Tag nicht verfügbar
+ * - `isUnavailable=false`: expliziter Zeit-Slot (optional über Mitternacht)
+ */
+export const employeeAvailabilityOverrides = pgTable(
+  "employee_availability_overrides",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    employeeId: uuid("employee_id")
+      .notNull()
+      .references(() => employees.id, { onDelete: "cascade" }),
+    date: date("date").notNull(),
+    isUnavailable: boolean("is_unavailable").notNull().default(false),
+    startTime: time("start_time"),
+    endTime: time("end_time"),
+    crossesMidnight: boolean("crosses_midnight").notNull().default(false),
+    sortIndex: integer("sort_index").notNull().default(0),
+    note: text("note"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    employeeIdIdx: index("employee_availability_overrides_employee_id_idx").on(
+      t.employeeId,
+    ),
+    employeeDateIdx: index("employee_availability_overrides_employee_date_idx").on(
+      t.employeeId,
+      t.date,
+      t.sortIndex,
+    ),
+  }),
+);
+
+/** Urlaubsantraege je Mitarbeitendem. */
+export const employeeVacationRequests = pgTable(
+  "employee_vacation_requests",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => organizations.tenantId, { onDelete: "cascade" }),
+    employeeId: uuid("employee_id")
+      .notNull()
+      .references(() => employees.id, { onDelete: "cascade" }),
+    fromDate: date("from_date").notNull(),
+    toDate: date("to_date").notNull(),
+    reason: text("reason"),
+    /** pending | approved | rejected */
+    status: text("status").notNull().default("pending"),
+    decisionNote: text("decision_note"),
+    decidedBy: text("decided_by"),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    employeeIdIdx: index("employee_vacation_requests_employee_id_idx").on(
+      t.employeeId,
+    ),
+    tenantStatusFromIdx: index("employee_vacation_requests_tenant_status_from_idx").on(
+      t.tenantId,
+      t.status,
+      t.fromDate,
+    ),
+  }),
+);
+
+/** Krankmeldungen je Mitarbeitendem (vertrauliche Notiz optional). */
+export const employeeSickReports = pgTable(
+  "employee_sick_reports",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => organizations.tenantId, { onDelete: "cascade" }),
+    employeeId: uuid("employee_id")
+      .notNull()
+      .references(() => employees.id, { onDelete: "cascade" }),
+    fromDate: date("from_date").notNull(),
+    toDate: date("to_date").notNull(),
+    confidentialNote: text("confidential_note"),
+    certificateRequired: boolean("certificate_required").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    employeeIdIdx: index("employee_sick_reports_employee_id_idx").on(t.employeeId),
+    tenantFromIdx: index("employee_sick_reports_tenant_from_idx").on(
+      t.tenantId,
+      t.fromDate,
+    ),
+  }),
+);
+
+/**
+ * Geplante Einsaetze im Scheduling (persistiert je Mandant).
+ * `reminderMinutesBefore`: optionale Vorlaufzeit fuer Kalender-Erinnerungen.
+ */
+export const schedulingAssignments = pgTable(
+  "scheduling_assignments",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => organizations.tenantId, { onDelete: "cascade" }),
+    employeeId: uuid("employee_id")
+      .notNull()
+      .references(() => employees.id, { onDelete: "cascade" }),
+    date: date("date").notNull(),
+    startTime: time("start_time").notNull(),
+    title: text("title").notNull(),
+    place: text("place"),
+    reminderMinutesBefore: integer("reminder_minutes_before"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    tenantDateStartIdx: index("scheduling_assignments_tenant_date_start_idx").on(
+      t.tenantId,
+      t.date,
+      t.startTime,
+    ),
+    employeeDateStartIdx: index(
+      "scheduling_assignments_employee_date_start_idx",
+    ).on(t.employeeId, t.date, t.startTime),
+  }),
+);
+
+/**
+ * Audit-/Aktivitaetsereignisse je Mitarbeitendem (ohne vertrauliche Krank-Notizen im JSON).
+ * `employee_id` wird bei Loeschen des Mitarbeitenden auf NULL gesetzt (Events bleiben fuer den Mandanten).
+ */
+export const employeeActivityEvents = pgTable(
+  "employee_activity_events",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => organizations.tenantId, { onDelete: "cascade" }),
+    employeeId: uuid("employee_id").references(() => employees.id, {
+      onDelete: "set null",
+    }),
+    actorSub: text("actor_sub").notNull(),
+    action: text("action").notNull(),
+    detail: jsonb("detail").$type<Record<string, unknown> | null>(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    employeeCreatedIdx: index("employee_activity_events_employee_created_idx").on(
+      t.employeeId,
+      t.createdAt,
+    ),
+    tenantCreatedIdx: index("employee_activity_events_tenant_created_idx").on(
+      t.tenantId,
+      t.createdAt,
     ),
   }),
 );

@@ -212,9 +212,9 @@ export function DatevInterfaceContent({
 
   return (
     <div className="w-full min-w-0 space-y-6">
-      <section className="rounded-xl border bg-card p-6 text-card-foreground shadow-sm">
+      <section className="rounded-lg border bg-card p-6 text-card-foreground shadow-sm">
         <div className="flex items-start gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/8 ring-1 ring-primary/10">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary/8 ring-1 ring-primary/10">
             <TradeFeatureIcon name={feature.icon} />
           </div>
           <div className="min-w-0">

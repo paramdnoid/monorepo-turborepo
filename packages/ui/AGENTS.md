@@ -17,7 +17,7 @@ This package has **no** `build` script — consumers compile it when they build 
 
 ## Overview
 
-Internal library used by all Next.js apps in this monorepo. React components are consumed **from source** via package `exports` (no separate build step for consumers). Styling uses **Tailwind CSS 4** with shared globals under `src/styles/`.
+Internal library used by **`apps/web`** (Next.js) and the **`apps/desktop`** Vite renderer. React components are consumed **from source** via package `exports` (no separate build step for consumers). Styling uses **Tailwind CSS 4** with shared globals under `src/styles/`.
 
 **Stack highlights:** the [`radix-ui`](https://www.npmjs.com/package/radix-ui) meta-package (bundled primitives), [`@base-ui/react`](https://www.npmjs.com/package/@base-ui/react), `class-variance-authority`, `tailwind-merge`, `next-themes`, `lucide-react`, and other deps listed in `package.json` (do not assume legacy `@radix-ui/react-*` single packages unless you add them).
 
@@ -60,6 +60,7 @@ The `./*` → `./src/*.tsx` mapping only applies to **`.tsx`** files. If you add
 - **Props:** export explicit prop types/interfaces when consumers might reuse them.
 - **Named exports** for components and helpers.
 - Prefer existing primitives (`button`, `input`, `field`, etc.) when composing new UI.
+- **A11y / UX:** Root-[`AGENTS.md`](../../AGENTS.md) → **Web Interface Guidelines**.
 
 ## Component inventory
 
@@ -72,6 +73,6 @@ Illustrative examples: `accordion`, `alert-dialog`, `button`, `card`, `chart`, `
 - **ESLint:** `@repo/eslint-config/react-internal` (`eslint.config.mjs`)
 - **TypeScript:** `@repo/typescript-config/react-library.json` with `strictNullChecks: true`
 
-## Monorepo context
+## Monorepo
 
-Repo-wide commands, workspace filters, and stack details: **[`../../AGENTS.md`](../../AGENTS.md)**.
+Repo-weit (u. a. **Web Interface Guidelines**) & Skills: **[`../../AGENTS.md`](../../AGENTS.md)** · **[`../../.agents/README.md`](../../.agents/README.md)**.

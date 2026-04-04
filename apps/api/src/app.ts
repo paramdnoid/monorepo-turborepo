@@ -61,6 +61,13 @@ import {
   createSalesQuotesListHandler,
 } from "./routes/sales.js";
 import {
+  createSchedulingAssignmentDeleteHandler,
+  createSchedulingAssignmentPostHandler,
+  createSchedulingAssignmentsIcsHandler,
+  createSchedulingAssignmentsListHandler,
+  createSchedulingDayHandler,
+} from "./routes/scheduling.js";
+import {
   createCustomerAddressDeleteHandler,
   createCustomerAddressPatchHandler,
   createCustomerAddressPostHandler,
@@ -70,10 +77,33 @@ import {
   createCustomerAddressesListHandler,
   createCustomersListHandler,
 } from "./routes/customers.js";
+import { createEmployeeActivityListHandler } from "./routes/employee-activity-log.js";
 import {
+  createEmployeeAttachmentDeleteHandler,
+  createEmployeeAttachmentDownloadHandler,
+  createEmployeeAttachmentPostHandler,
+  createEmployeeAttachmentsListHandler,
+  createEmployeeDeleteHandler,
   createEmployeeDetailHandler,
   createEmployeePatchHandler,
+  createEmployeeProfileImageDeleteHandler,
+  createEmployeeProfileImageGetHandler,
+  createEmployeeProfileImagePostHandler,
+  createEmployeeRelationshipDeleteHandler,
+  createEmployeeRelationshipsListHandler,
+  createEmployeeRelationshipUpsertHandler,
+  createEmployeeSkillCatalogListHandler,
+  createEmployeeSkillCatalogPostHandler,
+  createEmployeeSkillLinksGetHandler,
+  createEmployeeSkillLinksPutHandler,
   createEmployeePostHandler,
+  createEmployeeSickListHandler,
+  createEmployeeSickPostHandler,
+  createEmployeeVacationDecisionPatchHandler,
+  createEmployeeVacationListHandler,
+  createEmployeeVacationPostHandler,
+  createEmployeesBatchArchiveHandler,
+  createEmployeesExportHandler,
   createEmployeesListHandler,
 } from "./routes/employees.js";
 import {
@@ -154,9 +184,38 @@ export function createApp(options?: CreateAppOptions) {
   const customerAddressPatch = createCustomerAddressPatchHandler(getDb);
   const customerAddressDelete = createCustomerAddressDeleteHandler(getDb);
   const employeesList = createEmployeesListHandler(getDb);
+  const employeesExport = createEmployeesExportHandler(getDb);
+  const employeesBatchArchive = createEmployeesBatchArchiveHandler(getDb);
   const employeePost = createEmployeePostHandler(getDb);
   const employeeDetail = createEmployeeDetailHandler(getDb);
   const employeePatch = createEmployeePatchHandler(getDb);
+  const employeeDelete = createEmployeeDeleteHandler(getDb);
+  const employeeSkillCatalogList = createEmployeeSkillCatalogListHandler(getDb);
+  const employeeSkillCatalogPost = createEmployeeSkillCatalogPostHandler(getDb);
+  const employeeSkillLinksGet = createEmployeeSkillLinksGetHandler(getDb);
+  const employeeSkillLinksPut = createEmployeeSkillLinksPutHandler(getDb);
+  const employeeRelationshipsList = createEmployeeRelationshipsListHandler(getDb);
+  const employeeRelationshipUpsert = createEmployeeRelationshipUpsertHandler(getDb);
+  const employeeRelationshipDelete = createEmployeeRelationshipDeleteHandler(getDb);
+  const employeeProfileImageGet = createEmployeeProfileImageGetHandler(getDb);
+  const employeeProfileImagePost = createEmployeeProfileImagePostHandler(getDb);
+  const employeeProfileImageDelete = createEmployeeProfileImageDeleteHandler(getDb);
+  const employeeAttachmentsList = createEmployeeAttachmentsListHandler(getDb);
+  const employeeAttachmentPost = createEmployeeAttachmentPostHandler(getDb);
+  const employeeAttachmentDownload = createEmployeeAttachmentDownloadHandler(getDb);
+  const employeeAttachmentDelete = createEmployeeAttachmentDeleteHandler(getDb);
+  const employeeVacationList = createEmployeeVacationListHandler(getDb);
+  const employeeVacationPost = createEmployeeVacationPostHandler(getDb);
+  const employeeVacationDecisionPatch =
+    createEmployeeVacationDecisionPatchHandler(getDb);
+  const employeeSickList = createEmployeeSickListHandler(getDb);
+  const employeeSickPost = createEmployeeSickPostHandler(getDb);
+  const employeeActivityList = createEmployeeActivityListHandler(getDb);
+  const schedulingDay = createSchedulingDayHandler(getDb);
+  const schedulingAssignmentsList = createSchedulingAssignmentsListHandler(getDb);
+  const schedulingAssignmentPost = createSchedulingAssignmentPostHandler(getDb);
+  const schedulingAssignmentDelete = createSchedulingAssignmentDeleteHandler(getDb);
+  const schedulingAssignmentsIcs = createSchedulingAssignmentsIcsHandler(getDb);
 
   const app = new Hono();
 
@@ -259,9 +318,57 @@ export function createApp(options?: CreateAppOptions) {
     customerAddressDelete,
   );
   v1.get("/employees", orgMiddleware, employeesList);
+  v1.get("/employees/export", orgMiddleware, employeesExport);
+  v1.post("/employees/batch", orgMiddleware, employeesBatchArchive);
+  v1.get("/employees/skills/catalog", orgMiddleware, employeeSkillCatalogList);
+  v1.post("/employees/skills/catalog", orgMiddleware, employeeSkillCatalogPost);
   v1.post("/employees", orgMiddleware, employeePost);
+  v1.get("/employees/:id/activity", orgMiddleware, employeeActivityList);
   v1.get("/employees/:id", orgMiddleware, employeeDetail);
   v1.patch("/employees/:id", orgMiddleware, employeePatch);
+  v1.delete("/employees/:id", orgMiddleware, employeeDelete);
+  v1.get("/employees/:id/skills", orgMiddleware, employeeSkillLinksGet);
+  v1.put("/employees/:id/skills", orgMiddleware, employeeSkillLinksPut);
+  v1.get("/employees/:id/relationships", orgMiddleware, employeeRelationshipsList);
+  v1.post("/employees/:id/relationships", orgMiddleware, employeeRelationshipUpsert);
+  v1.delete(
+    "/employees/:id/relationships/:relationshipId",
+    orgMiddleware,
+    employeeRelationshipDelete,
+  );
+  v1.get("/employees/:id/profile-image", orgMiddleware, employeeProfileImageGet);
+  v1.post("/employees/:id/profile-image", orgMiddleware, employeeProfileImagePost);
+  v1.delete("/employees/:id/profile-image", orgMiddleware, employeeProfileImageDelete);
+  v1.get("/employees/:id/attachments", orgMiddleware, employeeAttachmentsList);
+  v1.post("/employees/:id/attachments", orgMiddleware, employeeAttachmentPost);
+  v1.get(
+    "/employees/:id/attachments/:attachmentId",
+    orgMiddleware,
+    employeeAttachmentDownload,
+  );
+  v1.delete(
+    "/employees/:id/attachments/:attachmentId",
+    orgMiddleware,
+    employeeAttachmentDelete,
+  );
+  v1.get("/employees/:id/vacation", orgMiddleware, employeeVacationList);
+  v1.post("/employees/:id/vacation", orgMiddleware, employeeVacationPost);
+  v1.patch(
+    "/employees/:id/vacation/:vacationId",
+    orgMiddleware,
+    employeeVacationDecisionPatch,
+  );
+  v1.get("/employees/:id/sick", orgMiddleware, employeeSickList);
+  v1.post("/employees/:id/sick", orgMiddleware, employeeSickPost);
+  v1.get("/scheduling/day", orgMiddleware, schedulingDay);
+  v1.get("/scheduling/assignments", orgMiddleware, schedulingAssignmentsList);
+  v1.post("/scheduling/assignments", orgMiddleware, schedulingAssignmentPost);
+  v1.delete(
+    "/scheduling/assignments/:id",
+    orgMiddleware,
+    schedulingAssignmentDelete,
+  );
+  v1.get("/scheduling/assignments.ics", orgMiddleware, schedulingAssignmentsIcs);
   v1.get("/datev/settings", orgMiddleware, datevSettingsGet);
   v1.patch("/datev/settings", orgMiddleware, datevSettingsPatch);
   v1.get("/datev/export/bookings.csv", orgMiddleware, datevBookingsExport);

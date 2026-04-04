@@ -23,16 +23,16 @@ pnpm exec turbo run check-types --filter=desktop
 
 ## Pfade
 
-| Pfad                                      | Rolle                                                        |
-| ----------------------------------------- | ------------------------------------------------------------ |
-| `src/main.ts`                             | Fenster, `loadURL` (Dev) / `loadFile` (Build), `ipcMain`     |
-| `src/preload.ts`                          | `contextBridge` → `window.desktop`                           |
-| `src/renderer/`                           | React-Einstieg, `globals.css`, **DesktopLayout** (Sidebar)   |
-| `vite.config.ts`                          | Vite (Root `src/renderer`, Alias `@` → `src/renderer`)       |
-| `components.json`                         | shadcn-CLI-Aliases (wie `web`)                             |
-| `dist/main.js`, `dist/preload.js`         | Ausgabe `tsc`                                                |
-| `dist/renderer/`                          | Ausgabe `vite build` (`index.html`, Assets)                  |
-| [`resources/`](./resources/)              | Electron-Builder-Assets: **`icon.icns`** (macOS), **`icon.ico`** (Windows), **`icon.png`** (Linux) — aus `@repo/brand/logo.png` via [`scripts/generate-electron-icons.mjs`](./scripts/generate-electron-icons.mjs) |
+| Pfad                              | Rolle                                                                                                                                                                                                              |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `src/main.ts`                     | Fenster, `loadURL` (Dev) / `loadFile` (Build), `ipcMain`                                                                                                                                                           |
+| `src/preload.ts`                  | `contextBridge` → `window.desktop`                                                                                                                                                                                 |
+| `src/renderer/`                   | React-Einstieg, `globals.css`, **DesktopLayout** (Sidebar)                                                                                                                                                         |
+| `vite.config.ts`                  | Vite (Root `src/renderer`, Alias `@` → `src/renderer`)                                                                                                                                                             |
+| `components.json`                 | shadcn-CLI-Aliases (wie `web`)                                                                                                                                                                                     |
+| `dist/main.js`, `dist/preload.js` | Ausgabe `tsc`                                                                                                                                                                                                      |
+| `dist/renderer/`                  | Ausgabe `vite build` (`index.html`, Assets)                                                                                                                                                                        |
+| [`resources/`](./resources/)      | Electron-Builder-Assets: **`icon.icns`** (macOS), **`icon.ico`** (Windows), **`icon.png`** (Linux) — aus `@repo/brand/logo.png` via [`scripts/generate-electron-icons.mjs`](./scripts/generate-electron-icons.mjs) |
 
 **Icons aktualisieren:** `pnpm generate:electron-icons` (Root) oder `pnpm --filter desktop run generate:electron-icons`. **`pnpm run dist`** / **`dist:dir`** rufen die Generierung automatisch vor dem Packen auf.
 
@@ -49,8 +49,10 @@ Unter **macOS** setzt `main.ts` **kein** Fenster-/Dock-Icon aus der **PNG** (`@r
   `xattr -cr "/Applications/ZunftGewerk - Software für Handwerksbetriebe.app"`
 - **Produktion:** **Code Signing** + **Notarisierung** (GitHub Secrets `CSC_*`, `APPLE_*`), dann `identity: null` entfernen und Release erneut bauen — siehe Kommentar in [`.github/workflows/desktop-release.yml`](../../.github/workflows/desktop-release.yml).
 
+## Renderer-UI
+
+**Vite-Renderer** nutzt `@repo/ui` — [**Web Interface Guidelines**](../../AGENTS.md#web-interface-guidelines) (Root).
+
 ## Monorepo
 
-Shared IPC-Kanalnamen und `DesktopApi`-Typ: **[`../../packages/electron/AGENTS.md`](../../packages/electron/AGENTS.md)** (`@repo/electron`).
-
-Root: **[`../../AGENTS.md`](../../AGENTS.md)**.
+**IPC / Typen:** [`../../packages/electron/AGENTS.md`](../../packages/electron/AGENTS.md) · Repo-weit & Skills: [`../../AGENTS.md`](../../AGENTS.md) · [`../../.agents/README.md`](../../.agents/README.md).

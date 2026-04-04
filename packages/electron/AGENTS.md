@@ -8,8 +8,8 @@
 
 ## Consumers
 
-| App       | Usage                                      |
-| --------- | ------------------------------------------ |
+| App       | Usage                                                            |
+| --------- | ---------------------------------------------------------------- |
 | `desktop` | [`apps/desktop`](../../apps/desktop) importiert `@repo/electron` |
 
 ## Tasks
@@ -24,4 +24,4 @@ pnpm exec turbo run check-types --filter=@repo/electron
 
 ## Monorepo
 
-Root: **[`../../AGENTS.md`](../../AGENTS.md)**.
+Repo-weit & Skills: **[`../../AGENTS.md`](../../AGENTS.md)** · **[`../../.agents/README.md`](../../.agents/README.md)**.
