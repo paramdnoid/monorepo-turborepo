@@ -40,6 +40,10 @@ import {
 } from "@/lib/money-format";
 
 import {
+  fetchBelegeCustomerOptions,
+  recipientLabelFromCustomerId,
+} from "./belege-customer-stamm";
+import {
   fetchBelegeProjectOptions,
   fetchBelegeQuoteLinkOptions,
 } from "./belege-sales-lookups";
@@ -72,6 +76,11 @@ type BelegeInvoiceCreateDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreated: () => void;
+  /** Beim Öffnen vorausgewähltes Angebot (z. B. von der Angebotsdetailseite). */
+  presetQuoteId?: string | null;
+  /** Angebotsauswahl nicht änderbar (zusammen mit presetQuoteId). */
+  lockQuoteSelection?: boolean;
+  onCreatedInvoiceId?: (invoiceId: string) => void;
 };
 
 export function BelegeInvoiceCreateDialog({
@@ -79,6 +88,9 @@ export function BelegeInvoiceCreateDialog({
   open,
   onOpenChange,
   onCreated,
+  presetQuoteId = null,
+  lockQuoteSelection = false,
+  onCreatedInvoiceId,
 }: BelegeInvoiceCreateDialogProps) {
   const fc = getBelegeSalesFormCopy(locale);
   const tc = getBelegeSalesTableCopy(locale);
@@ -97,6 +109,10 @@ export function BelegeInvoiceCreateDialog({
   const [projectOptions, setProjectOptions] = useState<
     { id: string; title: string }[]
   >([]);
+  const [masterCustomerId, setMasterCustomerId] = useState("");
+  const [customerStammOptions, setCustomerStammOptions] = useState<
+    { id: string; label: string }[]
+  >([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -106,25 +122,90 @@ export function BelegeInvoiceCreateDialog({
     setCustomerLabel("");
     setStatus("draft");
     setTotalStr("");
-    setQuoteId("");
+    setQuoteId(presetQuoteId?.trim() ? presetQuoteId : "");
     setProjectId("");
     setIssuedYmd("");
     setDueYmd("");
     setPaidYmd("");
+    setMasterCustomerId("");
     setError(null);
     void (async () => {
-      const [quotes, projects] = await Promise.all([
+      const [quotes, projects, customers] = await Promise.all([
         fetchBelegeQuoteLinkOptions(),
         fetchBelegeProjectOptions(),
+        fetchBelegeCustomerOptions(),
       ]);
       setQuoteOptions(quotes);
       setProjectOptions(projects);
+      setCustomerStammOptions(customers);
     })();
-  }, [open]);
+  }, [open, presetQuoteId]);
+
+  useEffect(() => {
+    if (!masterCustomerId) {
+      return;
+    }
+    let cancelled = false;
+    void recipientLabelFromCustomerId(masterCustomerId).then((t) => {
+      if (!cancelled && t) {
+        setCustomerLabel(t);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [masterCustomerId]);
+
+  const copyFromQuote = quoteId !== "";
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (copyFromQuote) {
+      if (!documentNumber.trim()) {
+        setError(fc.saveFailed);
+        return;
+      }
+      setBusy(true);
+      try {
+        const res = await fetch(
+          `/api/web/sales/quotes/${encodeURIComponent(quoteId)}/invoices`,
+          {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              documentNumber: documentNumber.trim(),
+              status,
+              issuedAt: dateInputToIsoNoon(issuedYmd),
+              dueAt: dateInputToIsoNoon(dueYmd),
+              paidAt: dateInputToIsoNoon(paidYmd),
+            }),
+          },
+        );
+        if (res.status === 409) {
+          setError(fc.conflictNumber);
+          return;
+        }
+        if (!res.ok) {
+          setError(fc.saveFailed);
+          return;
+        }
+        const json: unknown = await res.json();
+        const parsed = salesInvoiceDetailResponseSchema.safeParse(json);
+        if (!parsed.success) {
+          setError(fc.saveFailed);
+          return;
+        }
+        onCreatedInvoiceId?.(parsed.data.invoice.id);
+        onCreated();
+        onOpenChange(false);
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
+
     const totalCents = parseMajorToMinorUnits(totalStr, locale);
     if (totalCents === null) {
       setError(fc.validationAmount);
@@ -146,11 +227,12 @@ export function BelegeInvoiceCreateDialog({
           status,
           currency: "EUR",
           totalCents,
-          quoteId: quoteId === "" ? null : quoteId,
+          quoteId: null,
           projectId: projectId === "" ? null : projectId,
           issuedAt: dateInputToIsoNoon(issuedYmd),
           dueAt: dateInputToIsoNoon(dueYmd),
           paidAt: dateInputToIsoNoon(paidYmd),
+          customerId: masterCustomerId === "" ? null : masterCustomerId,
         }),
       });
       if (res.status === 409) {
@@ -173,13 +255,18 @@ export function BelegeInvoiceCreateDialog({
       <DialogContent className="max-w-md">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>{fc.newInvoice}</DialogTitle>
+            <DialogTitle>
+              {copyFromQuote ? fc.newInvoiceFromQuote : fc.newInvoice}
+            </DialogTitle>
           </DialogHeader>
           <div className="grid max-h-[70vh] gap-4 overflow-y-auto py-4 pr-1">
             {error ? (
               <Alert variant="destructive">
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
+            ) : null}
+            {copyFromQuote ? (
+              <p className="text-sm text-muted-foreground">{fc.invoiceFromQuoteHint}</p>
             ) : null}
             <div className="grid gap-2">
               <Label htmlFor="i-doc">{fc.docNumber}</Label>
@@ -190,15 +277,58 @@ export function BelegeInvoiceCreateDialog({
                 required
               />
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="i-cust">{fc.customer}</Label>
-              <Input
-                id="i-cust"
-                value={customerLabel}
-                onChange={(e) => setCustomerLabel(e.target.value)}
-                required
-              />
-            </div>
+            {copyFromQuote ? null : (
+              <>
+                <div className="grid gap-2">
+                  <Label>{fc.masterCustomer}</Label>
+                  <Select
+                    value={masterCustomerId === "" ? "__none__" : masterCustomerId}
+                    onValueChange={(v) =>
+                      setMasterCustomerId(v === "__none__" ? "" : v)
+                    }
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder={fc.noMasterCustomer} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">{fc.noMasterCustomer}</SelectItem>
+                      {customerStammOptions.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="w-fit"
+                    disabled={!masterCustomerId}
+                    onClick={() => {
+                      void recipientLabelFromCustomerId(masterCustomerId).then(
+                        (t) => {
+                          if (t) {
+                            setCustomerLabel(t);
+                          }
+                        },
+                      );
+                    }}
+                  >
+                    {fc.fillLabelFromMaster}
+                  </Button>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="i-cust">{fc.customer}</Label>
+                  <Input
+                    id="i-cust"
+                    value={customerLabel}
+                    onChange={(e) => setCustomerLabel(e.target.value)}
+                    required
+                  />
+                </div>
+              </>
+            )}
             <div className="grid gap-2">
               <Label>{tc.status}</Label>
               <Select
@@ -217,16 +347,18 @@ export function BelegeInvoiceCreateDialog({
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="i-total">{fc.total}</Label>
-              <Input
-                id="i-total"
-                placeholder={fc.totalPlaceholder}
-                value={totalStr}
-                onChange={(e) => setTotalStr(e.target.value)}
-                inputMode="decimal"
-              />
-            </div>
+            {copyFromQuote ? null : (
+              <div className="grid gap-2">
+                <Label htmlFor="i-total">{fc.total}</Label>
+                <Input
+                  id="i-total"
+                  placeholder={fc.totalPlaceholder}
+                  value={totalStr}
+                  onChange={(e) => setTotalStr(e.target.value)}
+                  inputMode="decimal"
+                />
+              </div>
+            )}
             <div className="grid gap-2">
               <Label>{fc.linkQuote}</Label>
               <Select
@@ -234,6 +366,7 @@ export function BelegeInvoiceCreateDialog({
                 onValueChange={(v) =>
                   setQuoteId(v === "__none__" ? "" : v)
                 }
+                disabled={lockQuoteSelection}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder={fc.noneQuote} />
@@ -248,27 +381,29 @@ export function BelegeInvoiceCreateDialog({
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid gap-2">
-              <Label>{fc.linkProject}</Label>
-              <Select
-                value={projectId === "" ? "__none__" : projectId}
-                onValueChange={(v) =>
-                  setProjectId(v === "__none__" ? "" : v)
-                }
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder={fc.noneProject} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">{fc.noneProject}</SelectItem>
-                  {projectOptions.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {copyFromQuote ? null : (
+              <div className="grid gap-2">
+                <Label>{fc.linkProject}</Label>
+                <Select
+                  value={projectId === "" ? "__none__" : projectId}
+                  onValueChange={(v) =>
+                    setProjectId(v === "__none__" ? "" : v)
+                  }
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder={fc.noneProject} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">{fc.noneProject}</SelectItem>
+                    {projectOptions.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="grid gap-2">
               <Label htmlFor="i-issued">{fc.issued}</Label>
               <Input
@@ -350,23 +485,30 @@ export function BelegeInvoiceEditForm({
   const [projectOptions, setProjectOptions] = useState<
     { id: string; title: string }[]
   >([]);
+  const [masterCustomerId, setMasterCustomerId] = useState("");
+  const [customerStammOptions, setCustomerStammOptions] = useState<
+    { id: string; label: string }[]
+  >([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     void (async () => {
-      const [quotes, projects] = await Promise.all([
+      const [quotes, projects, customers] = await Promise.all([
         fetchBelegeQuoteLinkOptions(),
         fetchBelegeProjectOptions(),
+        fetchBelegeCustomerOptions(),
       ]);
       setQuoteOptions(quotes);
       setProjectOptions(projects);
+      setCustomerStammOptions(customers);
     })();
   }, []);
 
   useEffect(() => {
     setDocumentNumber(invoice.documentNumber);
     setCustomerLabel(invoice.customerLabel);
+    setMasterCustomerId(invoice.customerId ?? "");
     setStatus(invoice.status as SalesInvoiceStatus);
     setTotalStr(
       (invoice.totalCents / 100).toLocaleString(
@@ -406,6 +548,7 @@ export function BelegeInvoiceEditForm({
         body: JSON.stringify({
           documentNumber: documentNumber.trim(),
           customerLabel: customerLabel.trim(),
+          customerId: masterCustomerId === "" ? null : masterCustomerId,
           status,
           currency: invoice.currency,
           ...(hasLines ? {} : { totalCents }),
@@ -451,6 +594,51 @@ export function BelegeInvoiceEditForm({
           onChange={(e) => setDocumentNumber(e.target.value)}
           required
         />
+      </div>
+      <div className="grid gap-2">
+        <Label>{fc.masterCustomer}</Label>
+        <Select
+          value={masterCustomerId === "" ? "__none__" : masterCustomerId}
+          onValueChange={(v) => {
+            const id = v === "__none__" ? "" : v;
+            setMasterCustomerId(id);
+            if (id) {
+              void recipientLabelFromCustomerId(id).then((t) => {
+                if (t) {
+                  setCustomerLabel(t);
+                }
+              });
+            }
+          }}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder={fc.noMasterCustomer} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none__">{fc.noMasterCustomer}</SelectItem>
+            {customerStammOptions.map((c) => (
+              <SelectItem key={c.id} value={c.id}>
+                {c.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="w-fit"
+          disabled={!masterCustomerId}
+          onClick={() => {
+            void recipientLabelFromCustomerId(masterCustomerId).then((t) => {
+              if (t) {
+                setCustomerLabel(t);
+              }
+            });
+          }}
+        >
+          {fc.fillLabelFromMaster}
+        </Button>
       </div>
       <div className="grid gap-2">
         <Label htmlFor="ie-cust">{fc.customer}</Label>

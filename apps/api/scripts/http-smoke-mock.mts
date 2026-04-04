@@ -17,6 +17,7 @@ import { count, eq } from "drizzle-orm";
 import {
   provisionOrganizationIfAbsent,
   salesInvoices,
+  salesQuoteLines,
   salesQuotes,
 } from "@repo/db";
 
@@ -100,6 +101,15 @@ if (quoteCount === 0) {
     .returning({ id: salesQuotes.id });
   const qid = inserted[0]?.id;
   if (qid) {
+    await db.insert(salesQuoteLines).values({
+      quoteId: qid,
+      sortIndex: 0,
+      description: "Smoke-Position",
+      quantity: "1",
+      unit: "Stk",
+      unitPriceCents: 99_99,
+      lineTotalCents: 99_99,
+    });
     await db.insert(salesInvoices).values({
       tenantId,
       documentNumber: "RE-SMOKE-0001",
@@ -121,6 +131,111 @@ const quotesListText = await quotesListRes.text();
 console.log("GET /v1/sales/quotes", quotesListRes.status, quotesListText);
 
 if (!quotesListRes.ok) {
+  process.exit(1);
+}
+
+type QuotesListJson = { quotes: { id: string }[] };
+let quotesPayload: QuotesListJson;
+try {
+  quotesPayload = JSON.parse(quotesListText) as QuotesListJson;
+} catch {
+  console.error("Smoke: GET /v1/sales/quotes response is not JSON");
+  process.exit(1);
+}
+const smokeQuoteId = quotesPayload.quotes[0]?.id;
+if (smokeQuoteId) {
+  const quoteDetailRes = await app.request(
+    `http://localhost/v1/sales/quotes/${encodeURIComponent(smokeQuoteId)}`,
+    { headers: { Authorization: "Bearer mock" } },
+  );
+  const quoteDetailText = await quoteDetailRes.text();
+  if (!quoteDetailRes.ok) {
+    console.error(
+      "GET /v1/sales/quotes/:id",
+      quoteDetailRes.status,
+      quoteDetailText.slice(0, 200),
+    );
+    process.exit(1);
+  }
+  let quoteLines = 0;
+  try {
+    const qd = JSON.parse(quoteDetailText) as { quote?: { lines?: unknown[] } };
+    quoteLines = qd.quote?.lines?.length ?? 0;
+  } catch {
+    console.error("Smoke: quote detail is not JSON");
+    process.exit(1);
+  }
+  const fromQuoteRes = await app.request(
+    `http://localhost/v1/sales/quotes/${encodeURIComponent(smokeQuoteId)}/invoices`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer mock",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        documentNumber: `RE-SMOKE-FROMQ-${Date.now()}`,
+      }),
+    },
+  );
+  const fromQuoteText = await fromQuoteRes.text();
+  console.log(
+    "POST /v1/sales/quotes/:id/invoices",
+    fromQuoteRes.status,
+    fromQuoteText.slice(0, 240),
+  );
+  if (!fromQuoteRes.ok) {
+    process.exit(1);
+  }
+  let invLines = -1;
+  try {
+    const inv = JSON.parse(fromQuoteText) as { invoice?: { lines?: unknown[] } };
+    invLines = inv.invoice?.lines?.length ?? 0;
+  } catch {
+    console.error("Smoke: invoice-from-quote response is not JSON");
+    process.exit(1);
+  }
+  if (invLines !== quoteLines) {
+    console.error("Smoke: invoice line count !== quote line count", {
+      quoteLines,
+      invLines,
+    });
+    process.exit(1);
+  }
+}
+
+const customersListRes = await app.request("http://localhost/v1/customers", {
+  headers: { Authorization: "Bearer mock" },
+});
+const customersListText = await customersListRes.text();
+console.log("GET /v1/customers", customersListRes.status, customersListText);
+if (!customersListRes.ok) {
+  process.exit(1);
+}
+
+const customersPostRes = await app.request("http://localhost/v1/customers", {
+  method: "POST",
+  headers: {
+    Authorization: "Bearer mock",
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    displayName: "Smoke Stammdaten AG",
+    customerNumber: `K-SMOKE-${Date.now()}`,
+    defaultAddress: {
+      kind: "billing",
+      recipientName: "Smoke Stammdaten AG",
+      street: "Testweg 2",
+      postalCode: "10115",
+      city: "Berlin",
+      country: "DE",
+      isDefault: true,
+    },
+  }),
+});
+const customersPostText = await customersPostRes.text();
+console.log("POST /v1/customers", customersPostRes.status, customersPostText.slice(0, 200));
+if (!customersPostRes.ok) {
   process.exit(1);
 }
 

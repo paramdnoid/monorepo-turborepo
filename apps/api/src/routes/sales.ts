@@ -5,6 +5,7 @@ import type { Context } from "hono";
 import { z } from "zod";
 
 import {
+  salesCreateInvoiceFromQuoteSchema,
   salesCreateInvoiceLineSchema,
   salesCreateInvoiceSchema,
   salesCreateQuoteLineSchema,
@@ -449,6 +450,16 @@ export function createSalesQuotePostHandler(getDb: () => Db | undefined) {
         return c.json({ error: "invalid_project" }, 400);
       }
     }
+    if (input.customerId) {
+      const ok = await assertCustomerForTenant(
+        db,
+        auth.tenantId,
+        input.customerId,
+      );
+      if (!ok) {
+        return c.json({ error: "invalid_customer" }, 400);
+      }
+    }
     const vu = parseOptionalInstant(input.validUntil ?? undefined);
     if (!vu.ok) {
       return c.json({ error: "invalid_valid_until" }, 400);
@@ -465,6 +476,7 @@ export function createSalesQuotePostHandler(getDb: () => Db | undefined) {
           totalCents: input.totalCents,
           validUntil: vu.value,
           projectId: input.projectId ?? null,
+          customerId: input.customerId ?? null,
         })
         .returning();
       const row = inserted[0];
@@ -527,10 +539,17 @@ export function createSalesQuotePatchHandler(getDb: () => Db | undefined) {
         return c.json({ error: "invalid_project" }, 400);
       }
     }
+    if (patch.customerId !== undefined && patch.customerId !== null) {
+      const ok = await assertCustomerForTenant(db, auth.tenantId, patch.customerId);
+      if (!ok) {
+        return c.json({ error: "invalid_customer" }, 400);
+      }
+    }
     const updates: {
       updatedAt: Date;
       documentNumber?: string;
       customerLabel?: string;
+      customerId?: string | null;
       status?: string;
       currency?: string;
       totalCents?: number;
@@ -542,6 +561,9 @@ export function createSalesQuotePatchHandler(getDb: () => Db | undefined) {
     }
     if (patch.customerLabel !== undefined) {
       updates.customerLabel = patch.customerLabel;
+    }
+    if (patch.customerId !== undefined) {
+      updates.customerId = patch.customerId;
     }
     if (patch.status !== undefined) {
       updates.status = patch.status;
@@ -624,6 +646,16 @@ export function createSalesInvoicePostHandler(getDb: () => Db | undefined) {
         return c.json({ error: "invalid_quote" }, 400);
       }
     }
+    if (input.customerId) {
+      const ok = await assertCustomerForTenant(
+        db,
+        auth.tenantId,
+        input.customerId,
+      );
+      if (!ok) {
+        return c.json({ error: "invalid_customer" }, 400);
+      }
+    }
     const issuedAt = parseOptionalInstant(input.issuedAt ?? undefined);
     if (!issuedAt.ok) {
       return c.json({ error: "invalid_issued_at" }, 400);
@@ -651,6 +683,7 @@ export function createSalesInvoicePostHandler(getDb: () => Db | undefined) {
           issuedAt: issuedAt.value,
           dueAt: dueAt.value,
           paidAt: paidAt.value,
+          customerId: input.customerId ?? null,
         })
         .returning();
       const row = inserted[0];
@@ -668,6 +701,139 @@ export function createSalesInvoicePostHandler(getDb: () => Db | undefined) {
       }
       throw err;
     }
+  };
+}
+
+export function createSalesInvoiceFromQuotePostHandler(
+  getDb: () => Db | undefined,
+) {
+  return async (c: Context) => {
+    const auth = c.get("auth");
+    if (!auth) {
+      return c.json({ error: "missing_auth" }, 500);
+    }
+    const quoteIdParse = z.string().uuid().safeParse(c.req.param("id"));
+    if (!quoteIdParse.success) {
+      return c.json({ error: "invalid_id" }, 400);
+    }
+    const quoteId = quoteIdParse.data;
+    let body: unknown;
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ error: "invalid_json" }, 400);
+    }
+    const parsed = salesCreateInvoiceFromQuoteSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ error: "validation_error" }, 400);
+    }
+    const input = parsed.data;
+    const db = getDb();
+    if (!db) {
+      return c.json({ error: "database_unavailable" }, 503);
+    }
+    const quoteOk = await assertQuoteForTenant(db, auth.tenantId, quoteId);
+    if (!quoteOk) {
+      return c.json({ error: "not_found" }, 404);
+    }
+    const issuedAt = parseOptionalInstant(input.issuedAt ?? undefined);
+    if (!issuedAt.ok) {
+      return c.json({ error: "invalid_issued_at" }, 400);
+    }
+    const dueAt = parseOptionalInstant(input.dueAt ?? undefined);
+    if (!dueAt.ok) {
+      return c.json({ error: "invalid_due_at" }, 400);
+    }
+    const paidAt = parseOptionalInstant(input.paidAt ?? undefined);
+    if (!paidAt.ok) {
+      return c.json({ error: "invalid_paid_at" }, 400);
+    }
+    let newInvoiceId: string | undefined;
+    try {
+      await db.transaction(async (tx) => {
+        const rows = await tx
+          .select()
+          .from(salesQuotes)
+          .where(
+            and(
+              eq(salesQuotes.id, quoteId),
+              eq(salesQuotes.tenantId, auth.tenantId),
+            ),
+          )
+          .limit(1);
+        const quoteRow = rows[0];
+        if (!quoteRow) {
+          throw new Error("quote_not_found");
+        }
+        const lineRows = await tx
+          .select()
+          .from(salesQuoteLines)
+          .where(eq(salesQuoteLines.quoteId, quoteId))
+          .orderBy(asc(salesQuoteLines.sortIndex));
+
+        const inserted = await tx
+          .insert(salesInvoices)
+          .values({
+            tenantId: auth.tenantId,
+            documentNumber: input.documentNumber,
+            customerLabel: quoteRow.customerLabel,
+            status: input.status,
+            currency: quoteRow.currency,
+            totalCents: 0,
+            quoteId,
+            projectId: quoteRow.projectId ?? null,
+            issuedAt: issuedAt.value,
+            dueAt: dueAt.value,
+            paidAt: paidAt.value,
+            customerId: quoteRow.customerId ?? null,
+          })
+          .returning();
+        const inv = inserted[0];
+        if (!inv) {
+          throw new Error("insert_failed");
+        }
+        newInvoiceId = inv.id;
+        if (lineRows.length > 0) {
+          await tx.insert(salesInvoiceLines).values(
+            lineRows.map((l) => ({
+              invoiceId: inv.id,
+              sortIndex: l.sortIndex,
+              description: l.description,
+              quantity: l.quantity ?? null,
+              unit: l.unit ?? null,
+              unitPriceCents: l.unitPriceCents,
+              lineTotalCents: l.lineTotalCents,
+            })),
+          );
+        }
+        const [agg] = await tx
+          .select({ t: sum(salesInvoiceLines.lineTotalCents) })
+          .from(salesInvoiceLines)
+          .where(eq(salesInvoiceLines.invoiceId, inv.id));
+        const total = sumFromAggregate(agg?.t);
+        await tx
+          .update(salesInvoices)
+          .set({ totalCents: total, updatedAt: new Date() })
+          .where(eq(salesInvoices.id, inv.id));
+      });
+    } catch (err) {
+      if (isUniqueViolation(err)) {
+        return c.json({ error: "document_number_taken" }, 409);
+      }
+      if (err instanceof Error && err.message === "quote_not_found") {
+        return c.json({ error: "not_found" }, 404);
+      }
+      throw err;
+    }
+    const payload = await buildInvoiceDetailPayload(
+      db,
+      auth.tenantId,
+      newInvoiceId!,
+    );
+    if (!payload) {
+      return c.json({ error: "insert_failed" }, 500);
+    }
+    return c.json(payload, 201);
   };
 }
 
@@ -719,10 +885,17 @@ export function createSalesInvoicePatchHandler(getDb: () => Db | undefined) {
         return c.json({ error: "invalid_quote" }, 400);
       }
     }
+    if (patch.customerId !== undefined && patch.customerId !== null) {
+      const ok = await assertCustomerForTenant(db, auth.tenantId, patch.customerId);
+      if (!ok) {
+        return c.json({ error: "invalid_customer" }, 400);
+      }
+    }
     const updates: {
       updatedAt: Date;
       documentNumber?: string;
       customerLabel?: string;
+      customerId?: string | null;
       status?: string;
       currency?: string;
       totalCents?: number;
@@ -737,6 +910,9 @@ export function createSalesInvoicePatchHandler(getDb: () => Db | undefined) {
     }
     if (patch.customerLabel !== undefined) {
       updates.customerLabel = patch.customerLabel;
+    }
+    if (patch.customerId !== undefined) {
+      updates.customerId = patch.customerId;
     }
     if (patch.status !== undefined) {
       updates.status = patch.status;

@@ -32,6 +32,10 @@ import {
   getBelegeSalesTableCopy,
 } from "@/content/belege-module";
 import type { Locale } from "@/lib/i18n/locale";
+import {
+  fetchBelegeCustomerOptions,
+  recipientLabelFromCustomerId,
+} from "./belege-customer-stamm";
 import { fetchBelegeProjectOptions } from "./belege-sales-lookups";
 import {
   dateInputToIsoNoon,
@@ -87,6 +91,10 @@ export function BelegeQuoteCreateDialog({
   const [projectOptions, setProjectOptions] = useState<
     { id: string; title: string }[]
   >([]);
+  const [masterCustomerId, setMasterCustomerId] = useState("");
+  const [customerStammOptions, setCustomerStammOptions] = useState<
+    { id: string; label: string }[]
+  >([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -98,10 +106,27 @@ export function BelegeQuoteCreateDialog({
       setTotalStr("");
       setValidUntilYmd("");
       setProjectId("");
+      setMasterCustomerId("");
       setError(null);
       void fetchBelegeProjectOptions().then(setProjectOptions);
+      void fetchBelegeCustomerOptions().then(setCustomerStammOptions);
     }
   }, [open]);
+
+  useEffect(() => {
+    if (!masterCustomerId) {
+      return;
+    }
+    let cancelled = false;
+    void recipientLabelFromCustomerId(masterCustomerId).then((t) => {
+      if (!cancelled && t) {
+        setCustomerLabel(t);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [masterCustomerId]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -129,6 +154,7 @@ export function BelegeQuoteCreateDialog({
           totalCents,
           validUntil: dateInputToIsoNoon(validUntilYmd),
           projectId: projectId === "" ? null : projectId,
+          customerId: masterCustomerId === "" ? null : masterCustomerId,
         }),
       });
       if (res.status === 409) {
@@ -168,6 +194,43 @@ export function BelegeQuoteCreateDialog({
                 autoComplete="off"
                 required
               />
+            </div>
+            <div className="grid gap-2">
+              <Label>{fc.masterCustomer}</Label>
+              <Select
+                value={masterCustomerId === "" ? "__none__" : masterCustomerId}
+                onValueChange={(v) =>
+                  setMasterCustomerId(v === "__none__" ? "" : v)
+                }
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder={fc.noMasterCustomer} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">{fc.noMasterCustomer}</SelectItem>
+                  {customerStammOptions.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-fit"
+                disabled={!masterCustomerId}
+                onClick={() => {
+                  void recipientLabelFromCustomerId(masterCustomerId).then((t) => {
+                    if (t) {
+                      setCustomerLabel(t);
+                    }
+                  });
+                }}
+              >
+                {fc.fillLabelFromMaster}
+              </Button>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="q-cust">{fc.customer}</Label>
@@ -289,16 +352,22 @@ export function BelegeQuoteEditForm({
   const [projectOptions, setProjectOptions] = useState<
     { id: string; title: string }[]
   >([]);
+  const [masterCustomerId, setMasterCustomerId] = useState("");
+  const [customerStammOptions, setCustomerStammOptions] = useState<
+    { id: string; label: string }[]
+  >([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     void fetchBelegeProjectOptions().then(setProjectOptions);
+    void fetchBelegeCustomerOptions().then(setCustomerStammOptions);
   }, []);
 
   useEffect(() => {
     setDocumentNumber(quote.documentNumber);
     setCustomerLabel(quote.customerLabel);
+    setMasterCustomerId(quote.customerId ?? "");
     setStatus(quote.status as SalesQuoteStatus);
     setTotalStr(
       (quote.totalCents / 100).toLocaleString(locale === "en" ? "en-US" : "de-DE", {
@@ -332,6 +401,7 @@ export function BelegeQuoteEditForm({
         body: JSON.stringify({
           documentNumber: documentNumber.trim(),
           customerLabel: customerLabel.trim(),
+          customerId: masterCustomerId === "" ? null : masterCustomerId,
           status,
           currency: quote.currency,
           ...(hasLines ? {} : { totalCents }),
@@ -374,6 +444,51 @@ export function BelegeQuoteEditForm({
           onChange={(e) => setDocumentNumber(e.target.value)}
           required
         />
+      </div>
+      <div className="grid gap-2">
+        <Label>{fc.masterCustomer}</Label>
+        <Select
+          value={masterCustomerId === "" ? "__none__" : masterCustomerId}
+          onValueChange={(v) => {
+            const id = v === "__none__" ? "" : v;
+            setMasterCustomerId(id);
+            if (id) {
+              void recipientLabelFromCustomerId(id).then((t) => {
+                if (t) {
+                  setCustomerLabel(t);
+                }
+              });
+            }
+          }}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder={fc.noMasterCustomer} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none__">{fc.noMasterCustomer}</SelectItem>
+            {customerStammOptions.map((c) => (
+              <SelectItem key={c.id} value={c.id}>
+                {c.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="w-fit"
+          disabled={!masterCustomerId}
+          onClick={() => {
+            void recipientLabelFromCustomerId(masterCustomerId).then((t) => {
+              if (t) {
+                setCustomerLabel(t);
+              }
+            });
+          }}
+        >
+          {fc.fillLabelFromMaster}
+        </Button>
       </div>
       <div className="grid gap-2">
         <Label htmlFor="qe-cust">{fc.customer}</Label>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   salesInvoiceDetailResponseSchema,
   salesQuoteDetailResponseSchema,
@@ -25,7 +26,10 @@ import {
 import type { Locale } from "@/lib/i18n/locale";
 import { formatMinorCurrency } from "@/lib/money-format";
 
-import { BelegeInvoiceEditForm } from "./belege-invoice-editor";
+import {
+  BelegeInvoiceCreateDialog,
+  BelegeInvoiceEditForm,
+} from "./belege-invoice-editor";
 import { BelegeQuoteEditForm } from "./belege-quote-editor";
 import {
   buildProjectTitleMap,
@@ -69,6 +73,7 @@ export function BelegeSalesDetail({
   mode,
   documentId,
 }: BelegeSalesDetailProps) {
+  const router = useRouter();
   const copy = getBelegeSalesTableCopy(locale);
   const formCopy = getBelegeSalesFormCopy(locale);
   const printCopy = getBelegePrintCopy(locale);
@@ -93,6 +98,7 @@ export function BelegeSalesDetail({
   const [quoteLabels, setQuoteLabels] = useState<Map<string, string>>(
     () => new Map(),
   );
+  const [invoiceFromQuoteOpen, setInvoiceFromQuoteOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -217,6 +223,14 @@ export function BelegeSalesDetail({
           </Button>
           <Button
             type="button"
+            variant="default"
+            size="sm"
+            onClick={() => setInvoiceFromQuoteOpen(true)}
+          >
+            {formCopy.createInvoiceFromQuote}
+          </Button>
+          <Button
+            type="button"
             variant="secondary"
             size="sm"
             onClick={() => setEditing((e) => !e)}
@@ -224,6 +238,17 @@ export function BelegeSalesDetail({
             {editing ? formCopy.cancel : formCopy.edit}
           </Button>
         </div>
+        <BelegeInvoiceCreateDialog
+          locale={locale}
+          open={invoiceFromQuoteOpen}
+          onOpenChange={setInvoiceFromQuoteOpen}
+          onCreated={() => {}}
+          presetQuoteId={q.id}
+          lockQuoteSelection
+          onCreatedInvoiceId={(invoiceId) => {
+            router.push(`/web/belege/rechnungen/${encodeURIComponent(invoiceId)}`);
+          }}
+        />
         {editing ? (
           <Card>
             <CardHeader>

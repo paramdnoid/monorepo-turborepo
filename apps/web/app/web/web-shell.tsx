@@ -3,10 +3,11 @@
 import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard } from "lucide-react";
+import { BookUser, LayoutDashboard } from "lucide-react";
 
 import { TradeFeatureIcon } from "@/components/marketing/trades/trade-feature-icon";
 import { getBelegeHeaderMeta, getBelegeSidebarCopy } from "@/content/belege-module";
+import { getCustomersHeaderMeta, getCustomersSidebarCopy } from "@/content/customers-module";
 import type { Locale } from "@/lib/i18n/locale";
 import {
   getMalerModuleBySegment,
@@ -73,6 +74,10 @@ function getHeaderMeta(
   if (belegeMeta) {
     return belegeMeta;
   }
+  const customersMeta = getCustomersHeaderMeta(p, locale);
+  if (customersMeta) {
+    return customersMeta;
+  }
   if (p.startsWith("/web/maler/")) {
     const rest = p.slice("/web/maler/".length);
     const segment = rest.split("/")[0] ?? "";
@@ -112,6 +117,11 @@ export function WebShell({ webSession, children }: WebShellProps) {
 
   const belegeSidebar = useMemo(
     () => getBelegeSidebarCopy(webSession.locale),
+    [webSession.locale],
+  );
+
+  const customersSidebar = useMemo(
+    () => getCustomersSidebarCopy(webSession.locale),
     [webSession.locale],
   );
 
@@ -197,6 +207,33 @@ export function WebShell({ webSession, children }: WebShellProps) {
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            <SidebarGroup>
+              <SidebarGroupLabel>{customersSidebar.groupLabel}</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {customersSidebar.items.map((item) => {
+                    const isActive =
+                      pathname === item.href ||
+                      pathname.startsWith(`${item.href}/`);
+                    return (
+                      <SidebarMenuItem key={item.href}>
+                        <SidebarMenuButton
+                          asChild
+                          tooltip={item.tooltip}
+                          isActive={isActive}
+                        >
+                          <Link href={item.href}>
+                            <BookUser />
+                            <span className="truncate">{item.label}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>

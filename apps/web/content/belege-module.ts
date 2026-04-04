@@ -105,6 +105,12 @@ type BelegeMessages = {
     linkProject: string;
     noneProject: string;
     totalFromLines: string;
+    masterCustomer: string;
+    noMasterCustomer: string;
+    fillLabelFromMaster: string;
+    newInvoiceFromQuote: string;
+    invoiceFromQuoteHint: string;
+    createInvoiceFromQuote: string;
   };
 };
 
@@ -243,6 +249,13 @@ const de: BelegeMessages = {
     linkProject: "Projekt",
     noneProject: "Kein Projekt",
     totalFromLines: "Summe der Positionen",
+    masterCustomer: "Stammdatenkunde",
+    noMasterCustomer: "Ohne Stammdatenkunde",
+    fillLabelFromMaster: "Empfaenger aus Adresse uebernehmen",
+    newInvoiceFromQuote: "Rechnung aus Angebot",
+    invoiceFromQuoteHint:
+      "Kopfdaten und alle Positionen werden aus dem gewählten Angebot übernommen. Der Gesamtbetrag ergibt sich aus den Zeilen.",
+    createInvoiceFromQuote: "Rechnung aus Angebot erstellen",
   },
 };
 
@@ -381,6 +394,13 @@ const en: BelegeMessages = {
     linkProject: "Project",
     noneProject: "No project",
     totalFromLines: "Sum of line items",
+    masterCustomer: "Master data customer",
+    noMasterCustomer: "No master data customer",
+    fillLabelFromMaster: "Apply address to recipient label",
+    newInvoiceFromQuote: "Invoice from quote",
+    invoiceFromQuoteHint:
+      "Header data and all line items are copied from the selected quote. The total is derived from the lines.",
+    createInvoiceFromQuote: "Create invoice from quote",
   },
 };
 

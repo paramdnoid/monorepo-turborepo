@@ -63,6 +63,19 @@ export const salesCreateInvoiceSchema = z.object({
 
 export type SalesCreateInvoiceInput = z.infer<typeof salesCreateInvoiceSchema>;
 
+/** Body für POST /v1/sales/quotes/:quoteId/invoices — Kopf-/Währung kommen vom Angebot. */
+export const salesCreateInvoiceFromQuoteSchema = z.object({
+  documentNumber: z.string().trim().min(1).max(80),
+  status: salesInvoiceStatusSchema.default("draft"),
+  issuedAt: optionalInstantOrNull,
+  dueAt: optionalInstantOrNull,
+  paidAt: optionalInstantOrNull,
+});
+
+export type SalesCreateInvoiceFromQuoteInput = z.infer<
+  typeof salesCreateInvoiceFromQuoteSchema
+>;
+
 export const salesPatchInvoiceSchema = salesCreateInvoiceSchema.partial();
 
 export type SalesPatchInvoiceInput = z.infer<typeof salesPatchInvoiceSchema>;

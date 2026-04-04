@@ -47,6 +47,7 @@ import {
   createSalesInvoiceLinesReorderHandler,
   createSalesInvoicePatchHandler,
   createSalesInvoicePdfHandler,
+  createSalesInvoiceFromQuotePostHandler,
   createSalesInvoicePostHandler,
   createSalesInvoicesListHandler,
   createSalesQuoteDetailHandler,
@@ -59,6 +60,15 @@ import {
   createSalesQuotePostHandler,
   createSalesQuotesListHandler,
 } from "./routes/sales.js";
+import {
+  createCustomerAddressDeleteHandler,
+  createCustomerAddressPatchHandler,
+  createCustomerAddressPostHandler,
+  createCustomerDetailHandler,
+  createCustomerPatchHandler,
+  createCustomerPostHandler,
+  createCustomersListHandler,
+} from "./routes/customers.js";
 import {
   createDatevBookingsExportHandler,
   createDatevSettingsGetHandler,
@@ -104,6 +114,8 @@ export function createApp(options?: CreateAppOptions) {
   const catalogImportPatch = createCatalogImportPatchHandler(getDb);
   const salesQuotesList = createSalesQuotesListHandler(getDb);
   const salesQuotePost = createSalesQuotePostHandler(getDb);
+  const salesInvoiceFromQuotePost =
+    createSalesInvoiceFromQuotePostHandler(getDb);
   const salesQuoteLinePost = createSalesQuoteLinePostHandler(getDb);
   const salesQuoteLinesReorder = createSalesQuoteLinesReorderHandler(getDb);
   const salesQuoteLinePatch = createSalesQuoteLinePatchHandler(getDb);
@@ -126,6 +138,13 @@ export function createApp(options?: CreateAppOptions) {
   const datevSettingsGet = createDatevSettingsGetHandler(getDb);
   const datevSettingsPatch = createDatevSettingsPatchHandler(getDb);
   const datevBookingsExport = createDatevBookingsExportHandler(getDb);
+  const customersList = createCustomersListHandler(getDb);
+  const customerPost = createCustomerPostHandler(getDb);
+  const customerDetail = createCustomerDetailHandler(getDb);
+  const customerPatch = createCustomerPatchHandler(getDb);
+  const customerAddressPost = createCustomerAddressPostHandler(getDb);
+  const customerAddressPatch = createCustomerAddressPatchHandler(getDb);
+  const customerAddressDelete = createCustomerAddressDeleteHandler(getDb);
 
   const app = new Hono();
 
@@ -211,6 +230,21 @@ export function createApp(options?: CreateAppOptions) {
   v1.get("/organization/logo", orgMiddleware, organizationLogoGet);
   v1.post("/organization/logo", orgMiddleware, organizationLogoPost);
   v1.patch("/organization", orgMiddleware, organizationPatch);
+  v1.get("/customers", orgMiddleware, customersList);
+  v1.post("/customers", orgMiddleware, customerPost);
+  v1.get("/customers/:id", orgMiddleware, customerDetail);
+  v1.patch("/customers/:id", orgMiddleware, customerPatch);
+  v1.post("/customers/:id/addresses", orgMiddleware, customerAddressPost);
+  v1.patch(
+    "/customers/:id/addresses/:addressId",
+    orgMiddleware,
+    customerAddressPatch,
+  );
+  v1.delete(
+    "/customers/:id/addresses/:addressId",
+    orgMiddleware,
+    customerAddressDelete,
+  );
   v1.get("/datev/settings", orgMiddleware, datevSettingsGet);
   v1.patch("/datev/settings", orgMiddleware, datevSettingsPatch);
   v1.get("/datev/export/bookings.csv", orgMiddleware, datevBookingsExport);
@@ -241,6 +275,11 @@ export function createApp(options?: CreateAppOptions) {
   v1.patch("/catalog/imports/:id", orgMiddleware, catalogImportPatch);
   v1.get("/sales/quotes", orgMiddleware, salesQuotesList);
   v1.post("/sales/quotes", orgMiddleware, salesQuotePost);
+  v1.post(
+    "/sales/quotes/:id/invoices",
+    orgMiddleware,
+    salesInvoiceFromQuotePost,
+  );
   v1.post("/sales/quotes/:id/lines", orgMiddleware, salesQuoteLinePost);
   v1.put(
     "/sales/quotes/:id/lines/reorder",
