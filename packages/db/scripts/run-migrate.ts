@@ -43,7 +43,7 @@ try {
   console.error(err);
   if (isScramPasswordError(err)) {
     console.error(`
-SCRAM: Postgres verlangt ein Passwort als String. Bitte in `.env.local` am Repository-Root:
+SCRAM: Postgres verlangt ein Passwort als String. Bitte in \`.env.local\` am Repository-Root:
   • DATABASE_URL=postgresql://USER:PASSWORT@127.0.0.1:5432/DB (PASSWORT nicht leer lassen), oder
   • PGPASSWORD=<Passwort> setzen (node-pg nutzt das, wenn die URL kein Passwort hat).
 `);
