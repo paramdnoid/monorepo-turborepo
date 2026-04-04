@@ -3,6 +3,9 @@
   "extends": ["//"],
   "tags": ["pkg"],
   "tasks": {
+    "build": {
+      "outputs": []
+    },
     "generate:icons": {
       "cache": false,
       "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/brand/assets/logo.png"]
