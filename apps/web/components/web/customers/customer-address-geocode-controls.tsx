@@ -121,6 +121,8 @@ export function CustomerAddressGeocodeControls({
       <div className="flex flex-wrap gap-2">
         <Input
           id={qId}
+          name="geocodeQuery"
+          autoComplete="off"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={g.queryPlaceholder}
@@ -136,7 +138,15 @@ export function CustomerAddressGeocodeControls({
           {g.lookupButton}
         </Button>
       </div>
-      {msg ? <p className="text-xs text-muted-foreground">{msg}</p> : null}
+      {msg ? (
+        <p
+          className="text-xs text-muted-foreground"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          {msg}
+        </p>
+      ) : null}
       {suggestions.length > 0 ? (
         <div className="grid gap-2">
           <p className="text-xs font-medium text-muted-foreground">

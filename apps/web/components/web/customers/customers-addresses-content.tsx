@@ -227,6 +227,8 @@ export function CustomersAddressesContent({ locale }: CustomersAddressesContentP
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <Input
               id="addr-search"
+              name="q"
+              autoComplete="off"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder={copy.searchPlaceholder}
@@ -286,7 +288,9 @@ export function CustomersAddressesContent({ locale }: CustomersAddressesContentP
                 <TableHead>{copy.tableKind}</TableHead>
                 <TableHead>{copy.tableCity}</TableHead>
                 <TableHead>{copy.tableStreet}</TableHead>
-                <TableHead className="w-[120px] text-right" />
+                <TableHead className="w-[120px] text-right">
+                  {copy.tableActions}
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

@@ -340,6 +340,9 @@ export function CustomersListContent({ locale }: CustomersListContentProps) {
       <div className="flex flex-col gap-3">
         <div className="flex flex-wrap items-end gap-4">
           <div className="flex min-w-[240px] flex-1 flex-col gap-1">
+            <Label htmlFor="customers-search" className="text-xs font-medium">
+              {copy.search}
+            </Label>
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -348,6 +351,9 @@ export function CustomersListContent({ locale }: CustomersListContentProps) {
               className="flex flex-wrap gap-2"
             >
               <Input
+                id="customers-search"
+                name="q"
+                autoComplete="off"
                 placeholder={copy.searchPlaceholder}
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
@@ -432,7 +438,9 @@ export function CustomersListContent({ locale }: CustomersListContentProps) {
                 <TableHead>{copy.tableName}</TableHead>
                 <TableHead>{copy.tableCity}</TableHead>
                 <TableHead>{copy.tableNumber}</TableHead>
-                <TableHead className="w-[120px]" />
+                <TableHead className="w-[120px] text-right">
+                  {copy.tableActions}
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

@@ -80,6 +80,8 @@ export function CustomerAddressManualFields({
             id={`${p}-plz`}
             value={values.postal}
             onChange={(e) => onChange({ postal: e.target.value })}
+            autoComplete="postal-code"
+            inputMode="numeric"
             required={requireCoreAddressFields}
           />
         </div>
@@ -100,6 +102,8 @@ export function CustomerAddressManualFields({
           value={values.country}
           onChange={(e) => onChange({ country: e.target.value })}
           maxLength={2}
+          autoComplete="off"
+          spellCheck={false}
           className={countryClassName ?? "uppercase"}
           required={requireCoreAddressFields}
         />

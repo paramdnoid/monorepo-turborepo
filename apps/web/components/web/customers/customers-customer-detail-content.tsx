@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Building2, MapPin, Pencil, Plus } from "lucide-react";
+import { Building2, Loader2, MapPin, Pencil, Plus } from "lucide-react";
 import { toast } from "sonner";
 import {
   CUSTOMER_ADDRESS_KIND_OPTIONS,
@@ -622,7 +622,17 @@ export function CustomersCustomerDetailContent({
                 {copy.cancel}
               </Button>
               <Button type="submit" disabled={masterBusy}>
-                {copy.save}
+                {masterBusy ? (
+                  <>
+                    <Loader2
+                      className="mr-2 size-4 animate-spin"
+                      aria-hidden
+                    />
+                    {copy.saving}
+                  </>
+                ) : (
+                  copy.save
+                )}
               </Button>
             </DialogFooter>
           </form>
@@ -694,7 +704,17 @@ export function CustomersCustomerDetailContent({
                 {copy.cancel}
               </Button>
               <Button type="submit" disabled={addBusy}>
-                {copy.addAddress}
+                {addBusy ? (
+                  <>
+                    <Loader2
+                      className="mr-2 size-4 animate-spin"
+                      aria-hidden
+                    />
+                    {copy.addingAddress}
+                  </>
+                ) : (
+                  copy.addAddress
+                )}
               </Button>
             </DialogFooter>
           </form>

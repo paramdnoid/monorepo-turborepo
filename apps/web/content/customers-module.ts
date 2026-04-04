@@ -44,6 +44,7 @@ type CustomersCopy = {
     paginationPrev: string;
     paginationNext: string;
     paginationTemplate: string;
+    tableActions: string;
   };
   addressesList: {
     searchPlaceholder: string;
@@ -60,10 +61,12 @@ type CustomersCopy = {
     paginationPrev: string;
     paginationNext: string;
     paginationTemplate: string;
+    tableActions: string;
   };
   detail: {
     back: string;
     save: string;
+    saving: string;
     saved: string;
     loadError: string;
     notFound: string;
@@ -76,6 +79,7 @@ type CustomersCopy = {
     unarchive: string;
     addressesHeading: string;
     addAddress: string;
+    addingAddress: string;
     addressKind: string;
     addressLabel: string;
     recipientName: string;
@@ -181,6 +185,7 @@ const de: CustomersCopy = {
     paginationPrev: "Zurueck",
     paginationNext: "Weiter",
     paginationTemplate: "{from}–{to} von {total}",
+    tableActions: "Aktionen",
   },
   addressesList: {
     searchPlaceholder: "Suche Kunde, Strasse, Ort, PLZ …",
@@ -197,10 +202,12 @@ const de: CustomersCopy = {
     paginationPrev: "Zurueck",
     paginationNext: "Weiter",
     paginationTemplate: "{from}–{to} von {total}",
+    tableActions: "Aktionen",
   },
   detail: {
     back: "Zur Liste",
     save: "Speichern",
+    saving: "Speichern…",
     saved: "Gespeichert.",
     loadError: "Kunde konnte nicht geladen werden.",
     notFound: "Kunde nicht gefunden.",
@@ -213,6 +220,7 @@ const de: CustomersCopy = {
     unarchive: "Wiederherstellen",
     addressesHeading: "Adressen",
     addAddress: "Adresse hinzufuegen",
+    addingAddress: "Adresse wird hinzugefuegt…",
     addressKind: "Art",
     addressLabel: "Bezeichnung (optional)",
     recipientName: "Empfaenger",
@@ -326,6 +334,7 @@ const en: CustomersCopy = {
     paginationPrev: "Previous",
     paginationNext: "Next",
     paginationTemplate: "{from}–{to} of {total}",
+    tableActions: "Actions",
   },
   addressesList: {
     searchPlaceholder: "Search customer, street, city, postal code …",
@@ -342,10 +351,12 @@ const en: CustomersCopy = {
     paginationPrev: "Previous",
     paginationNext: "Next",
     paginationTemplate: "{from}–{to} of {total}",
+    tableActions: "Actions",
   },
   detail: {
     back: "Back to list",
     save: "Save",
+    saving: "Saving…",
     saved: "Saved.",
     loadError: "Could not load customer.",
     notFound: "Customer not found.",
@@ -358,6 +369,7 @@ const en: CustomersCopy = {
     unarchive: "Restore",
     addressesHeading: "Addresses",
     addAddress: "Add address",
+    addingAddress: "Adding address…",
     addressKind: "Type",
     addressLabel: "Label (optional)",
     recipientName: "Recipient",
