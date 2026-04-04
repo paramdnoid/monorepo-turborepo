@@ -57,6 +57,21 @@ type CustomersCopy = {
     site: string;
     other: string;
   };
+  geocode: {
+    lookupLabel: string;
+    lookupHint: string;
+    lookupButton: string;
+    applyFirst: string;
+    noneFound: string;
+    failed: string;
+    standardBadge: string;
+  };
+  overview: {
+    stampTitle: string;
+    stampSubtitle: string;
+    customersLink: string;
+    salesLink: string;
+  };
 };
 
 const de: CustomersCopy = {
@@ -120,6 +135,22 @@ const de: CustomersCopy = {
     shipping: "Lieferung",
     site: "Baustelle / Objekt",
     other: "Sonstige",
+  },
+  geocode: {
+    lookupLabel: "Adresse suchen (Geocoding)",
+    lookupHint:
+      "Suchbegriff eingeben (z. B. Strasse und Ort), dann Vorschlag uebernehmen.",
+    lookupButton: "Vorschlaege suchen",
+    applyFirst: "Ersten Vorschlag uebernehmen",
+    noneFound: "Keine Treffer.",
+    failed: "Suche fehlgeschlagen.",
+    standardBadge: "Standard",
+  },
+  overview: {
+    stampTitle: "Stammdaten",
+    stampSubtitle: "Fuer alle Gewerke: Kunden und Adressen verwalten.",
+    customersLink: "Kunden & Adressen",
+    salesLink: "Angebote & Rechnungen",
   },
 };
 
@@ -185,6 +216,21 @@ const en: CustomersCopy = {
     site: "Site / object",
     other: "Other",
   },
+  geocode: {
+    lookupLabel: "Address lookup (geocoding)",
+    lookupHint: "Enter a query (e.g. street and city), then apply a suggestion.",
+    lookupButton: "Search suggestions",
+    applyFirst: "Apply first suggestion",
+    noneFound: "No results.",
+    failed: "Lookup failed.",
+    standardBadge: "Default",
+  },
+  overview: {
+    stampTitle: "Master data",
+    stampSubtitle: "For all trades: manage customers and addresses.",
+    customersLink: "Customers & addresses",
+    salesLink: "Quotes & invoices",
+  },
 };
 
 function copy(locale: Locale): CustomersCopy {
@@ -200,7 +246,7 @@ export function getCustomersSidebarCopy(locale: Locale): {
     groupLabel: c.sidebarGroup,
     items: [
       {
-        href: "/web/kunden",
+        href: "/web/customers",
         label: c.navItem,
         tooltip: c.navTooltip,
       },
@@ -216,11 +262,11 @@ export function getCustomersHeaderMeta(
   const p = pathname.length > 1 && pathname.endsWith("/")
     ? pathname.slice(0, -1)
     : pathname;
-  if (p === "/web/kunden") {
+  if (p === "/web/customers") {
     return c.headers.list;
   }
   if (
-    /^\/web\/kunden\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    /^\/web\/customers\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
       p,
     )
   ) {
@@ -235,6 +281,14 @@ export function getCustomersListCopy(locale: Locale) {
 
 export function getCustomersDetailCopy(locale: Locale) {
   return copy(locale).detail;
+}
+
+export function getCustomersGeocodeCopy(locale: Locale) {
+  return copy(locale).geocode;
+}
+
+export function getCustomersOverviewCopy(locale: Locale) {
+  return copy(locale).overview;
 }
 
 export function getCustomersKindLabel(

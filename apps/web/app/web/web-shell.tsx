@@ -6,13 +6,13 @@ import { usePathname, useRouter } from "next/navigation";
 import { BookUser, LayoutDashboard } from "lucide-react";
 
 import { TradeFeatureIcon } from "@/components/marketing/trades/trade-feature-icon";
-import { getBelegeHeaderMeta, getBelegeSidebarCopy } from "@/content/belege-module";
+import { getSalesHeaderMeta, getSalesSidebarCopy } from "@/content/sales-module";
 import { getCustomersHeaderMeta, getCustomersSidebarCopy } from "@/content/customers-module";
 import type { Locale } from "@/lib/i18n/locale";
 import {
-  getMalerModuleBySegment,
-  getMalerModulesOrdered,
-} from "@/lib/trades/maler-modules";
+  getPainterModuleBySegment,
+  getPainterModulesOrdered,
+} from "@/lib/trades/painter-modules";
 import {
   Sidebar,
   SidebarBrand,
@@ -49,8 +49,8 @@ function normalizePath(pathname: string): string {
   return pathname;
 }
 
-function isBelegePrintPreviewPath(pathname: string): boolean {
-  return /^\/web\/belege\/(angebote|rechnungen)\/[^/]+\/druck$/.test(pathname);
+function isSalesPrintPreviewPath(pathname: string): boolean {
+  return /^\/web\/sales\/(quotes|invoices)\/[^/]+\/print$/.test(pathname);
 }
 
 function getHeaderMeta(
@@ -70,19 +70,19 @@ function getHeaderMeta(
       subtitle: "Next.js · shadcn Sidebar-Layout (Radix Nova)",
     };
   }
-  const belegeMeta = getBelegeHeaderMeta(p, locale);
-  if (belegeMeta) {
-    return belegeMeta;
+  const salesMeta = getSalesHeaderMeta(p, locale);
+  if (salesMeta) {
+    return salesMeta;
   }
   const customersMeta = getCustomersHeaderMeta(p, locale);
   if (customersMeta) {
     return customersMeta;
   }
-  if (p.startsWith("/web/maler/")) {
-    const rest = p.slice("/web/maler/".length);
+  if (p.startsWith("/web/painter/")) {
+    const rest = p.slice("/web/painter/".length);
     const segment = rest.split("/")[0] ?? "";
     if (segment) {
-      const mod = getMalerModuleBySegment(locale, segment);
+      const mod = getPainterModuleBySegment(locale, segment);
       if (mod) {
         return {
           title: mod.feature.label,
@@ -110,13 +110,13 @@ export function WebShell({ webSession, children }: WebShellProps) {
   const pathname = normalizePath(usePathname());
   const { title, subtitle } = getHeaderMeta(pathname, webSession.locale);
 
-  const malerModules = useMemo(
-    () => getMalerModulesOrdered(webSession.locale),
+  const painterModules = useMemo(
+    () => getPainterModulesOrdered(webSession.locale),
     [webSession.locale],
   );
 
-  const belegeSidebar = useMemo(
-    () => getBelegeSidebarCopy(webSession.locale),
+  const salesSidebar = useMemo(
+    () => getSalesSidebarCopy(webSession.locale),
     [webSession.locale],
   );
 
@@ -171,9 +171,9 @@ export function WebShell({ webSession, children }: WebShellProps) {
   );
 
   const overviewActive = pathname === "/web";
-  const belegePrintPreview = isBelegePrintPreviewPath(pathname);
+  const salesPrintPreview = isSalesPrintPreviewPath(pathname);
 
-  if (belegePrintPreview) {
+  if (salesPrintPreview) {
     return (
       <WebAppProvider value={appValue}>
         <div className="min-h-svh min-w-0 bg-muted/30 p-6 print:bg-white print:p-0">
@@ -239,13 +239,13 @@ export function WebShell({ webSession, children }: WebShellProps) {
             </SidebarGroup>
 
             <SidebarGroup>
-              <SidebarGroupLabel>{belegeSidebar.groupLabel}</SidebarGroupLabel>
+              <SidebarGroupLabel>{salesSidebar.groupLabel}</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {belegeSidebar.items.map((item) => {
+                  {salesSidebar.items.map((item) => {
                     const isActive =
-                      item.href === "/web/belege"
-                        ? pathname === "/web/belege"
+                      item.href === "/web/sales"
+                        ? pathname === "/web/sales"
                         : pathname === item.href ||
                           pathname.startsWith(`${item.href}/`);
                     return (
@@ -275,7 +275,7 @@ export function WebShell({ webSession, children }: WebShellProps) {
               </SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {malerModules.map(({ segment, href, feature }) => {
+                  {painterModules.map(({ segment, href, feature }) => {
                     const isActive =
                       pathname === href || pathname.startsWith(`${href}/`);
                     return (

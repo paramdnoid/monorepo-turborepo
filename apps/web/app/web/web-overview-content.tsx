@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Loader2 } from "lucide-react";
+import { BookUser, Loader2, Receipt } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@repo/ui/alert";
 import { Button } from "@repo/ui/button";
 
 import { TradeFeatureIcon } from "@/components/marketing/trades/trade-feature-icon";
-import { getMalerModulesOrdered } from "@/lib/trades/maler-modules";
+import { getCustomersOverviewCopy } from "@/content/customers-module";
+import { getPainterModulesOrdered } from "@/lib/trades/painter-modules";
 
 import type { WebDesktopAuthState } from "./web-desktop-bridge";
 import { useWebApp } from "./web-app-context";
@@ -51,8 +52,12 @@ function formatBackendMeError(status: number, body: string): string {
 
 export function WebOverviewContent() {
   const { session: webSession, logout, logoutBusy, logoutError } = useWebApp();
-  const malerModules = useMemo(
-    () => getMalerModulesOrdered(webSession.locale),
+  const painterModules = useMemo(
+    () => getPainterModulesOrdered(webSession.locale),
+    [webSession.locale],
+  );
+  const customersOverview = useMemo(
+    () => getCustomersOverviewCopy(webSession.locale),
     [webSession.locale],
   );
   const [ipcStatus, setIpcStatus] = useState<string>("…");
@@ -181,6 +186,43 @@ export function WebOverviewContent() {
 
       <section className="rounded-xl border bg-card p-6 text-card-foreground shadow-sm">
         <h2 className="mb-1 text-lg font-semibold tracking-tight">
+          {customersOverview.stampTitle}
+        </h2>
+        <p className="mb-4 text-sm text-muted-foreground">
+          {customersOverview.stampSubtitle}
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Link
+            href="/web/customers"
+            className="flex gap-3 rounded-lg border border-transparent bg-muted/30 p-4 transition-colors hover:border-border hover:bg-muted/50"
+          >
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/8 ring-1 ring-primary/10">
+              <BookUser className="size-5 text-primary" aria-hidden />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium leading-tight">
+                {customersOverview.customersLink}
+              </p>
+            </div>
+          </Link>
+          <Link
+            href="/web/sales"
+            className="flex gap-3 rounded-lg border border-transparent bg-muted/30 p-4 transition-colors hover:border-border hover:bg-muted/50"
+          >
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/8 ring-1 ring-primary/10">
+              <Receipt className="size-5 text-primary" aria-hidden />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium leading-tight">
+                {customersOverview.salesLink}
+              </p>
+            </div>
+          </Link>
+        </div>
+      </section>
+
+      <section className="rounded-xl border bg-card p-6 text-card-foreground shadow-sm">
+        <h2 className="mb-1 text-lg font-semibold tracking-tight">
           {webSession.locale === "en"
             ? "Painter & decorator"
             : "Maler & Tapezierer"}
@@ -191,7 +233,7 @@ export function WebOverviewContent() {
             : "Module öffnen, um die Vorschau zu erkunden."}
         </p>
         <div className="grid gap-3 sm:grid-cols-2">
-          {malerModules.map(({ href, feature, segment }) => (
+          {painterModules.map(({ href, feature, segment }) => (
             <Link
               key={segment}
               href={href}

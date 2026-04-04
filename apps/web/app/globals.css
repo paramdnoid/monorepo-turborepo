@@ -225,19 +225,19 @@
   backdrop-filter: blur(14px);
 }
 
-/* Belege: druckoptimierte HTML-Vorschau */
+/* Sales documents: print-optimized HTML preview */
 @media print {
   @page {
     size: A4;
     margin: 12mm;
   }
 
-  .beleg-druck-dokument {
+  .sales-print-document {
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
   }
 
-  .beleg-druck-tabelle tbody tr {
+  .sales-print-table tbody tr {
     break-inside: avoid;
     page-break-inside: avoid;
   }
