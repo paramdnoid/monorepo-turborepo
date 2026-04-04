@@ -64,3 +64,4 @@ pnpm-debug.log*
 # Misc
 .DS_Store
 *.pem
+apps/api/.local/project-assets/*
