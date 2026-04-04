@@ -2,6 +2,7 @@
 
 import { createContext, useContext } from "react";
 
+import type { WebPermissionMatrix } from "@/lib/auth/web-permissions";
 import type { Locale } from "@/lib/i18n/locale";
 
 export type WebShellSession = {
@@ -14,6 +15,8 @@ export type WebShellSession = {
   tradeSlug: string | null;
   /** UI-Sprache (Server), u. a. für Maler-Modul-Navigation. */
   locale: Locale;
+  /** Aus Rollen abgeleitete Modulrechte (view/edit/delete/export/batch). */
+  permissions: WebPermissionMatrix;
 };
 
 export type WebAppContextValue = {

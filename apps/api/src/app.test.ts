@@ -118,3 +118,78 @@ test("POST /v1/employees/:id/attachments ohne Authorization", async () => {
   );
   assert.equal(res.status, 401);
 });
+
+test("GET /v1/settings/colors ohne Authorization", async () => {
+  const app = createApp({
+    verifyAccessToken: async () => ({ sub: "u1", tenantId: "t1", roles: [] }),
+    getDb: () => undefined,
+  });
+  const res = await app.request("http://localhost/v1/settings/colors");
+  assert.equal(res.status, 401);
+});
+
+test("PUT /v1/settings/colors ohne Authorization", async () => {
+  const app = createApp({
+    verifyAccessToken: async () => ({ sub: "u1", tenantId: "t1", roles: [] }),
+    getDb: () => undefined,
+  });
+  const res = await app.request("http://localhost/v1/settings/colors", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ scope: "user", favorites: [], recent: [] }),
+  });
+  assert.equal(res.status, 401);
+});
+
+test("GET /v1/settings/notifications mit Token aber ohne DB", async () => {
+  const app = createApp({
+    verifyAccessToken: async () => ({ sub: "u1", tenantId: "t1", roles: [] }),
+    getDb: () => undefined,
+  });
+  const res = await app.request("http://localhost/v1/settings/notifications", {
+    headers: { Authorization: "Bearer fake" },
+  });
+  assert.equal(res.status, 503);
+  const body = (await res.json()) as { error: string };
+  assert.equal(body.error, "database_unavailable");
+});
+
+test("GET /v1/settings/colors mit Token aber ohne DB", async () => {
+  const app = createApp({
+    verifyAccessToken: async () => ({ sub: "u1", tenantId: "t1", roles: [] }),
+    getDb: () => undefined,
+  });
+  const res = await app.request("http://localhost/v1/settings/colors", {
+    headers: { Authorization: "Bearer fake" },
+  });
+  assert.equal(res.status, 503);
+  const body = (await res.json()) as { error: string };
+  assert.equal(body.error, "database_unavailable");
+});
+
+test("PUT /v1/settings/colors mit invalid JSON liefert 400", async () => {
+  const dbStub = {
+    select: () => ({
+      from: () => ({
+        where: () => ({
+          limit: async () => [{ tenantId: "t1" }],
+        }),
+      }),
+    }),
+  };
+  const app = createApp({
+    verifyAccessToken: async () => ({ sub: "u1", tenantId: "t1", roles: [] }),
+    getDb: () => dbStub as never,
+  });
+  const res = await app.request("http://localhost/v1/settings/colors", {
+    method: "PUT",
+    headers: {
+      Authorization: "Bearer fake",
+      "Content-Type": "application/json",
+    },
+    body: "{invalid",
+  });
+  assert.equal(res.status, 400);
+  const body = (await res.json()) as { error: string };
+  assert.equal(body.error, "invalid_json");
+});

@@ -7,7 +7,9 @@ export async function fetchSalesProjectOptions(): Promise<
   { id: string; title: string }[]
 > {
   try {
-    const res = await fetch("/api/web/projects", { credentials: "include" });
+    const res = await fetch("/api/web/projects?includeArchived=1&limit=200", {
+      credentials: "include",
+    });
     if (!res.ok) return [];
     const json: unknown = await res.json();
     const parsed = projectsListResponseSchema.safeParse(json);
@@ -21,7 +23,10 @@ export async function fetchSalesQuoteLinkOptions(): Promise<
   { id: string; label: string }[]
 > {
   try {
-    const res = await fetch("/api/web/sales/quotes", { credentials: "include" });
+    const res = await fetch(
+      "/api/web/sales/quotes?limit=200&sortBy=updatedAt&sortDir=desc",
+      { credentials: "include" },
+    );
     if (!res.ok) return [];
     const json: unknown = await res.json();
     const parsed = salesQuotesListResponseSchema.safeParse(json);

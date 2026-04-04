@@ -1,7 +1,6 @@
 import type { NcsEntry, RalClassicEntry } from "./types";
 
-const PREVIEW_NCS = 120;
-const MAX_RESULTS = 400;
+const MAX_RESULTS = 1200;
 
 function norm(s: string): string {
   return s.trim().toUpperCase().replace(/\s+/g, " ");
@@ -35,7 +34,7 @@ export function filterNcsCatalog(
   query: string,
 ): NcsEntry[] {
   const q = norm(query);
-  if (!q) return entries.slice(0, PREVIEW_NCS);
+  if (!q) return [...entries];
   const qc = compact(q);
   const filtered = entries.filter((e) => {
     const n = norm(e.notation);

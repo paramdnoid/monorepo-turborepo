@@ -9,9 +9,20 @@ import {
 import Link from "next/link";
 import { customersAddressesListResponseSchema } from "@repo/api-contracts";
 import type { z } from "zod";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@repo/ui/alert-dialog";
 import { Alert, AlertDescription } from "@repo/ui/alert";
 import { Button } from "@repo/ui/button";
 import { Checkbox } from "@repo/ui/checkbox";
+import { Dialog } from "@repo/ui/dialog";
 import { Input } from "@repo/ui/input";
 import { Label } from "@repo/ui/label";
 import { Skeleton } from "@repo/ui/skeleton";
@@ -27,10 +38,14 @@ import {
 import {
   formatCustomersAddressesPaginationRange,
   getCustomersAddressesListCopy,
+  getCustomersDetailCopy,
   getCustomersKindLabel,
 } from "@/content/customers-module";
 import type { Locale } from "@/lib/i18n/locale";
 import { parseResponseJson } from "@/lib/parse-response-json";
+import { toast } from "sonner";
+
+import { CustomerAddressEditDialogContent } from "./customer-detail-address-edit-dialog";
 
 const PAGE_SIZE = 25;
 
@@ -131,6 +146,7 @@ function AddressesTableSkeleton() {
 
 export function CustomersAddressesContent({ locale }: CustomersAddressesContentProps) {
   const copy = getCustomersAddressesListCopy(locale);
+  const detailCopy = getCustomersDetailCopy(locale);
   const [searchInput, setSearchInput] = useState("");
   const [fetchState, fetchDispatch] = useReducer(listFetchReducer, {
     debouncedQ: "",
@@ -143,6 +159,13 @@ export function CustomersAddressesContent({ locale }: CustomersAddressesContentP
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<Row[]>([]);
   const [total, setTotal] = useState(0);
+  const [canEdit, setCanEdit] = useState(false);
+  const [mutationBusy, setMutationBusy] = useState(false);
+  const [editingRow, setEditingRow] = useState<Row | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<{
+    customerId: string;
+    addressId: string;
+  } | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -171,6 +194,7 @@ export function CustomersAddressesContent({ locale }: CustomersAddressesContentP
         setError(copy.loadError);
         setRows([]);
         setTotal(0);
+        setCanEdit(false);
         return;
       }
       const json = parseResponseJson(text);
@@ -178,6 +202,7 @@ export function CustomersAddressesContent({ locale }: CustomersAddressesContentP
         setError(copy.loadError);
         setRows([]);
         setTotal(0);
+        setCanEdit(false);
         return;
       }
       const parsed = customersAddressesListResponseSchema.safeParse(json);
@@ -185,14 +210,17 @@ export function CustomersAddressesContent({ locale }: CustomersAddressesContentP
         setError(copy.loadError);
         setRows([]);
         setTotal(0);
+        setCanEdit(false);
         return;
       }
       setRows(parsed.data.rows);
       setTotal(parsed.data.total);
+      setCanEdit(parsed.data.permissions.canEdit);
     } catch {
       setError(copy.loadError);
       setRows([]);
       setTotal(0);
+      setCanEdit(false);
     } finally {
       setLoading(false);
     }
@@ -205,6 +233,71 @@ export function CustomersAddressesContent({ locale }: CustomersAddressesContentP
   function flushSearchNow() {
     const q = searchInput.trim();
     fetchDispatch({ type: "setDebouncedQ", q });
+  }
+
+  async function patchAddress(
+    customerId: string,
+    addressId: string,
+    patch: Record<string, unknown>,
+  ) {
+    setMutationBusy(true);
+    try {
+      const res = await fetch(
+        `/api/web/customers/${customerId}/addresses/${addressId}`,
+        {
+          method: "PATCH",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(patch),
+        },
+      );
+      if (res.status === 403) {
+        toast.error(copy.loadError);
+        return;
+      }
+      if (!res.ok) {
+        toast.error(detailCopy.validation);
+        return;
+      }
+      setEditingRow(null);
+      fetchDispatch({ type: "bumpReload" });
+      toast.success(detailCopy.saved);
+    } catch {
+      toast.error(copy.loadError);
+    } finally {
+      setMutationBusy(false);
+    }
+  }
+
+  async function confirmDeleteAddress() {
+    if (!pendingDelete) {
+      return;
+    }
+    setMutationBusy(true);
+    try {
+      const res = await fetch(
+        `/api/web/customers/${pendingDelete.customerId}/addresses/${pendingDelete.addressId}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+        },
+      );
+      if (res.status === 403) {
+        toast.error(copy.loadError);
+        return;
+      }
+      if (!res.ok) {
+        toast.error(detailCopy.validation);
+        return;
+      }
+      fetchDispatch({ type: "bumpReload" });
+      toast.success(detailCopy.saved);
+    } catch {
+      toast.error(copy.loadError);
+    } finally {
+      setPendingDelete(null);
+      setMutationBusy(false);
+    }
   }
 
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -288,7 +381,7 @@ export function CustomersAddressesContent({ locale }: CustomersAddressesContentP
                 <TableHead>{copy.tableKind}</TableHead>
                 <TableHead>{copy.tableCity}</TableHead>
                 <TableHead>{copy.tableStreet}</TableHead>
-                <TableHead className="w-[120px] text-right">
+                <TableHead className="w-[220px] text-right">
                   {copy.tableActions}
                 </TableHead>
               </TableRow>
@@ -307,18 +400,50 @@ export function CustomersAddressesContent({ locale }: CustomersAddressesContentP
                     </div>
                   </TableCell>
                   <TableCell className="text-sm">
-                    {getCustomersKindLabel(locale, r.address.kind)}
+                    <span>{getCustomersKindLabel(locale, r.address.kind)}</span>
+                    {r.address.isDefault ? (
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        ({detailCopy.defaultForKind})
+                      </span>
+                    ) : null}
                   </TableCell>
                   <TableCell className="text-sm">{r.address.city}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {r.address.street}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button variant="link" size="sm" className="h-auto p-0" asChild>
-                      <Link href={`/web/customers/${r.customerId}`}>
-                        {copy.openCustomer}
-                      </Link>
-                    </Button>
+                    <div className="flex justify-end gap-2">
+                      {canEdit ? (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={mutationBusy}
+                            onClick={() => setEditingRow(r)}
+                          >
+                            {detailCopy.edit}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={mutationBusy}
+                            onClick={() =>
+                              setPendingDelete({
+                                customerId: r.customerId,
+                                addressId: r.address.id,
+                              })
+                            }
+                          >
+                            {detailCopy.deleteAddress}
+                          </Button>
+                        </>
+                      ) : null}
+                      <Button variant="link" size="sm" className="h-auto p-0" asChild>
+                        <Link href={`/web/customers/${r.customerId}`}>
+                          {copy.openCustomer}
+                        </Link>
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -362,6 +487,62 @@ export function CustomersAddressesContent({ locale }: CustomersAddressesContentP
           </div>
         </div>
       ) : null}
+
+      <Dialog
+        open={editingRow !== null}
+        onOpenChange={(open) => {
+          if (!open && !mutationBusy) {
+            setEditingRow(null);
+          }
+        }}
+      >
+        {editingRow ? (
+          <CustomerAddressEditDialogContent
+            locale={locale}
+            address={editingRow.address}
+            onDismiss={() => {
+              if (!mutationBusy) {
+                setEditingRow(null);
+              }
+            }}
+            onPatch={(patch) =>
+              void patchAddress(editingRow.customerId, editingRow.address.id, patch)
+            }
+          />
+        ) : null}
+      </Dialog>
+
+      <AlertDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => {
+          if (!open && !mutationBusy) {
+            setPendingDelete(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{detailCopy.deleteAddressConfirmTitle}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {detailCopy.deleteAddressConfirmDescription}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={mutationBusy}>
+              {detailCopy.cancel}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={mutationBusy}
+              onClick={(ev) => {
+                ev.preventDefault();
+                void confirmDeleteAddress();
+              }}
+            >
+              {detailCopy.deleteAddressConfirm}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

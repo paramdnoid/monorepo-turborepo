@@ -1,6 +1,20 @@
-import { redirect } from "next/navigation";
+import type { Metadata } from "next";
 
-/** Frueher Modul-Landing; Stammdaten starten direkt bei der Kundenliste. */
-export default function CustomersRootRedirectPage() {
-  redirect("/web/customers/list");
+import { getServerLocale } from "@/lib/i18n/server-locale";
+
+import { CustomersModuleLandingContent } from "@/components/web/customers/customers-module-landing-content";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getServerLocale();
+  return {
+    title: locale === "en" ? "Customers" : "Kunden",
+    description:
+      locale === "en"
+        ? "Module entry for customer master data and addresses."
+        : "Moduleinstieg fuer Kundenstamm und Adressen.",
+  };
+}
+
+export default function CustomersRootPage() {
+  return <CustomersModuleLandingContent />;
 }

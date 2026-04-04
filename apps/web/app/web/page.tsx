@@ -7,11 +7,11 @@ import { WebOverviewContent } from "@/components/web/overview/web-overview-conte
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getServerLocale();
   return {
-    title: "App",
+    title: locale === "en" ? "Dashboard" : "Dashboard",
     description:
       locale === "en"
-        ? "Product shell preview (sidebar) in the web app."
-        : "Produkt-Shell-Vorschau (Sidebar) in der Web-App.",
+        ? "Operational dashboard with KPIs, worklists, and quick actions."
+        : "Operatives Dashboard mit KPIs, Arbeitslisten und Quick Actions.",
   };
 }
 

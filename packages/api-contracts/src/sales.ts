@@ -95,8 +95,52 @@ export const salesQuoteListItemSchema = z.object({
 
 export type SalesQuoteListItem = z.infer<typeof salesQuoteListItemSchema>;
 
+export const salesListSortDirSchema = z.enum(["asc", "desc"]);
+
+export type SalesListSortDir = z.infer<typeof salesListSortDirSchema>;
+
+export const salesQuotesSortBySchema = z.enum([
+  "documentNumber",
+  "customerLabel",
+  "status",
+  "totalCents",
+  "validUntil",
+  "updatedAt",
+]);
+
+export type SalesQuotesSortBy = z.infer<typeof salesQuotesSortBySchema>;
+
+const isoDate = z
+  .string()
+  .trim()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD");
+
+export const salesQuotesListQuerySchema = z.object({
+  q: z.string().trim().optional(),
+  status: salesQuoteStatusSchema.optional(),
+  dateFrom: isoDate.optional(),
+  dateTo: isoDate.optional(),
+  sortBy: salesQuotesSortBySchema.optional(),
+  sortDir: salesListSortDirSchema.optional(),
+  limit: z.number().int().min(1).max(200).optional(),
+  offset: z.number().int().min(0).optional(),
+});
+
+export type SalesQuotesListQuery = z.infer<typeof salesQuotesListQuerySchema>;
+
+export const salesListPermissionsSchema = z.object({
+  canEdit: z.boolean(),
+  canArchive: z.boolean(),
+  canExport: z.boolean(),
+  canBatch: z.boolean(),
+});
+
+export type SalesListPermissions = z.infer<typeof salesListPermissionsSchema>;
+
 export const salesQuotesListResponseSchema = z.object({
   quotes: z.array(salesQuoteListItemSchema),
+  total: z.number().int().nonnegative(),
+  permissions: salesListPermissionsSchema,
 });
 
 export const salesDocumentLineSchema = z.object({
@@ -172,8 +216,34 @@ export const salesInvoiceListItemSchema = z.object({
 
 export type SalesInvoiceListItem = z.infer<typeof salesInvoiceListItemSchema>;
 
+export const salesInvoicesSortBySchema = z.enum([
+  "documentNumber",
+  "customerLabel",
+  "status",
+  "totalCents",
+  "dueAt",
+  "updatedAt",
+]);
+
+export type SalesInvoicesSortBy = z.infer<typeof salesInvoicesSortBySchema>;
+
+export const salesInvoicesListQuerySchema = z.object({
+  q: z.string().trim().optional(),
+  status: salesInvoiceStatusSchema.optional(),
+  dateFrom: isoDate.optional(),
+  dateTo: isoDate.optional(),
+  sortBy: salesInvoicesSortBySchema.optional(),
+  sortDir: salesListSortDirSchema.optional(),
+  limit: z.number().int().min(1).max(200).optional(),
+  offset: z.number().int().min(0).optional(),
+});
+
+export type SalesInvoicesListQuery = z.infer<typeof salesInvoicesListQuerySchema>;
+
 export const salesInvoicesListResponseSchema = z.object({
   invoices: z.array(salesInvoiceListItemSchema),
+  total: z.number().int().nonnegative(),
+  permissions: salesListPermissionsSchema,
 });
 
 export const salesInvoiceDetailSchema = salesInvoiceListItemSchema.extend({

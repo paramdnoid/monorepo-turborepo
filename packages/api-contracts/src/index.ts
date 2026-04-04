@@ -7,6 +7,7 @@ export * from "./catalog.js";
 export * from "./project-assets.js";
 export * from "./sales.js";
 export * from "./datev.js";
+export * from "./settings.js";
 export * from "./customers.js";
 export * from "./employees.js";
 export * from "./scheduling.js";

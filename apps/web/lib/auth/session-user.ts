@@ -1,6 +1,10 @@
 import "server-only"
 
 import { getServerAccessToken } from "@/lib/auth/server-token"
+import {
+  resolveWebPermissionMatrix,
+  type WebPermissionMatrix,
+} from "@/lib/auth/web-permissions"
 import { getTradeSlugFromOrganization } from "@/lib/organization-trade-slug"
 import { resolveTradeId } from "@/lib/trades/resolve-trade"
 import type { TradeId } from "@/lib/trades/trade-types"
@@ -19,6 +23,10 @@ type AccessTokenClaims = {
     tenant_id?: string[]
     trade_slug?: string[]
   }
+  realm_access?: {
+    roles?: unknown
+  }
+  resource_access?: Record<string, { roles?: unknown }>
 }
 
 export type AuthSessionUser = {
@@ -32,6 +40,8 @@ export type AuthSessionContext = {
   tradeId: TradeId
   tradeSlug: string | null
   tenantId: string | null
+  roles: string[]
+  permissions: WebPermissionMatrix
 }
 
 function decodeJwtPayload(token: string): AccessTokenClaims | null {
@@ -90,6 +100,38 @@ function mapTenantId(claims: AccessTokenClaims | null) {
   return claimToString(claims.tenant_id) ?? claimToString(claims.attributes?.tenant_id) ?? null
 }
 
+function extractRoles(claims: AccessTokenClaims | null): string[] {
+  if (!claims) {
+    return []
+  }
+
+  const roles = new Set<string>()
+  const realmRoles = claims.realm_access?.roles
+  if (Array.isArray(realmRoles)) {
+    for (const role of realmRoles) {
+      if (typeof role === "string" && role.trim()) {
+        roles.add(role.trim())
+      }
+    }
+  }
+
+  const resourceAccess = claims.resource_access
+  if (resourceAccess) {
+    for (const resource of Object.values(resourceAccess)) {
+      if (!resource || !Array.isArray(resource.roles)) {
+        continue
+      }
+      for (const role of resource.roles) {
+        if (typeof role === "string" && role.trim()) {
+          roles.add(role.trim())
+        }
+      }
+    }
+  }
+
+  return [...roles]
+}
+
 /**
  * Gewerk: zuerst `organizations.trade_slug` (DB), sonst JWT — Mapper in Keycloak können hinter der Registrierung liegen.
  */
@@ -114,11 +156,14 @@ export async function getAuthSessionContext(): Promise<AuthSessionContext> {
   const token = await getServerAccessToken()
   const claims = token ? decodeJwtPayload(token) : null
   const { tradeSlug, tradeId, tenantId } = await resolveTradeFromSession(claims)
+  const roles = extractRoles(claims)
 
   return {
     tradeId,
     tradeSlug,
     tenantId,
+    roles,
+    permissions: resolveWebPermissionMatrix(roles),
   }
 }
 
@@ -126,6 +171,7 @@ export async function getAuthSessionUser(): Promise<AuthSessionUser> {
   const token = await getServerAccessToken()
   const claims = token ? decodeJwtPayload(token) : null
   const { tradeSlug, tradeId, tenantId } = await resolveTradeFromSession(claims)
+  const roles = extractRoles(claims)
 
   return {
     name: mapName(claims),
@@ -135,6 +181,8 @@ export async function getAuthSessionUser(): Promise<AuthSessionUser> {
       tradeId,
       tradeSlug,
       tenantId,
+      roles,
+      permissions: resolveWebPermissionMatrix(roles),
     },
   }
 }

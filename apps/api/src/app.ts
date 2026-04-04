@@ -38,7 +38,11 @@ import {
   createProjectAssetPostHandler,
   createProjectAssetsListHandler,
 } from "./routes/project-assets.js";
-import { createProjectsListHandler } from "./routes/projects.js";
+import {
+  createProjectPatchHandler,
+  createProjectsCreateHandler,
+  createProjectsListHandler,
+} from "./routes/projects.js";
 import {
   createSalesInvoiceDetailHandler,
   createSalesInvoiceLineDeleteHandler,
@@ -48,9 +52,13 @@ import {
   createSalesInvoicePatchHandler,
   createSalesInvoicePdfHandler,
   createSalesInvoiceFromQuotePostHandler,
+  createSalesInvoiceCancelPostHandler,
+  createSalesInvoiceDeleteHandler,
   createSalesInvoicePostHandler,
   createSalesInvoicesListHandler,
+  createSalesQuoteArchivePostHandler,
   createSalesQuoteDetailHandler,
+  createSalesQuoteDeleteHandler,
   createSalesQuoteLineDeleteHandler,
   createSalesQuoteLinePatchHandler,
   createSalesQuoteLinePostHandler,
@@ -59,8 +67,10 @@ import {
   createSalesQuotePdfHandler,
   createSalesQuotePostHandler,
   createSalesQuotesListHandler,
+  createSalesQuoteUnarchivePostHandler,
 } from "./routes/sales.js";
 import {
+  createSchedulingAssignmentPatchHandler,
   createSchedulingAssignmentDeleteHandler,
   createSchedulingAssignmentPostHandler,
   createSchedulingAssignmentsIcsHandler,
@@ -71,6 +81,7 @@ import {
   createCustomerAddressDeleteHandler,
   createCustomerAddressPatchHandler,
   createCustomerAddressPostHandler,
+  createCustomersBatchArchiveHandler,
   createCustomerDetailHandler,
   createCustomerPatchHandler,
   createCustomerPostHandler,
@@ -111,6 +122,12 @@ import {
   createDatevSettingsGetHandler,
   createDatevSettingsPatchHandler,
 } from "./routes/datev.js";
+import {
+  createColorPreferencesGetHandler,
+  createColorPreferencesPutHandler,
+  createNotificationPreferencesGetHandler,
+  createNotificationPreferencesPutHandler,
+} from "./routes/settings.js";
 import { createSyncHandler } from "./routes/sync.js";
 
 function isDevEnv(): boolean {
@@ -134,6 +151,8 @@ export function createApp(options?: CreateAppOptions) {
   const orgMiddleware = createOrgMiddleware(getDb);
   const syncHandler = createSyncHandler(getDb);
   const projectsListHandler = createProjectsListHandler(getDb);
+  const projectsCreateHandler = createProjectsCreateHandler(getDb);
+  const projectPatchHandler = createProjectPatchHandler(getDb);
   const gaebImportPost = createGaebImportPostHandler(getDb);
   const gaebListHandler = createGaebListHandler(getDb);
   const gaebDetailHandler = createGaebDetailHandler(getDb);
@@ -158,6 +177,9 @@ export function createApp(options?: CreateAppOptions) {
   const salesQuoteLinePatch = createSalesQuoteLinePatchHandler(getDb);
   const salesQuoteLineDelete = createSalesQuoteLineDeleteHandler(getDb);
   const salesQuoteDetail = createSalesQuoteDetailHandler(getDb);
+  const salesQuoteArchivePost = createSalesQuoteArchivePostHandler(getDb);
+  const salesQuoteUnarchivePost = createSalesQuoteUnarchivePostHandler(getDb);
+  const salesQuoteDelete = createSalesQuoteDeleteHandler(getDb);
   const salesQuotePdf = createSalesQuotePdfHandler(getDb);
   const salesQuotePatch = createSalesQuotePatchHandler(getDb);
   const salesInvoicesList = createSalesInvoicesListHandler(getDb);
@@ -167,6 +189,8 @@ export function createApp(options?: CreateAppOptions) {
   const salesInvoiceLinePatch = createSalesInvoiceLinePatchHandler(getDb);
   const salesInvoiceLineDelete = createSalesInvoiceLineDeleteHandler(getDb);
   const salesInvoiceDetail = createSalesInvoiceDetailHandler(getDb);
+  const salesInvoiceCancelPost = createSalesInvoiceCancelPostHandler(getDb);
+  const salesInvoiceDelete = createSalesInvoiceDeleteHandler(getDb);
   const salesInvoicePdf = createSalesInvoicePdfHandler(getDb);
   const salesInvoicePatch = createSalesInvoicePatchHandler(getDb);
   const organizationPatch = createOrganizationPatchHandler(getDb);
@@ -175,7 +199,12 @@ export function createApp(options?: CreateAppOptions) {
   const datevSettingsGet = createDatevSettingsGetHandler(getDb);
   const datevSettingsPatch = createDatevSettingsPatchHandler(getDb);
   const datevBookingsExport = createDatevBookingsExportHandler(getDb);
+  const notificationPreferencesGet = createNotificationPreferencesGetHandler(getDb);
+  const notificationPreferencesPut = createNotificationPreferencesPutHandler(getDb);
+  const colorPreferencesGet = createColorPreferencesGetHandler(getDb);
+  const colorPreferencesPut = createColorPreferencesPutHandler(getDb);
   const customersList = createCustomersListHandler(getDb);
+  const customersBatchArchive = createCustomersBatchArchiveHandler(getDb);
   const customerAddressesList = createCustomerAddressesListHandler(getDb);
   const customerPost = createCustomerPostHandler(getDb);
   const customerDetail = createCustomerDetailHandler(getDb);
@@ -214,6 +243,7 @@ export function createApp(options?: CreateAppOptions) {
   const schedulingDay = createSchedulingDayHandler(getDb);
   const schedulingAssignmentsList = createSchedulingAssignmentsListHandler(getDb);
   const schedulingAssignmentPost = createSchedulingAssignmentPostHandler(getDb);
+  const schedulingAssignmentPatch = createSchedulingAssignmentPatchHandler(getDb);
   const schedulingAssignmentDelete = createSchedulingAssignmentDeleteHandler(getDb);
   const schedulingAssignmentsIcs = createSchedulingAssignmentsIcsHandler(getDb);
 
@@ -298,10 +328,15 @@ export function createApp(options?: CreateAppOptions) {
   const v1 = new Hono();
   v1.use("*", authMiddleware);
   v1.get("/me", orgMiddleware, meHandler);
+  v1.get("/settings/notifications", orgMiddleware, notificationPreferencesGet);
+  v1.put("/settings/notifications", orgMiddleware, notificationPreferencesPut);
+  v1.get("/settings/colors", orgMiddleware, colorPreferencesGet);
+  v1.put("/settings/colors", orgMiddleware, colorPreferencesPut);
   v1.get("/organization/logo", orgMiddleware, organizationLogoGet);
   v1.post("/organization/logo", orgMiddleware, organizationLogoPost);
   v1.patch("/organization", orgMiddleware, organizationPatch);
   v1.get("/customers", orgMiddleware, customersList);
+  v1.post("/customers/batch", orgMiddleware, customersBatchArchive);
   v1.get("/customers/addresses", orgMiddleware, customerAddressesList);
   v1.post("/customers", orgMiddleware, customerPost);
   v1.get("/customers/:id", orgMiddleware, customerDetail);
@@ -363,6 +398,11 @@ export function createApp(options?: CreateAppOptions) {
   v1.get("/scheduling/day", orgMiddleware, schedulingDay);
   v1.get("/scheduling/assignments", orgMiddleware, schedulingAssignmentsList);
   v1.post("/scheduling/assignments", orgMiddleware, schedulingAssignmentPost);
+  v1.patch(
+    "/scheduling/assignments/:id",
+    orgMiddleware,
+    schedulingAssignmentPatch,
+  );
   v1.delete(
     "/scheduling/assignments/:id",
     orgMiddleware,
@@ -374,6 +414,8 @@ export function createApp(options?: CreateAppOptions) {
   v1.get("/datev/export/bookings.csv", orgMiddleware, datevBookingsExport);
   v1.post("/sync", orgMiddleware, syncHandler);
   v1.get("/projects", orgMiddleware, projectsListHandler);
+  v1.post("/projects", orgMiddleware, projectsCreateHandler);
+  v1.patch("/projects/:id", orgMiddleware, projectPatchHandler);
   v1.get(
     "/projects/:projectId/assets/:assetId",
     orgMiddleware,
@@ -422,7 +464,10 @@ export function createApp(options?: CreateAppOptions) {
   );
   v1.get("/sales/quotes/:id/pdf", orgMiddleware, salesQuotePdf);
   v1.get("/sales/quotes/:id", orgMiddleware, salesQuoteDetail);
+  v1.post("/sales/quotes/:id/archive", orgMiddleware, salesQuoteArchivePost);
+  v1.post("/sales/quotes/:id/unarchive", orgMiddleware, salesQuoteUnarchivePost);
   v1.patch("/sales/quotes/:id", orgMiddleware, salesQuotePatch);
+  v1.delete("/sales/quotes/:id", orgMiddleware, salesQuoteDelete);
   v1.get("/sales/invoices", orgMiddleware, salesInvoicesList);
   v1.post("/sales/invoices", orgMiddleware, salesInvoicePost);
   v1.post("/sales/invoices/:id/lines", orgMiddleware, salesInvoiceLinePost);
@@ -443,7 +488,9 @@ export function createApp(options?: CreateAppOptions) {
   );
   v1.get("/sales/invoices/:id/pdf", orgMiddleware, salesInvoicePdf);
   v1.get("/sales/invoices/:id", orgMiddleware, salesInvoiceDetail);
+  v1.post("/sales/invoices/:id/cancel", orgMiddleware, salesInvoiceCancelPost);
   v1.patch("/sales/invoices/:id", orgMiddleware, salesInvoicePatch);
+  v1.delete("/sales/invoices/:id", orgMiddleware, salesInvoiceDelete);
 
   app.route("/v1", v1);
 

@@ -64,13 +64,25 @@ export const projects = pgTable("projects", {
     .notNull()
     .references(() => organizations.tenantId, { onDelete: "cascade" }),
   title: text("title").notNull(),
+  projectNumber: text("project_number"),
+  /** planned | active | on-hold | completed */
+  status: text("status").notNull().default("active"),
+  customerLabel: text("customer_label"),
+  startDate: date("start_date"),
+  endDate: date("end_date"),
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
-});
+}, (t) => ({
+  tenantProjectNumberUnique: unique("projects_tenant_project_number").on(
+    t.tenantId,
+    t.projectNumber,
+  ),
+}));
 
 /** Kunde / Geschaeftspartner je Mandant (Stammdaten). */
 export const customers = pgTable(
@@ -82,6 +94,7 @@ export const customers = pgTable(
       .references(() => organizations.tenantId, { onDelete: "cascade" }),
     displayName: text("display_name").notNull(),
     customerNumber: text("customer_number"),
+    category: text("category"),
     vatId: text("vat_id"),
     taxNumber: text("tax_number"),
     notes: text("notes"),
@@ -638,6 +651,97 @@ export const authPeerSessions = pgTable("auth_peer_sessions", {
   lastAppLoginAt: timestamp("last_app_login_at", { withTimezone: true }),
 });
 
+/**
+ * Persistente Benachrichtigungseinstellungen je Nutzer und Mandant.
+ * Der Nutzer wird über den Keycloak `sub` (auth.sub) identifiziert.
+ */
+export const userNotificationPreferences = pgTable(
+  "user_notification_preferences",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => organizations.tenantId, { onDelete: "cascade" }),
+    userSub: text("user_sub").notNull(),
+    productUpdates: boolean("product_updates").notNull().default(true),
+    securityAlerts: boolean("security_alerts").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    tenantUserUnique: unique("user_notification_preferences_tenant_user").on(
+      t.tenantId,
+      t.userSub,
+    ),
+  }),
+);
+
+type StoredColorRefRow = {
+  system: "ral" | "ncs";
+  id: string;
+};
+
+/**
+ * Persistente Farb-Palette pro Nutzer und Mandant.
+ * Enthält Favoriten und zuletzt verwendete Farben für geräteübergreifende Nutzung.
+ */
+export const userColorPreferences = pgTable(
+  "user_color_preferences",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => organizations.tenantId, { onDelete: "cascade" }),
+    userSub: text("user_sub").notNull(),
+    favorites: jsonb("favorites")
+      .$type<StoredColorRefRow[]>()
+      .notNull()
+      .default([]),
+    recent: jsonb("recent")
+      .$type<StoredColorRefRow[]>()
+      .notNull()
+      .default([]),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    tenantUserUnique: unique("user_color_preferences_tenant_user").on(
+      t.tenantId,
+      t.userSub,
+    ),
+  }),
+);
+
+/**
+ * Gemeinsame Team-Palette je Mandant.
+ * Kann von berechtigten Rollen gepflegt und von allen Mandantenmitgliedern gelesen werden.
+ */
+export const teamColorPalettes = pgTable("team_color_palettes", {
+  tenantId: text("tenant_id")
+    .primaryKey()
+    .references(() => organizations.tenantId, { onDelete: "cascade" }),
+  favorites: jsonb("favorites")
+    .$type<StoredColorRefRow[]>()
+    .notNull()
+    .default([]),
+  recent: jsonb("recent")
+    .$type<StoredColorRefRow[]>()
+    .notNull()
+    .default([]),
+  updatedBySub: text("updated_by_sub"),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
 /** Lieferant / Katalogquelle je Mandant (DATANORM, BMEcat/IDS-Datei). */
 export const catalogSuppliers = pgTable("catalog_suppliers", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -887,3 +991,36 @@ export const salesInvoiceLines = pgTable("sales_invoice_lines", {
     .defaultNow()
     .notNull(),
 });
+
+/**
+ * Audit events for sales lifecycle actions (archive/cancel/delete).
+ */
+export const salesLifecycleEvents = pgTable(
+  "sales_lifecycle_events",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => organizations.tenantId, { onDelete: "cascade" }),
+    actorSub: text("actor_sub").notNull(),
+    entityType: text("entity_type").notNull(),
+    entityId: uuid("entity_id").notNull(),
+    action: text("action").notNull(),
+    fromStatus: text("from_status"),
+    toStatus: text("to_status"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    tenantCreatedIdx: index("sales_lifecycle_events_tenant_created_idx").on(
+      t.tenantId,
+      t.createdAt,
+    ),
+    entityCreatedIdx: index("sales_lifecycle_events_entity_created_idx").on(
+      t.entityType,
+      t.entityId,
+      t.createdAt,
+    ),
+  }),
+);

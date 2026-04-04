@@ -30,8 +30,56 @@ export async function GET(request: Request) {
   }
 
   try {
-    const res = await fetch(`${API_BASE}/v1/projects`, {
+    const url = new URL(request.url);
+    const qs = url.searchParams.toString();
+    const target = `${API_BASE}/v1/projects${qs ? `?${qs}` : ""}`;
+    const res = await fetch(target, {
       headers: { Authorization: `Bearer ${session.token}` },
+      cache: "no-store",
+    });
+    const bodyText = await res.text();
+    return new NextResponse(bodyText, {
+      status: res.status,
+      headers: {
+        "Content-Type": res.headers.get("content-type") ?? "application/json",
+        "Cache-Control": "private, no-store",
+      },
+    });
+  } catch {
+    return NextResponse.json(
+      { error: text.api.auth.loginAuthServiceUnavailable },
+      noStoreInit({ status: 503 }),
+    );
+  }
+}
+
+export async function POST(request: Request) {
+  const locale = getRequestLocale(request);
+  const text = getUiText(locale);
+
+  const session = await validateWebAccessTokenSession();
+  if (!session.ok) {
+    return NextResponse.json(
+      { error: text.api.auth.bffSessionInvalid },
+      noStoreInit({ status: 401 }),
+    );
+  }
+
+  let body: string;
+  try {
+    body = await request.text();
+  } catch {
+    return NextResponse.json({ error: "invalid_body" }, noStoreInit({ status: 400 }));
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/v1/projects`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${session.token}`,
+        "Content-Type": "application/json",
+      },
+      body,
       cache: "no-store",
     });
     const bodyText = await res.text();

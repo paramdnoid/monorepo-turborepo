@@ -35,6 +35,7 @@ type CustomersCopy = {
     tableName: string;
     tableCity: string;
     tableNumber: string;
+    tableCategory: string;
     archived: string;
     open: string;
     cancel: string;
@@ -45,6 +46,24 @@ type CustomersCopy = {
     paginationNext: string;
     paginationTemplate: string;
     tableActions: string;
+    exportCsv: string;
+    exportBusy: string;
+    exportError: string;
+    exportReady: string;
+    selectAllOnPage: string;
+    selectRow: string;
+    selectedCount: string;
+    batchArchive: string;
+    batchUnarchive: string;
+    batchCategoryLabel: string;
+    batchCategoryPlaceholder: string;
+    batchSetCategory: string;
+    batchClearCategory: string;
+    batchBusy: string;
+    batchError: string;
+    batchForbidden: string;
+    batchUpdated: string;
+    batchNoop: string;
   };
   addressesList: {
     searchPlaceholder: string;
@@ -176,6 +195,7 @@ const de: CustomersCopy = {
     tableName: "Name",
     tableCity: "Ort",
     tableNumber: "Nr.",
+    tableCategory: "Kategorie",
     archived: "archiviert",
     open: "Oeffnen",
     cancel: "Abbrechen",
@@ -186,6 +206,24 @@ const de: CustomersCopy = {
     paginationNext: "Weiter",
     paginationTemplate: "{from}–{to} von {total}",
     tableActions: "Aktionen",
+    exportCsv: "CSV exportieren",
+    exportBusy: "Export laeuft…",
+    exportError: "CSV-Export fehlgeschlagen.",
+    exportReady: "CSV-Export bereit.",
+    selectAllOnPage: "Alle auf Seite auswaehlen",
+    selectRow: "Zeile auswaehlen",
+    selectedCount: "{n} ausgewaehlt",
+    batchArchive: "Archivieren",
+    batchUnarchive: "Wiederherstellen",
+    batchCategoryLabel: "Kategorie",
+    batchCategoryPlaceholder: "z. B. A-Kunde",
+    batchSetCategory: "Kategorie setzen",
+    batchClearCategory: "Kategorie leeren",
+    batchBusy: "Batch laeuft…",
+    batchError: "Batch-Aktion fehlgeschlagen.",
+    batchForbidden: "Keine Berechtigung fuer Batch-Aktionen.",
+    batchUpdated: "{n} Kunden aktualisiert.",
+    batchNoop: "Keine Kunden aktualisiert.",
   },
   addressesList: {
     searchPlaceholder: "Suche Kunde, Strasse, Ort, PLZ …",
@@ -325,6 +363,7 @@ const en: CustomersCopy = {
     tableName: "Name",
     tableCity: "City",
     tableNumber: "No.",
+    tableCategory: "Category",
     archived: "archived",
     open: "Open",
     cancel: "Cancel",
@@ -335,6 +374,24 @@ const en: CustomersCopy = {
     paginationNext: "Next",
     paginationTemplate: "{from}–{to} of {total}",
     tableActions: "Actions",
+    exportCsv: "Export CSV",
+    exportBusy: "Exporting…",
+    exportError: "CSV export failed.",
+    exportReady: "CSV export ready.",
+    selectAllOnPage: "Select all on page",
+    selectRow: "Select row",
+    selectedCount: "{n} selected",
+    batchArchive: "Archive",
+    batchUnarchive: "Restore",
+    batchCategoryLabel: "Category",
+    batchCategoryPlaceholder: "e.g. Key account",
+    batchSetCategory: "Set category",
+    batchClearCategory: "Clear category",
+    batchBusy: "Running batch…",
+    batchError: "Batch action failed.",
+    batchForbidden: "No permission for batch actions.",
+    batchUpdated: "{n} customers updated.",
+    batchNoop: "No customers were updated.",
   },
   addressesList: {
     searchPlaceholder: "Search customer, street, city, postal code …",

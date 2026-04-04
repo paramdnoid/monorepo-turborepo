@@ -418,6 +418,17 @@ export function SalesInvoiceCreateDialog({
                     ))}
                   </SelectContent>
                 </Select>
+                <Button
+                  type="button"
+                  variant="link"
+                  size="sm"
+                  className="h-auto w-fit px-0"
+                  asChild
+                >
+                  <Link href="/web/projects">
+                    {locale === "en" ? "Open project management" : "Projektverwaltung öffnen"}
+                  </Link>
+                </Button>
               </div>
             )}
             <div className="grid gap-2">
@@ -756,6 +767,17 @@ export function SalesInvoiceEditForm({
             ))}
           </SelectContent>
         </Select>
+        <Button
+          type="button"
+          variant="link"
+          size="sm"
+          className="h-auto w-fit px-0"
+          asChild
+        >
+          <Link href="/web/projects">
+            {locale === "en" ? "Open project management" : "Projektverwaltung öffnen"}
+          </Link>
+        </Button>
       </div>
       <div className="grid gap-2">
         <Label htmlFor="ie-issued">{fc.issued}</Label>

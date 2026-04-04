@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { ExternalLink, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -24,28 +24,80 @@ import {
 import { Input } from "@repo/ui/input";
 import { Switch } from "@repo/ui/switch";
 
-import { updateNotificationPreferences } from "@/app/web/actions/settings";
-
 import { useWebApp } from "@/components/web/shell/web-app-context";
+import {
+  loadNotificationPreferences,
+  saveNotificationPreferences,
+  type NotificationPreferencesState,
+} from "@/app/web/settings/notification-preferences-client";
 import { WebOrganizationBrandingCard } from "./web-organization-branding-card";
 
 export function WebSettingsContent() {
   const { session, logout, logoutBusy, logoutError } = useWebApp();
-  const [productUpdates, setProductUpdates] = useState(true);
-  const [securityAlerts, setSecurityAlerts] = useState(true);
+  const [productUpdates, setProductUpdates] = useState(false);
+  const [securityAlerts, setSecurityAlerts] = useState(false);
+  const [savedNotifications, setSavedNotifications] =
+    useState<NotificationPreferencesState | null>(null);
+  const [notificationsLoaded, setNotificationsLoaded] = useState(false);
+  const [notificationsLoadError, setNotificationsLoadError] = useState<
+    string | null
+  >(null);
   const [pending, startTransition] = useTransition();
+
+  const notificationsDirty =
+    savedNotifications !== null &&
+    (productUpdates !== savedNotifications.productUpdates ||
+      securityAlerts !== savedNotifications.securityAlerts);
+
+  const lastSavedLabel =
+    savedNotifications?.updatedAt != null
+      ? new Date(savedNotifications.updatedAt).toLocaleString(
+          session.locale === "en" ? "en-US" : "de-DE",
+        )
+      : null;
+
+  const refreshNotifications = useCallback(async () => {
+    setNotificationsLoadError(null);
+    setNotificationsLoaded(false);
+    const result = await loadNotificationPreferences(session.locale);
+    if (!result.ok) {
+      setNotificationsLoadError(result.error);
+      setNotificationsLoaded(true);
+      return;
+    }
+    const prefs = result.preferences;
+    setProductUpdates(prefs.productUpdates);
+    setSecurityAlerts(prefs.securityAlerts);
+    setSavedNotifications(prefs);
+    setNotificationsLoaded(true);
+  }, [session.locale]);
+
+  useEffect(() => {
+    void refreshNotifications();
+  }, [refreshNotifications]);
 
   function handleSaveNotifications() {
     startTransition(() => {
       void (async () => {
-        const result = await updateNotificationPreferences({
-          productUpdates,
-          securityAlerts,
-        });
-        if (result.ok) {
-          toast.success("Einstellungen übernommen (lokal validiert).");
-        } else {
-          toast.error(result.error);
+        if (!notificationsLoaded || notificationsLoadError) {
+          return;
+        }
+        try {
+          const result = await saveNotificationPreferences(session.locale, {
+            productUpdates,
+            securityAlerts,
+          });
+          if (!result.ok) {
+            toast.error(result.error);
+            return;
+          }
+          const prefs = result.preferences;
+          setProductUpdates(prefs.productUpdates);
+          setSecurityAlerts(prefs.securityAlerts);
+          setSavedNotifications(prefs);
+          toast.success("Benachrichtigungseinstellungen gespeichert.");
+        } catch {
+          toast.error("Speichern fehlgeschlagen.");
         }
       })();
     });
@@ -150,46 +202,83 @@ export function WebSettingsContent() {
         <CardHeader>
           <CardTitle>Benachrichtigungen</CardTitle>
           <CardDescription>
-            Voreinstellungen für die Produktoberfläche. Speicherung im Backend ist
-            vorgesehen — derzeit nur Validierung über die Server Action.
+            Voreinstellungen für die Produktoberfläche. Diese Einstellungen werden pro
+            Benutzer gespeichert.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <FieldSet className="gap-0">
-            <Field
-              orientation="horizontal"
-              className="rounded-lg border border-transparent py-3 not-last:border-b"
+          {!notificationsLoaded ? (
+            <div
+              className="flex items-center gap-2 text-sm text-muted-foreground"
+              role="status"
+              aria-live="polite"
             >
-              <FieldLabel htmlFor="notify-product" className="flex-1">
-                Produktupdates
-              </FieldLabel>
-              <FieldContent className="shrink-0">
-                <Switch
-                  id="notify-product"
-                  checked={productUpdates}
-                  onCheckedChange={setProductUpdates}
-                />
-              </FieldContent>
-            </Field>
-            <Field orientation="horizontal" className="py-3">
-              <FieldLabel htmlFor="notify-security" className="flex-1">
-                Sicherheitshinweise
-              </FieldLabel>
-              <FieldContent className="shrink-0">
-                <Switch
-                  id="notify-security"
-                  checked={securityAlerts}
-                  onCheckedChange={setSecurityAlerts}
-                />
-              </FieldContent>
-            </Field>
-          </FieldSet>
+              <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
+              Laden…
+            </div>
+          ) : notificationsLoadError ? (
+            <div>
+              <p className="text-sm text-destructive" role="alert">
+                {notificationsLoadError}
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-3"
+                onClick={() => void refreshNotifications()}
+              >
+                Erneut versuchen
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <FieldSet className="gap-0">
+                <Field
+                  orientation="horizontal"
+                  className="rounded-lg border border-transparent py-3 not-last:border-b"
+                >
+                  <FieldLabel htmlFor="notify-product" className="flex-1">
+                    Produktupdates
+                  </FieldLabel>
+                  <FieldContent className="shrink-0">
+                    <Switch
+                      id="notify-product"
+                      checked={productUpdates}
+                      onCheckedChange={setProductUpdates}
+                    />
+                  </FieldContent>
+                </Field>
+                <Field orientation="horizontal" className="py-3">
+                  <FieldLabel htmlFor="notify-security" className="flex-1">
+                    Sicherheitshinweise
+                  </FieldLabel>
+                  <FieldContent className="shrink-0">
+                    <Switch
+                      id="notify-security"
+                      checked={securityAlerts}
+                      onCheckedChange={setSecurityAlerts}
+                    />
+                  </FieldContent>
+                </Field>
+              </FieldSet>
+              {lastSavedLabel ? (
+                <p className="text-xs text-muted-foreground">
+                  Zuletzt gespeichert: {lastSavedLabel}
+                </p>
+              ) : null}
+            </div>
+          )}
         </CardContent>
         <CardFooter className="justify-end border-t bg-muted/30">
           <Button
             type="button"
             onClick={handleSaveNotifications}
-            disabled={pending}
+            disabled={
+              pending ||
+              !notificationsLoaded ||
+              notificationsLoadError !== null ||
+              !notificationsDirty
+            }
           >
             {pending ? (
               <Loader2 className="mr-2 size-4 animate-spin" />

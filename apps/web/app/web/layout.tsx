@@ -3,6 +3,9 @@ import { redirect } from "next/navigation";
 
 import { getAuthSessionUser } from "@/lib/auth/session-user";
 import { validateWebAccessTokenSession } from "@/lib/auth/validate-web-session";
+import {
+  getWebRouteGuardDecision,
+} from "@/lib/auth/web-permissions";
 import { getServerLocale } from "@/lib/i18n/server-locale";
 import { getSidebarBrandTagline } from "@/lib/trades/sidebar-brand-tagline";
 
@@ -33,6 +36,14 @@ export default async function WebAppLayout({
 
   const locale = await getServerLocale();
   const user = await getAuthSessionUser();
+  const normalizedPathname = pathname.split("?")[0] ?? "/web";
+  const guard = getWebRouteGuardDecision(normalizedPathname, user.session.permissions);
+  if (!guard.allowed) {
+    redirect(
+      `${guard.redirectHref}?denied=${guard.reason}&module=${guard.moduleKey}&from=${encodeURIComponent(pathname)}`,
+    );
+  }
+
   const brandTagline = getSidebarBrandTagline(
     user.session.tradeId,
     locale,
@@ -48,6 +59,7 @@ export default async function WebAppLayout({
         brandTagline,
         tradeSlug: user.session.tradeSlug,
         locale,
+        permissions: user.session.permissions,
       }}
     >
       {children}

@@ -134,6 +134,41 @@
       "when": 1775286514288,
       "tag": "0018_mushy_thunderbolts",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1775294617127,
+      "tag": "0019_sturdy_doctor_spectrum",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1775295767197,
+      "tag": "0020_huge_major_mapleleaf",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1775296800000,
+      "tag": "0021_flat_gray_hulk",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1775299800000,
+      "tag": "0022_spotty_night_thrasher",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1775302800000,
+      "tag": "0023_lazy_fantastic_four",
+      "breakpoints": true
     }
   ]
 }

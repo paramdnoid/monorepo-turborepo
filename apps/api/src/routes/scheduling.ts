@@ -1,9 +1,10 @@
-import { and, asc, eq, gte, inArray, isNull, lte, or } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNull, lte, ne, or } from "drizzle-orm";
 import type { Context } from "hono";
 
 import {
   schedulingAssignmentCreateResponseSchema,
   schedulingAssignmentCreateSchema,
+  schedulingAssignmentPatchSchema,
   schedulingAssignmentsListResponseSchema,
   schedulingDayResponseSchema,
 } from "@repo/api-contracts";
@@ -19,6 +20,8 @@ import {
 } from "@repo/db";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function todayIsoDate(): string {
   return new Date().toISOString().slice(0, 10);
@@ -412,7 +415,10 @@ export function createSchedulingAssignmentPostHandler(getDb: () => Db | undefine
     }
     const parsed = schedulingAssignmentCreateSchema.safeParse(body);
     if (!parsed.success) {
-      return c.json({ error: "validation_error" }, 400);
+      return c.json(
+        { error: "validation_error", issues: parsed.error.issues },
+        400,
+      );
     }
 
     const employeeRows = await db
@@ -428,6 +434,22 @@ export function createSchedulingAssignmentPostHandler(getDb: () => Db | undefine
       .limit(1);
     if (!employeeRows[0]) {
       return c.json({ error: "employee_not_found" }, 404);
+    }
+
+    const sameSlotRows = await db
+      .select({ id: schedulingAssignments.id })
+      .from(schedulingAssignments)
+      .where(
+        and(
+          eq(schedulingAssignments.tenantId, auth.tenantId),
+          eq(schedulingAssignments.employeeId, parsed.data.employeeId),
+          eq(schedulingAssignments.date, parsed.data.date),
+          eq(schedulingAssignments.startTime, parsed.data.startTime),
+        ),
+      )
+      .limit(1);
+    if (sameSlotRows[0]) {
+      return c.json({ error: "employee_slot_conflict" }, 409);
     }
 
     const relationshipRows = await db
@@ -537,6 +559,212 @@ export function createSchedulingAssignmentPostHandler(getDb: () => Db | undefine
   };
 }
 
+export function createSchedulingAssignmentPatchHandler(getDb: () => Db | undefined) {
+  return async (c: Context) => {
+    const auth = c.get("auth");
+    if (!auth) {
+      return c.json({ error: "missing_auth" }, 500);
+    }
+    const db = getDb();
+    if (!db) {
+      return c.json({ error: "database_unavailable" }, 503);
+    }
+
+    const id = c.req.param("id") ?? "";
+    if (!UUID_RE.test(id)) {
+      return c.json({ error: "not_found" }, 404);
+    }
+
+    let body: unknown;
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ error: "invalid_json" }, 400);
+    }
+    const parsed = schedulingAssignmentPatchSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json(
+        { error: "validation_error", issues: parsed.error.issues },
+        400,
+      );
+    }
+
+    const currentRows = await db
+      .select()
+      .from(schedulingAssignments)
+      .where(
+        and(
+          eq(schedulingAssignments.id, id),
+          eq(schedulingAssignments.tenantId, auth.tenantId),
+        ),
+      )
+      .limit(1);
+    const current = currentRows[0];
+    if (!current) {
+      return c.json({ error: "not_found" }, 404);
+    }
+
+    const patch = parsed.data;
+    const nextEmployeeId = patch.employeeId ?? current.employeeId;
+    const nextDate = patch.date ?? String(current.date);
+    const nextStartTime = patch.startTime ?? formatTimeForApi(current.startTime);
+    const nextTitle =
+      patch.title !== undefined ? patch.title.trim() : current.title;
+    const nextPlace =
+      patch.place !== undefined
+        ? patch.place?.trim()
+          ? patch.place.trim()
+          : null
+        : current.place ?? null;
+    const nextReminder =
+      patch.reminderMinutesBefore !== undefined
+        ? patch.reminderMinutesBefore
+        : current.reminderMinutesBefore;
+
+    const employeeRows = await db
+      .select({ id: employees.id })
+      .from(employees)
+      .where(
+        and(
+          eq(employees.id, nextEmployeeId),
+          eq(employees.tenantId, auth.tenantId),
+          isNull(employees.archivedAt),
+        ),
+      )
+      .limit(1);
+    if (!employeeRows[0]) {
+      return c.json({ error: "employee_not_found" }, 404);
+    }
+
+    const sameSlotRows = await db
+      .select({ id: schedulingAssignments.id })
+      .from(schedulingAssignments)
+      .where(
+        and(
+          eq(schedulingAssignments.tenantId, auth.tenantId),
+          eq(schedulingAssignments.employeeId, nextEmployeeId),
+          eq(schedulingAssignments.date, nextDate),
+          eq(schedulingAssignments.startTime, nextStartTime),
+          ne(schedulingAssignments.id, id),
+        ),
+      )
+      .limit(1);
+    if (sameSlotRows[0]) {
+      return c.json({ error: "employee_slot_conflict" }, 409);
+    }
+
+    const relationshipRows = await db
+      .select()
+      .from(employeeRelationships)
+      .where(
+        and(
+          eq(employeeRelationships.tenantId, auth.tenantId),
+          or(
+            eq(employeeRelationships.fromEmployeeId, nextEmployeeId),
+            eq(employeeRelationships.toEmployeeId, nextEmployeeId),
+          ),
+          inArray(employeeRelationships.kind, [
+            "MUTUALLY_EXCLUSIVE",
+            "MENTOR_TRAINEE",
+          ]),
+        ),
+      );
+
+    const mutexCounterpartIds = relationshipRows
+      .filter((r) => r.kind === "MUTUALLY_EXCLUSIVE")
+      .map((r) =>
+        r.fromEmployeeId === nextEmployeeId ? r.toEmployeeId : r.fromEmployeeId,
+      );
+    if (mutexCounterpartIds.length > 0) {
+      const conflicts = await db
+        .select({ employeeId: schedulingAssignments.employeeId })
+        .from(schedulingAssignments)
+        .where(
+          and(
+            eq(schedulingAssignments.tenantId, auth.tenantId),
+            eq(schedulingAssignments.date, nextDate),
+            eq(schedulingAssignments.startTime, nextStartTime),
+            inArray(schedulingAssignments.employeeId, [
+              ...new Set(mutexCounterpartIds),
+            ]),
+            ne(schedulingAssignments.id, id),
+          ),
+        );
+      if (conflicts.length > 0) {
+        return c.json(
+          {
+            error: "mutually_exclusive_conflict",
+            conflictingEmployeeIds: [...new Set(conflicts.map((c0) => c0.employeeId))],
+          },
+          409,
+        );
+      }
+    }
+
+    const dependencyWarnings: DependencyWarning[] = [];
+    const mentorIds = relationshipRows
+      .filter((r) => r.kind === "MENTOR_TRAINEE" && r.toEmployeeId === nextEmployeeId)
+      .map((r) => r.fromEmployeeId);
+    if (mentorIds.length > 0) {
+      const mentorAssignments = await db
+        .select({ employeeId: schedulingAssignments.employeeId })
+        .from(schedulingAssignments)
+        .where(
+          and(
+            eq(schedulingAssignments.tenantId, auth.tenantId),
+            eq(schedulingAssignments.date, nextDate),
+            eq(schedulingAssignments.startTime, nextStartTime),
+            inArray(schedulingAssignments.employeeId, [...new Set(mentorIds)]),
+            ne(schedulingAssignments.id, id),
+          ),
+        );
+      const assignedMentorIds = new Set(mentorAssignments.map((m) => m.employeeId));
+      for (const mentorId of mentorIds) {
+        if (!assignedMentorIds.has(mentorId)) {
+          dependencyWarnings.push({
+            kind: "MENTOR_TRAINEE",
+            employeeId: nextEmployeeId,
+            relatedEmployeeId: mentorId,
+            message: "Trainee is assigned without mentor on same slot.",
+          });
+        }
+      }
+    }
+
+    const now = new Date();
+    const [updated] = await db
+      .update(schedulingAssignments)
+      .set({
+        employeeId: nextEmployeeId,
+        date: nextDate,
+        startTime: nextStartTime,
+        title: nextTitle,
+        place: nextPlace,
+        reminderMinutesBefore: nextReminder ?? null,
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(schedulingAssignments.id, id),
+          eq(schedulingAssignments.tenantId, auth.tenantId),
+        ),
+      )
+      .returning();
+    if (!updated) {
+      return c.json({ error: "not_found" }, 404);
+    }
+
+    const out = schedulingAssignmentCreateResponseSchema.safeParse({
+      assignment: mapAssignmentRow(updated),
+      dependencyWarnings: dedupeWarnings(dependencyWarnings),
+    });
+    if (!out.success) {
+      return c.json({ error: "serialize_error" }, 500);
+    }
+    return c.json(out.data);
+  };
+}
+
 export function createSchedulingAssignmentDeleteHandler(getDb: () => Db | undefined) {
   return async (c: Context) => {
     const auth = c.get("auth");
@@ -549,7 +777,7 @@ export function createSchedulingAssignmentDeleteHandler(getDb: () => Db | undefi
     }
 
     const id = c.req.param("id") ?? "";
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) {
+    if (!UUID_RE.test(id)) {
       return c.json({ error: "not_found" }, 404);
     }
 

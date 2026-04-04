@@ -57,3 +57,55 @@ export async function DELETE(
     );
   }
 }
+
+export async function PATCH(
+  request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
+  const locale = getRequestLocale(request);
+  const text = getUiText(locale);
+
+  const session = await validateWebAccessTokenSession();
+  if (!session.ok) {
+    return NextResponse.json(
+      { error: text.api.auth.bffSessionInvalid },
+      noStoreInit({ status: 401 }),
+    );
+  }
+
+  const { id } = await context.params;
+
+  let body: string;
+  try {
+    body = await request.text();
+  } catch {
+    return NextResponse.json({ error: "invalid_body" }, noStoreInit({ status: 400 }));
+  }
+
+  try {
+    const res = await fetch(
+      `${API_BASE}/v1/scheduling/assignments/${encodeURIComponent(id)}`,
+      {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${session.token}`,
+          "Content-Type": "application/json",
+        },
+        body,
+      },
+    );
+    const bodyText = await res.text();
+    return new NextResponse(bodyText, {
+      status: res.status,
+      headers: {
+        "Content-Type": res.headers.get("content-type") ?? "application/json",
+        "Cache-Control": "private, no-store",
+      },
+    });
+  } catch {
+    return NextResponse.json(
+      { error: text.api.auth.loginAuthServiceUnavailable },
+      noStoreInit({ status: 503 }),
+    );
+  }
+}

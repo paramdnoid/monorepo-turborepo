@@ -15,6 +15,13 @@ const WORKFORCE_DELETE_ROLES = [
   "ADMIN",
   "OWNER",
 ] as const;
+const CUSTOMER_EDIT_ROLES = WORKFORCE_EDIT_ROLES;
+const SALES_EDIT_ROLES = WORKFORCE_EDIT_ROLES;
+const TENANT_SETTINGS_EDIT_ROLES = [
+  "TENANT_ADMIN",
+  "ADMIN",
+  "OWNER",
+] as const;
 const VACATION_DECISION_ROLES = WORKFORCE_DELETE_ROLES;
 const SICK_CONFIDENTIAL_ROLES = [
   "HR_MANAGER",
@@ -46,11 +53,32 @@ export function canEditEmployees(auth: AuthContext): boolean {
   return hasAnyRole(auth, WORKFORCE_EDIT_ROLES);
 }
 
+export function canEditCustomers(auth: AuthContext): boolean {
+  if (!hasRoleClaims(auth)) {
+    return true;
+  }
+  return hasAnyRole(auth, CUSTOMER_EDIT_ROLES);
+}
+
+export function canEditSalesDocuments(auth: AuthContext): boolean {
+  if (!hasRoleClaims(auth)) {
+    return true;
+  }
+  return hasAnyRole(auth, SALES_EDIT_ROLES);
+}
+
 export function canDeleteEmployees(auth: AuthContext): boolean {
   if (!hasRoleClaims(auth)) {
     return true;
   }
   return hasAnyRole(auth, WORKFORCE_DELETE_ROLES);
+}
+
+export function canEditTeamPalette(auth: AuthContext): boolean {
+  if (!hasRoleClaims(auth)) {
+    return true;
+  }
+  return hasAnyRole(auth, TENANT_SETTINGS_EDIT_ROLES);
 }
 
 export function canDecideVacation(auth: AuthContext): boolean {

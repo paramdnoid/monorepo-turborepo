@@ -1,15 +1,31 @@
 import { readFile } from "node:fs/promises";
 
-import { and, asc, count, desc, eq, max, sum } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  ilike,
+  max,
+  or,
+  sql,
+  sum,
+  type SQL,
+} from "drizzle-orm";
 import type { Context } from "hono";
 import { z } from "zod";
 
 import {
+  salesInvoicesListQuerySchema,
+  salesInvoicesSortBySchema,
   salesCreateInvoiceFromQuoteSchema,
   salesCreateInvoiceLineSchema,
   salesCreateInvoiceSchema,
   salesCreateQuoteLineSchema,
   salesCreateQuoteSchema,
+  salesQuotesListQuerySchema,
+  salesQuotesSortBySchema,
   salesPatchInvoiceLineSchema,
   salesPatchInvoiceSchema,
   salesPatchQuoteLineSchema,
@@ -20,6 +36,7 @@ import {
 import {
   customers,
   projects,
+  salesLifecycleEvents,
   salesInvoiceLines,
   salesInvoices,
   salesQuoteLines,
@@ -36,6 +53,8 @@ import {
   type SalesLetterhead,
   type SalesPdfLang,
 } from "../sales-pdf.js";
+import { canEditSalesDocuments } from "../auth/permissions.js";
+import type { AuthContext } from "../auth/verify-token.js";
 
 async function letterheadForPdf(org: {
   name: string;
@@ -93,6 +112,52 @@ function isUniqueViolation(err: unknown): boolean {
   );
 }
 
+type SalesLifecycleEntity = "quote" | "invoice";
+type SalesLifecycleAction =
+  | "quote_archived"
+  | "quote_unarchived"
+  | "quote_deleted"
+  | "invoice_cancelled"
+  | "invoice_deleted";
+
+async function logSalesLifecycleEvent(
+  db: Db,
+  args: {
+    tenantId: string;
+    actorSub: string;
+    entityType: SalesLifecycleEntity;
+    entityId: string;
+    action: SalesLifecycleAction;
+    fromStatus: string | null;
+    toStatus: string | null;
+  },
+): Promise<void> {
+  await db.insert(salesLifecycleEvents).values({
+    tenantId: args.tenantId,
+    actorSub: args.actorSub,
+    entityType: args.entityType,
+    entityId: args.entityId,
+    action: args.action,
+    fromStatus: args.fromStatus,
+    toStatus: args.toStatus,
+  });
+}
+
+function salesListPermissions(auth: AuthContext): {
+  canEdit: boolean;
+  canArchive: boolean;
+  canExport: boolean;
+  canBatch: boolean;
+} {
+  const canEdit = canEditSalesDocuments(auth);
+  return {
+    canEdit,
+    canArchive: canEdit,
+    canExport: canEdit,
+    canBatch: canEdit,
+  };
+}
+
 function parseOptionalInstant(
   v: string | null | undefined,
 ): { ok: true; value: Date | null } | { ok: false } {
@@ -107,6 +172,43 @@ function parseOptionalInstant(
     return { ok: false };
   }
   return { ok: true, value: d };
+}
+
+function parseYmdBoundary(
+  value: string | undefined,
+  boundary: "start" | "end",
+): { ok: true; value: Date | null } | { ok: false } {
+  if (!value) {
+    return { ok: true, value: null };
+  }
+  const parsed = z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .safeParse(value);
+  if (!parsed.success) {
+    return { ok: false };
+  }
+  const suffix = boundary === "start" ? "T00:00:00.000Z" : "T23:59:59.999Z";
+  const dt = new Date(`${value}${suffix}`);
+  if (Number.isNaN(dt.getTime())) {
+    return { ok: false };
+  }
+  return { ok: true, value: dt };
+}
+
+function parseListNumber(
+  raw: string | undefined,
+  kind: "limit" | "offset",
+): number | undefined {
+  if (!raw) return undefined;
+  const n = Number(raw);
+  if (!Number.isInteger(n)) return undefined;
+  if (kind === "limit") {
+    if (n < 1 || n > 200) return undefined;
+  } else if (n < 0) {
+    return undefined;
+  }
+  return n;
 }
 
 function mapQuoteRow(r: typeof salesQuotes.$inferSelect) {
@@ -271,6 +373,34 @@ async function buildInvoiceDetailPayload(
   };
 }
 
+async function quoteForTenant(
+  db: Db,
+  tenantId: string,
+  quoteId: string,
+): Promise<typeof salesQuotes.$inferSelect | null> {
+  const rows = await db
+    .select()
+    .from(salesQuotes)
+    .where(and(eq(salesQuotes.id, quoteId), eq(salesQuotes.tenantId, tenantId)))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+async function invoiceForTenant(
+  db: Db,
+  tenantId: string,
+  invoiceId: string,
+): Promise<typeof salesInvoices.$inferSelect | null> {
+  const rows = await db
+    .select()
+    .from(salesInvoices)
+    .where(
+      and(eq(salesInvoices.id, invoiceId), eq(salesInvoices.tenantId, tenantId)),
+    )
+    .limit(1);
+  return rows[0] ?? null;
+}
+
 async function nextQuoteLineSortIndex(db: Db, quoteId: string): Promise<number> {
   const [row] = await db
     .select({ m: max(salesQuoteLines.sortIndex) })
@@ -302,14 +432,87 @@ export function createSalesQuotesListHandler(getDb: () => Db | undefined) {
     if (!db) {
       return c.json({ error: "database_unavailable" }, 503);
     }
+    const rawLimit = c.req.query("limit");
+    const rawOffset = c.req.query("offset");
+    const limit = parseListNumber(rawLimit, "limit");
+    const offset = parseListNumber(rawOffset, "offset");
+    if ((rawLimit && limit === undefined) || (rawOffset && offset === undefined)) {
+      return c.json({ error: "validation_error" }, 400);
+    }
+    const queryParse = salesQuotesListQuerySchema.safeParse({
+      q: c.req.query("q")?.trim() || undefined,
+      status: c.req.query("status")?.trim() || undefined,
+      dateFrom: c.req.query("dateFrom")?.trim() || undefined,
+      dateTo: c.req.query("dateTo")?.trim() || undefined,
+      sortBy: c.req.query("sortBy")?.trim() || undefined,
+      sortDir: c.req.query("sortDir")?.trim() || undefined,
+      limit,
+      offset,
+    });
+    if (!queryParse.success) {
+      return c.json({ error: "validation_error" }, 400);
+    }
+    const query = queryParse.data;
+    const from = parseYmdBoundary(query.dateFrom, "start");
+    const to = parseYmdBoundary(query.dateTo, "end");
+    if (!from.ok || !to.ok) {
+      return c.json({ error: "validation_error" }, 400);
+    }
+    if (from.value && to.value && from.value.getTime() > to.value.getTime()) {
+      return c.json({ error: "validation_error" }, 400);
+    }
+    const where: SQL[] = [eq(salesQuotes.tenantId, auth.tenantId)];
+    if (query.status) {
+      where.push(eq(salesQuotes.status, query.status));
+    }
+    if (query.q) {
+      const pattern = `%${query.q}%`;
+      where.push(
+        or(
+          ilike(salesQuotes.documentNumber, pattern),
+          ilike(salesQuotes.customerLabel, pattern),
+        )!,
+      );
+    }
+    if (from.value) {
+      where.push(sql`${salesQuotes.updatedAt} >= ${from.value}`);
+    }
+    if (to.value) {
+      where.push(sql`${salesQuotes.updatedAt} <= ${to.value}`);
+    }
+    const whereExpr = and(...where)!;
+    const [countRow] = await db
+      .select({ c: count() })
+      .from(salesQuotes)
+      .where(whereExpr);
+    const sortBy = salesQuotesSortBySchema.parse(query.sortBy ?? "updatedAt");
+    const sortDir = query.sortDir ?? "desc";
+    const sortColumn =
+      sortBy === "documentNumber"
+        ? salesQuotes.documentNumber
+        : sortBy === "customerLabel"
+          ? salesQuotes.customerLabel
+          : sortBy === "status"
+            ? salesQuotes.status
+            : sortBy === "totalCents"
+              ? salesQuotes.totalCents
+              : sortBy === "validUntil"
+                ? salesQuotes.validUntil
+                : salesQuotes.updatedAt;
     const rows = await db
       .select()
       .from(salesQuotes)
-      .where(eq(salesQuotes.tenantId, auth.tenantId))
-      .orderBy(desc(salesQuotes.createdAt))
-      .limit(200);
+      .where(whereExpr)
+      .orderBy(
+        sortDir === "asc" ? asc(sortColumn) : desc(sortColumn),
+        desc(salesQuotes.createdAt),
+      )
+      .limit(query.limit ?? 25)
+      .offset(query.offset ?? 0);
     return c.json({
       quotes: rows.map(mapQuoteRow),
+      total: Number(countRow?.c ?? 0),
+      permissions: salesListPermissions(auth),
     });
   };
 }
@@ -337,6 +540,132 @@ export function createSalesQuoteDetailHandler(getDb: () => Db | undefined) {
   };
 }
 
+export function createSalesQuoteArchivePostHandler(getDb: () => Db | undefined) {
+  return async (c: Context) => {
+    const auth = c.get("auth");
+    if (!auth) return c.json({ error: "missing_auth" }, 500);
+    if (!canEditSalesDocuments(auth)) return c.json({ error: "forbidden" }, 403);
+    const idParse = z.string().uuid().safeParse(c.req.param("id"));
+    if (!idParse.success) return c.json({ error: "invalid_id" }, 400);
+    const id = idParse.data;
+    const db = getDb();
+    if (!db) return c.json({ error: "database_unavailable" }, 503);
+
+    const row = await quoteForTenant(db, auth.tenantId, id);
+    if (!row) return c.json({ error: "not_found" }, 404);
+    if (row.status === "expired") {
+      const payload = await buildQuoteDetailPayload(db, auth.tenantId, id);
+      if (!payload) return c.json({ error: "not_found" }, 404);
+      return c.json(payload);
+    }
+    if (
+      row.status !== "draft" &&
+      row.status !== "sent" &&
+      row.status !== "accepted" &&
+      row.status !== "rejected"
+    ) {
+      return c.json({ error: "invalid_state" }, 409);
+    }
+    await db
+      .update(salesQuotes)
+      .set({ status: "expired", updatedAt: new Date() })
+      .where(and(eq(salesQuotes.id, id), eq(salesQuotes.tenantId, auth.tenantId)));
+    await logSalesLifecycleEvent(db, {
+      tenantId: auth.tenantId,
+      actorSub: auth.sub?.trim() || "unknown",
+      entityType: "quote",
+      entityId: id,
+      action: "quote_archived",
+      fromStatus: row.status,
+      toStatus: "expired",
+    });
+    const payload = await buildQuoteDetailPayload(db, auth.tenantId, id);
+    if (!payload) return c.json({ error: "not_found" }, 404);
+    return c.json(payload);
+  };
+}
+
+export function createSalesQuoteUnarchivePostHandler(getDb: () => Db | undefined) {
+  return async (c: Context) => {
+    const auth = c.get("auth");
+    if (!auth) return c.json({ error: "missing_auth" }, 500);
+    if (!canEditSalesDocuments(auth)) return c.json({ error: "forbidden" }, 403);
+    const idParse = z.string().uuid().safeParse(c.req.param("id"));
+    if (!idParse.success) return c.json({ error: "invalid_id" }, 400);
+    const id = idParse.data;
+    const db = getDb();
+    if (!db) return c.json({ error: "database_unavailable" }, 503);
+
+    const row = await quoteForTenant(db, auth.tenantId, id);
+    if (!row) return c.json({ error: "not_found" }, 404);
+    if (row.status !== "expired") {
+      return c.json({ error: "invalid_state" }, 409);
+    }
+    await db
+      .update(salesQuotes)
+      .set({ status: "draft", updatedAt: new Date() })
+      .where(and(eq(salesQuotes.id, id), eq(salesQuotes.tenantId, auth.tenantId)));
+    await logSalesLifecycleEvent(db, {
+      tenantId: auth.tenantId,
+      actorSub: auth.sub?.trim() || "unknown",
+      entityType: "quote",
+      entityId: id,
+      action: "quote_unarchived",
+      fromStatus: row.status,
+      toStatus: "draft",
+    });
+    const payload = await buildQuoteDetailPayload(db, auth.tenantId, id);
+    if (!payload) return c.json({ error: "not_found" }, 404);
+    return c.json(payload);
+  };
+}
+
+export function createSalesQuoteDeleteHandler(getDb: () => Db | undefined) {
+  return async (c: Context) => {
+    const auth = c.get("auth");
+    if (!auth) return c.json({ error: "missing_auth" }, 500);
+    if (!canEditSalesDocuments(auth)) return c.json({ error: "forbidden" }, 403);
+    const idParse = z.string().uuid().safeParse(c.req.param("id"));
+    if (!idParse.success) return c.json({ error: "invalid_id" }, 400);
+    const id = idParse.data;
+    const db = getDb();
+    if (!db) return c.json({ error: "database_unavailable" }, 503);
+
+    const row = await quoteForTenant(db, auth.tenantId, id);
+    if (!row) return c.json({ error: "not_found" }, 404);
+    if (row.status !== "draft") {
+      return c.json({ error: "invalid_state" }, 409);
+    }
+    const [invoiceRefs] = await db
+      .select({ c: count() })
+      .from(salesInvoices)
+      .where(
+        and(
+          eq(salesInvoices.tenantId, auth.tenantId),
+          eq(salesInvoices.quoteId, id),
+        ),
+      );
+    if (Number(invoiceRefs?.c ?? 0) > 0) {
+      return c.json({ error: "quote_has_invoices" }, 409);
+    }
+    const deleted = await db
+      .delete(salesQuotes)
+      .where(and(eq(salesQuotes.id, id), eq(salesQuotes.tenantId, auth.tenantId)))
+      .returning({ id: salesQuotes.id });
+    if (!deleted[0]) return c.json({ error: "not_found" }, 404);
+    await logSalesLifecycleEvent(db, {
+      tenantId: auth.tenantId,
+      actorSub: auth.sub?.trim() || "unknown",
+      entityType: "quote",
+      entityId: id,
+      action: "quote_deleted",
+      fromStatus: row.status,
+      toStatus: null,
+    });
+    return c.body(null, 204);
+  };
+}
+
 export function createSalesInvoicesListHandler(getDb: () => Db | undefined) {
   return async (c: Context) => {
     const auth = c.get("auth");
@@ -347,14 +676,87 @@ export function createSalesInvoicesListHandler(getDb: () => Db | undefined) {
     if (!db) {
       return c.json({ error: "database_unavailable" }, 503);
     }
+    const rawLimit = c.req.query("limit");
+    const rawOffset = c.req.query("offset");
+    const limit = parseListNumber(rawLimit, "limit");
+    const offset = parseListNumber(rawOffset, "offset");
+    if ((rawLimit && limit === undefined) || (rawOffset && offset === undefined)) {
+      return c.json({ error: "validation_error" }, 400);
+    }
+    const queryParse = salesInvoicesListQuerySchema.safeParse({
+      q: c.req.query("q")?.trim() || undefined,
+      status: c.req.query("status")?.trim() || undefined,
+      dateFrom: c.req.query("dateFrom")?.trim() || undefined,
+      dateTo: c.req.query("dateTo")?.trim() || undefined,
+      sortBy: c.req.query("sortBy")?.trim() || undefined,
+      sortDir: c.req.query("sortDir")?.trim() || undefined,
+      limit,
+      offset,
+    });
+    if (!queryParse.success) {
+      return c.json({ error: "validation_error" }, 400);
+    }
+    const query = queryParse.data;
+    const from = parseYmdBoundary(query.dateFrom, "start");
+    const to = parseYmdBoundary(query.dateTo, "end");
+    if (!from.ok || !to.ok) {
+      return c.json({ error: "validation_error" }, 400);
+    }
+    if (from.value && to.value && from.value.getTime() > to.value.getTime()) {
+      return c.json({ error: "validation_error" }, 400);
+    }
+    const where: SQL[] = [eq(salesInvoices.tenantId, auth.tenantId)];
+    if (query.status) {
+      where.push(eq(salesInvoices.status, query.status));
+    }
+    if (query.q) {
+      const pattern = `%${query.q}%`;
+      where.push(
+        or(
+          ilike(salesInvoices.documentNumber, pattern),
+          ilike(salesInvoices.customerLabel, pattern),
+        )!,
+      );
+    }
+    if (from.value) {
+      where.push(sql`${salesInvoices.updatedAt} >= ${from.value}`);
+    }
+    if (to.value) {
+      where.push(sql`${salesInvoices.updatedAt} <= ${to.value}`);
+    }
+    const whereExpr = and(...where)!;
+    const [countRow] = await db
+      .select({ c: count() })
+      .from(salesInvoices)
+      .where(whereExpr);
+    const sortBy = salesInvoicesSortBySchema.parse(query.sortBy ?? "updatedAt");
+    const sortDir = query.sortDir ?? "desc";
+    const sortColumn =
+      sortBy === "documentNumber"
+        ? salesInvoices.documentNumber
+        : sortBy === "customerLabel"
+          ? salesInvoices.customerLabel
+          : sortBy === "status"
+            ? salesInvoices.status
+            : sortBy === "totalCents"
+              ? salesInvoices.totalCents
+              : sortBy === "dueAt"
+                ? salesInvoices.dueAt
+                : salesInvoices.updatedAt;
     const rows = await db
       .select()
       .from(salesInvoices)
-      .where(eq(salesInvoices.tenantId, auth.tenantId))
-      .orderBy(desc(salesInvoices.createdAt))
-      .limit(200);
+      .where(whereExpr)
+      .orderBy(
+        sortDir === "asc" ? asc(sortColumn) : desc(sortColumn),
+        desc(salesInvoices.createdAt),
+      )
+      .limit(query.limit ?? 25)
+      .offset(query.offset ?? 0);
     return c.json({
       invoices: rows.map(mapInvoiceRow),
+      total: Number(countRow?.c ?? 0),
+      permissions: salesListPermissions(auth),
     });
   };
 }
@@ -379,6 +781,91 @@ export function createSalesInvoiceDetailHandler(getDb: () => Db | undefined) {
       return c.json({ error: "not_found" }, 404);
     }
     return c.json(payload);
+  };
+}
+
+export function createSalesInvoiceCancelPostHandler(getDb: () => Db | undefined) {
+  return async (c: Context) => {
+    const auth = c.get("auth");
+    if (!auth) return c.json({ error: "missing_auth" }, 500);
+    if (!canEditSalesDocuments(auth)) return c.json({ error: "forbidden" }, 403);
+    const idParse = z.string().uuid().safeParse(c.req.param("id"));
+    if (!idParse.success) return c.json({ error: "invalid_id" }, 400);
+    const id = idParse.data;
+    const db = getDb();
+    if (!db) return c.json({ error: "database_unavailable" }, 503);
+
+    const row = await invoiceForTenant(db, auth.tenantId, id);
+    if (!row) return c.json({ error: "not_found" }, 404);
+    if (row.status === "cancelled") {
+      const payload = await buildInvoiceDetailPayload(db, auth.tenantId, id);
+      if (!payload) return c.json({ error: "not_found" }, 404);
+      return c.json(payload);
+    }
+    if (row.status === "paid") {
+      return c.json({ error: "cannot_cancel_paid" }, 409);
+    }
+    if (
+      row.status !== "draft" &&
+      row.status !== "sent" &&
+      row.status !== "overdue"
+    ) {
+      return c.json({ error: "invalid_state" }, 409);
+    }
+    await db
+      .update(salesInvoices)
+      .set({ status: "cancelled", paidAt: null, updatedAt: new Date() })
+      .where(
+        and(eq(salesInvoices.id, id), eq(salesInvoices.tenantId, auth.tenantId)),
+      );
+    await logSalesLifecycleEvent(db, {
+      tenantId: auth.tenantId,
+      actorSub: auth.sub?.trim() || "unknown",
+      entityType: "invoice",
+      entityId: id,
+      action: "invoice_cancelled",
+      fromStatus: row.status,
+      toStatus: "cancelled",
+    });
+    const payload = await buildInvoiceDetailPayload(db, auth.tenantId, id);
+    if (!payload) return c.json({ error: "not_found" }, 404);
+    return c.json(payload);
+  };
+}
+
+export function createSalesInvoiceDeleteHandler(getDb: () => Db | undefined) {
+  return async (c: Context) => {
+    const auth = c.get("auth");
+    if (!auth) return c.json({ error: "missing_auth" }, 500);
+    if (!canEditSalesDocuments(auth)) return c.json({ error: "forbidden" }, 403);
+    const idParse = z.string().uuid().safeParse(c.req.param("id"));
+    if (!idParse.success) return c.json({ error: "invalid_id" }, 400);
+    const id = idParse.data;
+    const db = getDb();
+    if (!db) return c.json({ error: "database_unavailable" }, 503);
+
+    const row = await invoiceForTenant(db, auth.tenantId, id);
+    if (!row) return c.json({ error: "not_found" }, 404);
+    if (row.status !== "draft") {
+      return c.json({ error: "invalid_state" }, 409);
+    }
+    const deleted = await db
+      .delete(salesInvoices)
+      .where(
+        and(eq(salesInvoices.id, id), eq(salesInvoices.tenantId, auth.tenantId)),
+      )
+      .returning({ id: salesInvoices.id });
+    if (!deleted[0]) return c.json({ error: "not_found" }, 404);
+    await logSalesLifecycleEvent(db, {
+      tenantId: auth.tenantId,
+      actorSub: auth.sub?.trim() || "unknown",
+      entityType: "invoice",
+      entityId: id,
+      action: "invoice_deleted",
+      fromStatus: row.status,
+      toStatus: null,
+    });
+    return c.body(null, 204);
   };
 }
 
@@ -428,6 +915,9 @@ export function createSalesQuotePostHandler(getDb: () => Db | undefined) {
     const auth = c.get("auth");
     if (!auth) {
       return c.json({ error: "missing_auth" }, 500);
+    }
+    if (!canEditSalesDocuments(auth)) {
+      return c.json({ error: "forbidden" }, 403);
     }
     let body: unknown;
     try {
@@ -502,6 +992,9 @@ export function createSalesQuotePatchHandler(getDb: () => Db | undefined) {
     const auth = c.get("auth");
     if (!auth) {
       return c.json({ error: "missing_auth" }, 500);
+    }
+    if (!canEditSalesDocuments(auth)) {
+      return c.json({ error: "forbidden" }, 403);
     }
     const idParse = z.string().uuid().safeParse(c.req.param("id"));
     if (!idParse.success) {
@@ -619,6 +1112,9 @@ export function createSalesInvoicePostHandler(getDb: () => Db | undefined) {
     if (!auth) {
       return c.json({ error: "missing_auth" }, 500);
     }
+    if (!canEditSalesDocuments(auth)) {
+      return c.json({ error: "forbidden" }, 403);
+    }
     let body: unknown;
     try {
       body = await c.req.json();
@@ -711,6 +1207,9 @@ export function createSalesInvoiceFromQuotePostHandler(
     const auth = c.get("auth");
     if (!auth) {
       return c.json({ error: "missing_auth" }, 500);
+    }
+    if (!canEditSalesDocuments(auth)) {
+      return c.json({ error: "forbidden" }, 403);
     }
     const quoteIdParse = z.string().uuid().safeParse(c.req.param("id"));
     if (!quoteIdParse.success) {
@@ -842,6 +1341,9 @@ export function createSalesInvoicePatchHandler(getDb: () => Db | undefined) {
     const auth = c.get("auth");
     if (!auth) {
       return c.json({ error: "missing_auth" }, 500);
+    }
+    if (!canEditSalesDocuments(auth)) {
+      return c.json({ error: "forbidden" }, 403);
     }
     const idParse = z.string().uuid().safeParse(c.req.param("id"));
     if (!idParse.success) {
@@ -988,6 +1490,9 @@ export function createSalesQuoteLinePostHandler(getDb: () => Db | undefined) {
     if (!auth) {
       return c.json({ error: "missing_auth" }, 500);
     }
+    if (!canEditSalesDocuments(auth)) {
+      return c.json({ error: "forbidden" }, 403);
+    }
     const quoteIdParse = z.string().uuid().safeParse(c.req.param("id"));
     if (!quoteIdParse.success) {
       return c.json({ error: "invalid_id" }, 400);
@@ -1036,6 +1541,9 @@ export function createSalesQuoteLinePatchHandler(getDb: () => Db | undefined) {
     const auth = c.get("auth");
     if (!auth) {
       return c.json({ error: "missing_auth" }, 500);
+    }
+    if (!canEditSalesDocuments(auth)) {
+      return c.json({ error: "forbidden" }, 403);
     }
     const quoteIdParse = z.string().uuid().safeParse(c.req.param("id"));
     const lineIdParse = z.string().uuid().safeParse(c.req.param("lineId"));
@@ -1123,6 +1631,9 @@ export function createSalesQuoteLineDeleteHandler(getDb: () => Db | undefined) {
     if (!auth) {
       return c.json({ error: "missing_auth" }, 500);
     }
+    if (!canEditSalesDocuments(auth)) {
+      return c.json({ error: "forbidden" }, 403);
+    }
     const quoteIdParse = z.string().uuid().safeParse(c.req.param("id"));
     const lineIdParse = z.string().uuid().safeParse(c.req.param("lineId"));
     if (!quoteIdParse.success || !lineIdParse.success) {
@@ -1183,6 +1694,9 @@ export function createSalesInvoiceLinePostHandler(getDb: () => Db | undefined) {
     if (!auth) {
       return c.json({ error: "missing_auth" }, 500);
     }
+    if (!canEditSalesDocuments(auth)) {
+      return c.json({ error: "forbidden" }, 403);
+    }
     const invoiceIdParse = z.string().uuid().safeParse(c.req.param("id"));
     if (!invoiceIdParse.success) {
       return c.json({ error: "invalid_id" }, 400);
@@ -1231,6 +1745,9 @@ export function createSalesInvoiceLinePatchHandler(getDb: () => Db | undefined) 
     const auth = c.get("auth");
     if (!auth) {
       return c.json({ error: "missing_auth" }, 500);
+    }
+    if (!canEditSalesDocuments(auth)) {
+      return c.json({ error: "forbidden" }, 403);
     }
     const invoiceIdParse = z.string().uuid().safeParse(c.req.param("id"));
     const lineIdParse = z.string().uuid().safeParse(c.req.param("lineId"));
@@ -1323,6 +1840,9 @@ export function createSalesInvoiceLineDeleteHandler(
     if (!auth) {
       return c.json({ error: "missing_auth" }, 500);
     }
+    if (!canEditSalesDocuments(auth)) {
+      return c.json({ error: "forbidden" }, 403);
+    }
     const invoiceIdParse = z.string().uuid().safeParse(c.req.param("id"));
     const lineIdParse = z.string().uuid().safeParse(c.req.param("lineId"));
     if (!invoiceIdParse.success || !lineIdParse.success) {
@@ -1367,6 +1887,9 @@ export function createSalesQuoteLinesReorderHandler(getDb: () => Db | undefined)
     const auth = c.get("auth");
     if (!auth) {
       return c.json({ error: "missing_auth" }, 500);
+    }
+    if (!canEditSalesDocuments(auth)) {
+      return c.json({ error: "forbidden" }, 403);
     }
     const quoteIdParse = z.string().uuid().safeParse(c.req.param("id"));
     if (!quoteIdParse.success) {
@@ -1436,6 +1959,9 @@ export function createSalesInvoiceLinesReorderHandler(getDb: () => Db | undefine
     const auth = c.get("auth");
     if (!auth) {
       return c.json({ error: "missing_auth" }, 500);
+    }
+    if (!canEditSalesDocuments(auth)) {
+      return c.json({ error: "forbidden" }, 403);
     }
     const invoiceIdParse = z.string().uuid().safeParse(c.req.param("id"));
     if (!invoiceIdParse.success) {

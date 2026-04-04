@@ -22,6 +22,7 @@ type HeaderPair = { title: string; subtitle: string };
 type SalesMessages = {
   sidebar: SalesSidebarCopy;
   headers: Record<SalesPageKind, HeaderPair> & {
+    root: HeaderPair;
     quotesDetail: HeaderPair;
     invoicesDetail: HeaderPair;
     quotesPrint: HeaderPair;
@@ -109,6 +110,28 @@ type SalesMessages = {
     invoiceFromQuoteHint: string;
     createInvoiceFromQuote: string;
   };
+  salesLifecycle: {
+    archiveQuote: string;
+    unarchiveQuote: string;
+    cancelInvoice: string;
+    deleteQuote: string;
+    deleteInvoice: string;
+    confirmAction: string;
+    confirmCancel: string;
+    confirmTitleArchiveQuote: string;
+    confirmTitleUnarchiveQuote: string;
+    confirmTitleCancelInvoice: string;
+    confirmTitleDeleteQuote: string;
+    confirmTitleDeleteInvoice: string;
+    confirmDescArchiveQuote: string;
+    confirmDescUnarchiveQuote: string;
+    confirmDescCancelInvoice: string;
+    confirmDescDeleteQuote: string;
+    confirmDescDeleteInvoice: string;
+    actionFailed: string;
+    actionDone: string;
+    deletedRedirectHint: string;
+  };
 };
 
 const de: SalesMessages = {
@@ -130,6 +153,10 @@ const de: SalesMessages = {
     ],
   },
   headers: {
+    root: {
+      title: "Sales",
+      subtitle: "Angebote und Rechnungen als gemeinsamer Vertriebsarbeitsbereich",
+    },
     quotes: {
       title: "Angebote",
       subtitle: "Kalkulation, Varianten und Freigaben (Vorschau)",
@@ -240,6 +267,33 @@ const de: SalesMessages = {
       "Kopfdaten und alle Positionen werden aus dem gewählten Angebot übernommen. Der Gesamtbetrag ergibt sich aus den Zeilen.",
     createInvoiceFromQuote: "Rechnung aus Angebot erstellen",
   },
+  salesLifecycle: {
+    archiveQuote: "Angebot archivieren",
+    unarchiveQuote: "Angebot reaktivieren",
+    cancelInvoice: "Rechnung stornieren",
+    deleteQuote: "Angebot loeschen",
+    deleteInvoice: "Rechnung loeschen",
+    confirmAction: "Aktion bestaetigen",
+    confirmCancel: "Abbrechen",
+    confirmTitleArchiveQuote: "Angebot archivieren?",
+    confirmTitleUnarchiveQuote: "Angebot reaktivieren?",
+    confirmTitleCancelInvoice: "Rechnung stornieren?",
+    confirmTitleDeleteQuote: "Angebot endgueltig loeschen?",
+    confirmTitleDeleteInvoice: "Rechnung endgueltig loeschen?",
+    confirmDescArchiveQuote:
+      "Das Angebot wird auf den Status „abgelaufen“ gesetzt und aus aktiven Listen gefiltert.",
+    confirmDescUnarchiveQuote:
+      "Das Angebot wird wieder aktiv und auf den Status „Entwurf“ gesetzt.",
+    confirmDescCancelInvoice:
+      "Die Rechnung wird als storniert markiert. Der Vorgang kann nicht als „bezahlt“ fortgesetzt werden.",
+    confirmDescDeleteQuote:
+      "Loeschen ist nur fuer Entwuerfe ohne verknuepfte Rechnung erlaubt.",
+    confirmDescDeleteInvoice:
+      "Loeschen ist nur fuer Rechnungen im Entwurfsstatus erlaubt.",
+    actionFailed: "Aktion fehlgeschlagen.",
+    actionDone: "Aktion erfolgreich.",
+    deletedRedirectHint: "Beleg wurde geloescht und die Liste geoeffnet.",
+  },
 };
 
 const en: SalesMessages = {
@@ -261,6 +315,10 @@ const en: SalesMessages = {
     ],
   },
   headers: {
+    root: {
+      title: "Sales",
+      subtitle: "Quotes and invoices as one shared sales workspace",
+    },
     quotes: {
       title: "Quotes",
       subtitle: "Costing, variants and approvals (preview)",
@@ -371,6 +429,33 @@ const en: SalesMessages = {
       "Header data and all line items are copied from the selected quote. The total is derived from the lines.",
     createInvoiceFromQuote: "Create invoice from quote",
   },
+  salesLifecycle: {
+    archiveQuote: "Archive quote",
+    unarchiveQuote: "Restore quote",
+    cancelInvoice: "Cancel invoice",
+    deleteQuote: "Delete quote",
+    deleteInvoice: "Delete invoice",
+    confirmAction: "Confirm action",
+    confirmCancel: "Cancel",
+    confirmTitleArchiveQuote: "Archive quote?",
+    confirmTitleUnarchiveQuote: "Restore quote?",
+    confirmTitleCancelInvoice: "Cancel invoice?",
+    confirmTitleDeleteQuote: "Delete quote permanently?",
+    confirmTitleDeleteInvoice: "Delete invoice permanently?",
+    confirmDescArchiveQuote:
+      "The quote will be moved to an expired state and hidden from active lists.",
+    confirmDescUnarchiveQuote:
+      "The quote will become active again and move back to draft.",
+    confirmDescCancelInvoice:
+      "The invoice is marked as cancelled. It can no longer proceed as paid.",
+    confirmDescDeleteQuote:
+      "Delete is allowed only for draft quotes without linked invoices.",
+    confirmDescDeleteInvoice:
+      "Delete is allowed only for invoices in draft state.",
+    actionFailed: "Action failed.",
+    actionDone: "Action completed.",
+    deletedRedirectHint: "Document deleted and list opened.",
+  },
 };
 
 function messages(locale: Locale): SalesMessages {
@@ -392,7 +477,7 @@ export function getSalesHeaderMeta(
 
   const m = messages(locale).headers;
   if (parts.length === 0) {
-    return m.quotes;
+    return m.root;
   }
   if (parts[0] === "quotes") {
     if (parts.length >= 3 && parts[2] === "print") return m.quotesPrint;
@@ -425,6 +510,10 @@ export function getSalesTableCopy(locale: Locale) {
 
 export function getSalesFormCopy(locale: Locale) {
   return messages(locale).salesForm;
+}
+
+export function getSalesLifecycleCopy(locale: Locale) {
+  return messages(locale).salesLifecycle;
 }
 
 export function getSalesLinesCopy(locale: Locale) {

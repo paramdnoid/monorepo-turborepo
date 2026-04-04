@@ -6,11 +6,14 @@ import {
   getPainterModuleBySegment,
 } from "@/lib/trades/painter-modules";
 import { getServerLocale } from "@/lib/i18n/server-locale";
+import { AreaCalculationContent } from "@/components/web/painter/area-calculation-content";
 import { ColorManagementContent } from "@/components/web/painter/color-management-content";
 import { DatevInterfaceContent } from "@/components/web/painter/datev-interface-content";
 import { DigitalProjectFoldersContent } from "@/components/web/painter/digital-project-folders-content";
 import { GaebSupportContent } from "@/components/web/painter/gaeb-support-content";
 import { ResourceManagementWholesaleContent } from "@/components/web/painter/resource-management-wholesale-content";
+import { RoomBookBillOfQuantitiesContent } from "@/components/web/painter/room-book-bill-of-quantities-content";
+import { SubstrateInspectionContent } from "@/components/web/painter/substrate-inspection-content";
 
 type PainterModulePageProps = {
   params: Promise<{ module: string }>;
@@ -47,6 +50,10 @@ export default async function PainterModulePage({ params }: PainterModulePagePro
     return <DatevInterfaceContent locale={locale} feature={entry.feature} />;
   }
 
+  if (segment === "area-calculation") {
+    return <AreaCalculationContent locale={locale} />;
+  }
+
   if (segment === "gaeb-support") {
     return <GaebSupportContent locale={locale} />;
   }
@@ -59,8 +66,16 @@ export default async function PainterModulePage({ params }: PainterModulePagePro
     return <DigitalProjectFoldersContent locale={locale} />;
   }
 
+  if (segment === "substrate-inspection") {
+    return <SubstrateInspectionContent locale={locale} />;
+  }
+
   if (segment === "resource-management-wholesale") {
     return <ResourceManagementWholesaleContent locale={locale} />;
+  }
+
+  if (segment === "room-book-bill-of-quantities") {
+    return <RoomBookBillOfQuantitiesContent locale={locale} />;
   }
 
   const placeholder =

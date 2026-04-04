@@ -86,6 +86,22 @@ export const schedulingAssignmentCreateSchema = z.object({
     .default(null),
 });
 
+export const schedulingAssignmentPatchSchema = z
+  .object({
+    employeeId: z.string().uuid().optional(),
+    date: schedulingDateSchema.optional(),
+    startTime: employeeLocalTimeSchema.optional(),
+    title: z.string().trim().min(1).max(200).optional(),
+    place: z.union([z.string().trim().max(200), z.null()]).optional(),
+    reminderMinutesBefore: z
+      .union([z.number().int().min(0).max(1440), z.null()])
+      .optional(),
+  })
+  .strict()
+  .refine((v) => Object.keys(v).length > 0, {
+    message: "empty_patch",
+  });
+
 export type SchedulingDate = z.infer<typeof schedulingDateSchema>;
 export type SchedulingUnavailableReason = z.infer<
   typeof schedulingUnavailableReasonSchema
@@ -106,4 +122,7 @@ export type SchedulingAssignmentsListResponse = z.infer<
 >;
 export type SchedulingAssignmentCreateInput = z.infer<
   typeof schedulingAssignmentCreateSchema
+>;
+export type SchedulingAssignmentPatchInput = z.infer<
+  typeof schedulingAssignmentPatchSchema
 >;

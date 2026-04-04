@@ -37,6 +37,7 @@ export const customerListItemSchema = z.object({
   id: z.string().uuid(),
   displayName: z.string(),
   customerNumber: z.string().nullable(),
+  category: z.string().nullable(),
   city: z.string().nullable(),
   archivedAt: z.string().nullable(),
   createdAt: z.string(),
@@ -49,6 +50,9 @@ export const customersListResponseSchema = z.object({
   customers: z.array(customerListItemSchema),
   /** Gesamtanzahl fuer die aktuelle Filterkombination (Suche / archiviert). */
   total: z.number().int().nonnegative(),
+  permissions: z.object({
+    canEdit: z.boolean(),
+  }),
 });
 
 /** Eine Adresszeile in der mandantenweiten Adressliste (mit Kundenbezug). */
@@ -66,12 +70,16 @@ export const customersAddressesListResponseSchema = z.object({
   rows: z.array(customerAddressBookRowSchema),
   /** Gesamtanzahl fuer die aktuelle Filterkombination (Suche / archiviert). */
   total: z.number().int().nonnegative(),
+  permissions: z.object({
+    canEdit: z.boolean(),
+  }),
 });
 
 export const customerDetailSchema = z.object({
   id: z.string().uuid(),
   displayName: z.string(),
   customerNumber: z.string().nullable(),
+  category: z.string().nullable(),
   vatId: z.string().nullable(),
   taxNumber: z.string().nullable(),
   notes: z.string().nullable(),
@@ -118,6 +126,10 @@ export const customerCreateSchema = z.object({
     .union([z.string().trim().max(80), z.null()])
     .optional()
     .default(null),
+  category: z
+    .union([z.string().trim().max(80), z.null()])
+    .optional()
+    .default(null),
   vatId: z.union([z.string().trim().max(80), z.null()]).optional().default(null),
   taxNumber: z
     .union([z.string().trim().max(80), z.null()])
@@ -129,11 +141,37 @@ export const customerCreateSchema = z.object({
 
 export type CustomerCreateInput = z.infer<typeof customerCreateSchema>;
 
+export const customersBatchArchiveRequestSchema = z.object({
+  customerIds: z.array(z.string().uuid()).min(1).max(500),
+  archived: z.boolean().optional(),
+  category: z.union([z.string().trim().max(80), z.null()]).optional(),
+}).superRefine((value, ctx) => {
+  if (value.archived === undefined && value.category === undefined) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "archived or category must be provided",
+      path: ["archived"],
+    });
+  }
+});
+
+export const customersBatchArchiveResponseSchema = z.object({
+  updated: z.number().int().nonnegative(),
+});
+
+export type CustomersBatchArchiveRequest = z.infer<
+  typeof customersBatchArchiveRequestSchema
+>;
+export type CustomersBatchArchiveResponse = z.infer<
+  typeof customersBatchArchiveResponseSchema
+>;
+
 export const customerPatchSchema = z.object({
   displayName: z.string().trim().min(1).max(400).optional(),
   customerNumber: z
     .union([z.string().trim().max(80), z.null()])
     .optional(),
+  category: z.union([z.string().trim().max(80), z.null()]).optional(),
   vatId: z.union([z.string().trim().max(80), z.null()]).optional(),
   taxNumber: z.union([z.string().trim().max(80), z.null()]).optional(),
   notes: z.union([z.string().trim().max(8000), z.null()]).optional(),

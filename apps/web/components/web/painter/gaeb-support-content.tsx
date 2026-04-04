@@ -80,7 +80,9 @@ export function GaebSupportContent({ locale }: { locale: Locale }) {
 
   const refreshProjects = useCallback(async () => {
     try {
-      const res = await fetch("/api/web/projects", { credentials: "include" });
+      const res = await fetch("/api/web/projects?includeArchived=1&limit=200", {
+        credentials: "include",
+      });
       if (!res.ok) return;
       const data = (await res.json()) as { projects?: ProjectRow[] };
       setProjects(data.projects ?? []);
@@ -336,6 +338,11 @@ export function GaebSupportContent({ locale }: { locale: Locale }) {
                   </option>
                 ))}
               </select>
+              <Button type="button" variant="link" size="sm" className="h-auto px-0" asChild>
+                <Link href="/web/projects">
+                  {locale === "en" ? "Open project management" : "Projektverwaltung öffnen"}
+                </Link>
+              </Button>
             </div>
           </div>
         </CardContent>

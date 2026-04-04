@@ -22,6 +22,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@repo/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@repo/ui/dialog";
 import { Input } from "@repo/ui/input";
 import { Label } from "@repo/ui/label";
 import { Separator } from "@repo/ui/separator";
@@ -47,6 +55,13 @@ type SchedulingAssignment = {
   reminderMinutesBefore: number | null;
 };
 
+type AssignmentEditFieldErrors = Partial<
+  Record<
+    "date" | "startTime" | "employeeId" | "title" | "place" | "reminderMinutesBefore",
+    string
+  >
+>;
+
 function toIsoDateLocal(d: Date): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -64,6 +79,60 @@ function slotLabel(
       : " (+1T)"
     : "";
   return `${slot.startTime} - ${slot.endTime}${suffix}`;
+}
+
+function normalizeTimeForInput(value: string): string {
+  return value.length >= 5 ? value.slice(0, 5) : value;
+}
+
+function readPatchFieldErrors(
+  json: unknown,
+  locale: Locale,
+): AssignmentEditFieldErrors {
+  if (
+    typeof json !== "object" ||
+    json === null ||
+    !("issues" in json) ||
+    !Array.isArray(json.issues)
+  ) {
+    return {};
+  }
+  const out: AssignmentEditFieldErrors = {};
+  for (const rawIssue of json.issues) {
+    if (typeof rawIssue !== "object" || rawIssue === null) {
+      continue;
+    }
+    const issue = rawIssue as { path?: unknown };
+    if (!Array.isArray(issue.path) || issue.path.length === 0) {
+      continue;
+    }
+    const key = issue.path[0];
+    if (typeof key !== "string") {
+      continue;
+    }
+    if (key === "date") {
+      out.date = locale === "en" ? "Enter a valid date." : "Bitte ein gueltiges Datum angeben.";
+    } else if (key === "startTime") {
+      out.startTime =
+        locale === "en" ? "Enter a valid time." : "Bitte eine gueltige Uhrzeit angeben.";
+    } else if (key === "employeeId") {
+      out.employeeId =
+        locale === "en" ? "Choose an employee." : "Bitte Mitarbeitende auswaehlen.";
+    } else if (key === "title") {
+      out.title = locale === "en" ? "Task is required." : "Einsatzbezeichnung ist erforderlich.";
+    } else if (key === "place") {
+      out.place =
+        locale === "en"
+          ? "Place is too long."
+          : "Ort ist zu lang.";
+    } else if (key === "reminderMinutesBefore") {
+      out.reminderMinutesBefore =
+        locale === "en"
+          ? "Reminder value is invalid."
+          : "Erinnerungswert ist ungueltig.";
+    }
+  }
+  return out;
 }
 
 export function SchedulingContent({ locale }: { locale: Locale }) {
@@ -96,6 +165,19 @@ export function SchedulingContent({ locale }: { locale: Locale }) {
   const [draftReminderMinutes, setDraftReminderMinutes] = React.useState<
     "none" | "15" | "30" | "60" | "120"
   >("none");
+  const [editAssignmentId, setEditAssignmentId] = React.useState<string | null>(
+    null,
+  );
+  const [editDate, setEditDate] = React.useState("");
+  const [editTime, setEditTime] = React.useState("08:00");
+  const [editTitle, setEditTitle] = React.useState("");
+  const [editPlace, setEditPlace] = React.useState("");
+  const [editEmployeeId, setEditEmployeeId] = React.useState("");
+  const [editReminderMinutes, setEditReminderMinutes] = React.useState<
+    "none" | "15" | "30" | "60" | "120"
+  >("none");
+  const [editFieldErrors, setEditFieldErrors] =
+    React.useState<AssignmentEditFieldErrors>({});
 
   const rdpLocale = locale === "en" ? enUS : de;
   const selectedDate = selected ? toIsoDateLocal(selected) : null;
@@ -109,6 +191,7 @@ export function SchedulingContent({ locale }: { locale: Locale }) {
     () => [...assignments].sort((a, b) => a.atTime.localeCompare(b.atTime)),
     [assignments],
   );
+  const allAssignableEmployees = employees;
 
   React.useEffect(() => {
     if (!selectedDate) return;
@@ -368,6 +451,143 @@ export function SchedulingContent({ locale }: { locale: Locale }) {
           ? "Could not create assignment."
           : "Einsatz konnte nicht erstellt werden.",
       );
+    }
+  }
+
+  function startEditAssignment(assignment: SchedulingAssignment) {
+    setEditAssignmentId(assignment.id);
+    setEditDate(assignment.date);
+    setEditTime(normalizeTimeForInput(assignment.atTime));
+    setEditTitle(assignment.title);
+    setEditPlace(assignment.place);
+    setEditEmployeeId(assignment.employeeId);
+    const reminder = assignment.reminderMinutesBefore;
+    setEditReminderMinutes(
+      reminder === 15
+        ? "15"
+        : reminder === 30
+          ? "30"
+          : reminder === 60
+            ? "60"
+            : reminder === 120
+              ? "120"
+              : "none",
+    );
+    setEditFieldErrors({});
+    setAssignmentError(null);
+  }
+
+  function onEditOpenChange(open: boolean) {
+    if (open || assignmentBusy) {
+      return;
+    }
+    setEditAssignmentId(null);
+    setEditFieldErrors({});
+  }
+
+  async function saveAssignmentEdit() {
+    if (!editAssignmentId) {
+      return;
+    }
+    const nextErrors: AssignmentEditFieldErrors = {};
+    if (!editDate) {
+      nextErrors.date =
+        locale === "en" ? "Enter a valid date." : "Bitte ein gueltiges Datum angeben.";
+    }
+    if (!editTime) {
+      nextErrors.startTime =
+        locale === "en" ? "Enter a valid time." : "Bitte eine gueltige Uhrzeit angeben.";
+    }
+    if (!editEmployeeId) {
+      nextErrors.employeeId =
+        locale === "en" ? "Choose an employee." : "Bitte Mitarbeitende auswaehlen.";
+    }
+    if (!editTitle.trim()) {
+      nextErrors.title =
+        locale === "en" ? "Task is required." : "Einsatzbezeichnung ist erforderlich.";
+    }
+    if (Object.keys(nextErrors).length > 0) {
+      setEditFieldErrors(nextErrors);
+      return;
+    }
+
+    setAssignmentBusy(true);
+    setAssignmentError(null);
+    setEditFieldErrors({});
+    try {
+      const res = await fetch(
+        `/api/web/scheduling/assignments/${encodeURIComponent(editAssignmentId)}`,
+        {
+          method: "PATCH",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            employeeId: editEmployeeId,
+            date: editDate,
+            startTime: editTime,
+            title: editTitle.trim(),
+            place: editPlace.trim() ? editPlace.trim() : null,
+            reminderMinutesBefore:
+              editReminderMinutes === "none" ? null : Number(editReminderMinutes),
+          }),
+        },
+      );
+      const text = await res.text();
+      const json = parseResponseJson(text);
+      const parsed = schedulingAssignmentCreateResponseSchema.safeParse(json);
+      if (!res.ok || !parsed.success) {
+        const apiError =
+          typeof json === "object" && json !== null && "error" in json
+            ? (json as { error?: string }).error
+            : undefined;
+        if (apiError === "validation_error") {
+          const fieldErrors = readPatchFieldErrors(json, locale);
+          if (Object.keys(fieldErrors).length > 0) {
+            setEditFieldErrors(fieldErrors);
+          }
+          setAssignmentError(
+            locale === "en"
+              ? "Please fix the highlighted fields."
+              : "Bitte die markierten Felder korrigieren.",
+          );
+          return;
+        }
+        if (res.status === 409 && apiError === "mutually_exclusive_conflict") {
+          setAssignmentError(
+            locale === "en"
+              ? "Conflict: mutually exclusive team members are already assigned at this time."
+              : "Konflikt: Gegenseitig ausgeschlossene Teammitglieder sind zu dieser Zeit bereits eingeplant.",
+          );
+          return;
+        }
+        if (res.status === 409 && apiError === "employee_slot_conflict") {
+          setAssignmentError(
+            locale === "en"
+              ? "Conflict: employee already has an assignment in this slot."
+              : "Konflikt: Mitarbeitende sind in diesem Zeitslot bereits eingeplant.",
+          );
+          return;
+        }
+        setAssignmentError(
+          locale === "en"
+            ? "Could not update assignment."
+            : "Einsatz konnte nicht aktualisiert werden.",
+        );
+        return;
+      }
+      if (parsed.data.dependencyWarnings.length > 0) {
+        setDependencyWarnings(parsed.data.dependencyWarnings);
+      }
+      setEditAssignmentId(null);
+      await Promise.all([loadDayAssignments(selectedDate ?? editDate), loadAssignmentDates()]);
+    } catch {
+      setAssignmentError(
+        locale === "en"
+          ? "Could not update assignment."
+          : "Einsatz konnte nicht aktualisiert werden.",
+      );
+    } finally {
+      setAssignmentBusy(false);
     }
   }
 
@@ -693,17 +913,28 @@ export function SchedulingContent({ locale }: { locale: Locale }) {
                             : ""}
                         </p>
                       </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          void removeAssignment(a.id);
-                        }}
-                        disabled={assignmentBusy}
-                      >
-                        {locale === "en" ? "Remove" : "Entfernen"}
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => startEditAssignment(a)}
+                          disabled={assignmentBusy}
+                        >
+                          {locale === "en" ? "Edit" : "Bearbeiten"}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            void removeAssignment(a.id);
+                          }}
+                          disabled={assignmentBusy}
+                        >
+                          {locale === "en" ? "Remove" : "Entfernen"}
+                        </Button>
+                      </div>
                     </li>
                   );
                 })}
@@ -715,6 +946,159 @@ export function SchedulingContent({ locale }: { locale: Locale }) {
           <p className="text-xs text-muted-foreground">{previewNote}</p>
         </CardContent>
       </Card>
+      <Dialog open={editAssignmentId !== null} onOpenChange={onEditOpenChange}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {locale === "en" ? "Edit assignment" : "Einsatz bearbeiten"}
+            </DialogTitle>
+            <DialogDescription>
+              {locale === "en"
+                ? "Update time, employee, and reminder without deleting the assignment."
+                : "Zeit, Mitarbeitende und Erinnerung ohne Loeschen des Einsatzes anpassen."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3">
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div className="grid gap-2">
+                <Label htmlFor="sched-edit-date">
+                  {locale === "en" ? "Date" : "Datum"}
+                </Label>
+                <Input
+                  id="sched-edit-date"
+                  type="date"
+                  value={editDate}
+                  onChange={(ev) => setEditDate(ev.target.value)}
+                  disabled={assignmentBusy}
+                />
+                {editFieldErrors.date ? (
+                  <p className="text-xs text-destructive">{editFieldErrors.date}</p>
+                ) : null}
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="sched-edit-time">
+                  {locale === "en" ? "Time" : "Uhrzeit"}
+                </Label>
+                <Input
+                  id="sched-edit-time"
+                  type="time"
+                  value={editTime}
+                  onChange={(ev) => setEditTime(ev.target.value)}
+                  disabled={assignmentBusy}
+                />
+                {editFieldErrors.startTime ? (
+                  <p className="text-xs text-destructive">{editFieldErrors.startTime}</p>
+                ) : null}
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="sched-edit-employee">
+                {locale === "en" ? "Employee" : "Mitarbeitende:r"}
+              </Label>
+              <Select
+                value={editEmployeeId}
+                onValueChange={setEditEmployeeId}
+                disabled={assignmentBusy}
+              >
+                <SelectTrigger id="sched-edit-employee">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {allAssignableEmployees.map((e) => (
+                    <SelectItem key={e.employeeId} value={e.employeeId}>
+                      {e.displayName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {editFieldErrors.employeeId ? (
+                <p className="text-xs text-destructive">{editFieldErrors.employeeId}</p>
+              ) : null}
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="sched-edit-reminder">
+                {locale === "en" ? "Reminder" : "Erinnerung"}
+              </Label>
+              <Select
+                value={editReminderMinutes}
+                onValueChange={(v) =>
+                  setEditReminderMinutes(v as "none" | "15" | "30" | "60" | "120")
+                }
+                disabled={assignmentBusy}
+              >
+                <SelectTrigger id="sched-edit-reminder">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">
+                    {locale === "en" ? "None" : "Keine"}
+                  </SelectItem>
+                  <SelectItem value="15">15 min</SelectItem>
+                  <SelectItem value="30">30 min</SelectItem>
+                  <SelectItem value="60">60 min</SelectItem>
+                  <SelectItem value="120">120 min</SelectItem>
+                </SelectContent>
+              </Select>
+              {editFieldErrors.reminderMinutesBefore ? (
+                <p className="text-xs text-destructive">
+                  {editFieldErrors.reminderMinutesBefore}
+                </p>
+              ) : null}
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="sched-edit-title">
+                {locale === "en" ? "Task" : "Einsatz"}
+              </Label>
+              <Input
+                id="sched-edit-title"
+                value={editTitle}
+                onChange={(ev) => setEditTitle(ev.target.value)}
+                disabled={assignmentBusy}
+              />
+              {editFieldErrors.title ? (
+                <p className="text-xs text-destructive">{editFieldErrors.title}</p>
+              ) : null}
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="sched-edit-place">
+                {locale === "en" ? "Place" : "Ort"}
+              </Label>
+              <Input
+                id="sched-edit-place"
+                value={editPlace}
+                onChange={(ev) => setEditPlace(ev.target.value)}
+                disabled={assignmentBusy}
+              />
+              {editFieldErrors.place ? (
+                <p className="text-xs text-destructive">{editFieldErrors.place}</p>
+              ) : null}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => onEditOpenChange(false)}
+              disabled={assignmentBusy}
+            >
+              {locale === "en" ? "Cancel" : "Abbrechen"}
+            </Button>
+            <Button
+              onClick={() => {
+                void saveAssignmentEdit();
+              }}
+              disabled={assignmentBusy}
+            >
+              {assignmentBusy
+                ? locale === "en"
+                  ? "Saving…"
+                  : "Speichert…"
+                : locale === "en"
+                  ? "Save changes"
+                  : "Aenderungen speichern"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

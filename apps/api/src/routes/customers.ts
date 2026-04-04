@@ -5,6 +5,8 @@ import { z } from "zod";
 
 import {
   customerAddressKindSchema,
+  customersBatchArchiveRequestSchema,
+  customersBatchArchiveResponseSchema,
   customerCreateAddressSchema,
   customerCreateSchema,
   customerPatchAddressSchema,
@@ -16,6 +18,8 @@ import {
   customers,
   type Db,
 } from "@repo/db";
+
+import { canEditCustomers } from "../auth/permissions.js";
 
 function isUniqueViolation(err: unknown): boolean {
   return (
@@ -29,6 +33,14 @@ function isUniqueViolation(err: unknown): boolean {
 function normalizeOptionalCustomerNumber(
   v: string | null | undefined,
 ): string | null {
+  if (v === undefined || v === null) {
+    return null;
+  }
+  const t = v.trim();
+  return t === "" ? null : t;
+}
+
+function normalizeOptionalCategory(v: string | null | undefined): string | null {
   if (v === undefined || v === null) {
     return null;
   }
@@ -89,6 +101,33 @@ async function clearDefaultFlagsForKind(
     );
 }
 
+async function ensureDefaultAddressForKind(
+  db: Db,
+  customerId: string,
+  kind: string,
+): Promise<void> {
+  const rows = await db
+    .select({
+      id: customerAddresses.id,
+      isDefault: customerAddresses.isDefault,
+    })
+    .from(customerAddresses)
+    .where(
+      and(
+        eq(customerAddresses.customerId, customerId),
+        eq(customerAddresses.kind, kind),
+      ),
+    )
+    .orderBy(asc(customerAddresses.createdAt), asc(customerAddresses.id));
+  if (rows.length === 0 || rows.some((r) => r.isDefault)) {
+    return;
+  }
+  await db
+    .update(customerAddresses)
+    .set({ isDefault: true, updatedAt: new Date() })
+    .where(eq(customerAddresses.id, rows[0]!.id));
+}
+
 async function assertCustomerForTenant(
   db: Db,
   tenantId: string,
@@ -130,6 +169,7 @@ async function loadCustomerDetail(
       id: row.id,
       displayName: row.displayName,
       customerNumber: row.customerNumber ?? null,
+      category: row.category ?? null,
       vatId: row.vatId ?? null,
       taxNumber: row.taxNumber ?? null,
       notes: row.notes ?? null,
@@ -221,13 +261,87 @@ export function createCustomersListHandler(getDb: () => Db | undefined) {
         id: r.id,
         displayName: r.displayName,
         customerNumber: r.customerNumber ?? null,
+        category: r.category ?? null,
         city: pickListCity(addrByCustomer.get(r.id) ?? []),
         archivedAt: r.archivedAt ? r.archivedAt.toISOString() : null,
         createdAt: r.createdAt.toISOString(),
         updatedAt: r.updatedAt.toISOString(),
       })),
       total,
+      permissions: {
+        canEdit: canEditCustomers(auth),
+      },
     });
+  };
+}
+
+export function createCustomersBatchArchiveHandler(getDb: () => Db | undefined) {
+  return async (c: Context) => {
+    const auth = c.get("auth");
+    if (!auth) {
+      return c.json({ error: "missing_auth" }, 500);
+    }
+    if (!canEditCustomers(auth)) {
+      return c.json({ error: "forbidden" }, 403);
+    }
+    const db = getDb();
+    if (!db) {
+      return c.json({ error: "database_unavailable" }, 503);
+    }
+
+    let body: unknown;
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ error: "invalid_json" }, 400);
+    }
+    const parsed = customersBatchArchiveRequestSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ error: "validation_error", issues: parsed.error.issues }, 400);
+    }
+
+    const customerIds = [...new Set(parsed.data.customerIds)];
+    if (customerIds.length === 0) {
+      const out = customersBatchArchiveResponseSchema.safeParse({ updated: 0 });
+      if (!out.success) {
+        return c.json({ error: "serialize_error" }, 500);
+      }
+      return c.json(out.data);
+    }
+
+    const now = new Date();
+    const updates: {
+      updatedAt: Date;
+      archivedAt?: Date | null;
+      category?: string | null;
+    } = {
+      updatedAt: now,
+    };
+    if (parsed.data.archived !== undefined) {
+      updates.archivedAt = parsed.data.archived ? now : null;
+    }
+    if (parsed.data.category !== undefined) {
+      updates.category = normalizeOptionalCategory(parsed.data.category);
+    }
+
+    const updated = await db
+      .update(customers)
+      .set(updates)
+      .where(
+        and(
+          eq(customers.tenantId, auth.tenantId),
+          inArray(customers.id, customerIds),
+        ),
+      )
+      .returning({ id: customers.id });
+
+    const out = customersBatchArchiveResponseSchema.safeParse({
+      updated: updated.length,
+    });
+    if (!out.success) {
+      return c.json({ error: "serialize_error" }, 500);
+    }
+    return c.json(out.data);
   };
 }
 
@@ -327,6 +441,9 @@ export function createCustomerAddressesListHandler(
         address: mapAddressRow(addr),
       })),
       total,
+      permissions: {
+        canEdit: canEditCustomers(auth),
+      },
     });
   };
 }
@@ -364,6 +481,7 @@ export function createCustomerPostHandler(getDb: () => Db | undefined) {
           tenantId: auth.tenantId,
           displayName: input.displayName,
           customerNumber,
+          category: normalizeOptionalCategory(input.category ?? undefined),
           vatId: normalizeOptionalCustomerNumber(input.vatId ?? undefined),
           taxNumber: normalizeOptionalCustomerNumber(input.taxNumber ?? undefined),
           notes:
@@ -469,6 +587,7 @@ export function createCustomerPatchHandler(getDb: () => Db | undefined) {
       updatedAt: Date;
       displayName?: string;
       customerNumber?: string | null;
+      category?: string | null;
       vatId?: string | null;
       taxNumber?: string | null;
       notes?: string | null;
@@ -481,6 +600,9 @@ export function createCustomerPatchHandler(getDb: () => Db | undefined) {
       updates.customerNumber = normalizeOptionalCustomerNumber(
         patch.customerNumber,
       );
+    }
+    if (patch.category !== undefined) {
+      updates.category = normalizeOptionalCategory(patch.category);
     }
     if (patch.vatId !== undefined) {
       updates.vatId = normalizeOptionalCustomerNumber(patch.vatId);
@@ -529,6 +651,9 @@ export function createCustomerAddressPostHandler(getDb: () => Db | undefined) {
     const auth = c.get("auth");
     if (!auth) {
       return c.json({ error: "missing_auth" }, 500);
+    }
+    if (!canEditCustomers(auth)) {
+      return c.json({ error: "forbidden" }, 403);
     }
     const customerIdParse = z.string().uuid().safeParse(c.req.param("id"));
     if (!customerIdParse.success) {
@@ -579,6 +704,7 @@ export function createCustomerAddressPostHandler(getDb: () => Db | undefined) {
     if (!newId) {
       return c.json({ error: "insert_failed" }, 500);
     }
+    await ensureDefaultAddressForKind(db, customerId, kind);
     const payload = await loadCustomerDetail(db, auth.tenantId, customerId);
     if (!payload) {
       return c.json({ error: "not_found" }, 404);
@@ -592,6 +718,9 @@ export function createCustomerAddressPatchHandler(getDb: () => Db | undefined) {
     const auth = c.get("auth");
     if (!auth) {
       return c.json({ error: "missing_auth" }, 500);
+    }
+    if (!canEditCustomers(auth)) {
+      return c.json({ error: "forbidden" }, 403);
     }
     const customerIdParse = z.string().uuid().safeParse(c.req.param("id"));
     const addressIdParse = z.string().uuid().safeParse(c.req.param("addressId"));
@@ -636,6 +765,7 @@ export function createCustomerAddressPatchHandler(getDb: () => Db | undefined) {
     if (!row) {
       return c.json({ error: "not_found" }, 404);
     }
+    const prevKind = row.kind;
     const nextKind = patch.kind ?? row.kind;
     const kindParse = customerAddressKindSchema.safeParse(nextKind);
     const kind = kindParse.success ? kindParse.data : row.kind;
@@ -679,6 +809,10 @@ export function createCustomerAddressPatchHandler(getDb: () => Db | undefined) {
       .update(customerAddresses)
       .set(updates)
       .where(eq(customerAddresses.id, addressId));
+    await ensureDefaultAddressForKind(db, customerId, prevKind);
+    if (kind !== prevKind) {
+      await ensureDefaultAddressForKind(db, customerId, kind);
+    }
 
     const payload = await loadCustomerDetail(db, auth.tenantId, customerId);
     if (!payload) {
@@ -693,6 +827,9 @@ export function createCustomerAddressDeleteHandler(getDb: () => Db | undefined) 
     const auth = c.get("auth");
     if (!auth) {
       return c.json({ error: "missing_auth" }, 500);
+    }
+    if (!canEditCustomers(auth)) {
+      return c.json({ error: "forbidden" }, 403);
     }
     const customerIdParse = z.string().uuid().safeParse(c.req.param("id"));
     const addressIdParse = z.string().uuid().safeParse(c.req.param("addressId"));
@@ -709,6 +846,20 @@ export function createCustomerAddressDeleteHandler(getDb: () => Db | undefined) 
     if (!custOk) {
       return c.json({ error: "not_found" }, 404);
     }
+    const existing = await db
+      .select({ kind: customerAddresses.kind })
+      .from(customerAddresses)
+      .where(
+        and(
+          eq(customerAddresses.id, addressId),
+          eq(customerAddresses.customerId, customerId),
+        ),
+      )
+      .limit(1);
+    const existingRow = existing[0];
+    if (!existingRow) {
+      return c.json({ error: "not_found" }, 404);
+    }
     const del = await db
       .delete(customerAddresses)
       .where(
@@ -721,6 +872,7 @@ export function createCustomerAddressDeleteHandler(getDb: () => Db | undefined) 
     if (!del[0]) {
       return c.json({ error: "not_found" }, 404);
     }
+    await ensureDefaultAddressForKind(db, customerId, existingRow.kind);
     const payload = await loadCustomerDetail(db, auth.tenantId, customerId);
     if (!payload) {
       return c.json({ error: "not_found" }, 404);

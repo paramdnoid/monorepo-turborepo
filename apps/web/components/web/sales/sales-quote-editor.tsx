@@ -314,6 +314,17 @@ export function SalesQuoteCreateDialog({
                   ))}
                 </SelectContent>
               </Select>
+              <Button
+                type="button"
+                variant="link"
+                size="sm"
+                className="h-auto w-fit px-0"
+                asChild
+              >
+                <Link href="/web/projects">
+                  {locale === "en" ? "Open project management" : "Projektverwaltung öffnen"}
+                </Link>
+              </Button>
             </div>
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
@@ -596,6 +607,17 @@ export function SalesQuoteEditForm({
             ))}
           </SelectContent>
         </Select>
+        <Button
+          type="button"
+          variant="link"
+          size="sm"
+          className="h-auto w-fit px-0"
+          asChild
+        >
+          <Link href="/web/projects">
+            {locale === "en" ? "Open project management" : "Projektverwaltung öffnen"}
+          </Link>
+        </Button>
       </div>
       <div className="flex flex-wrap gap-2 pt-2">
         <Button type="button" variant="outline" onClick={onCancel} disabled={busy}>

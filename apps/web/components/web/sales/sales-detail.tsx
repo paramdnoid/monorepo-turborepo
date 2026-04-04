@@ -9,6 +9,16 @@ import {
 } from "@repo/api-contracts";
 import type { z } from "zod";
 import { Alert, AlertDescription, AlertTitle } from "@repo/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@repo/ui/alert-dialog";
 import { Button } from "@repo/ui/button";
 import {
   Card,
@@ -21,10 +31,13 @@ import {
 import {
   getSalesPrintCopy,
   getSalesFormCopy,
+  getSalesLifecycleCopy,
   getSalesTableCopy,
 } from "@/content/sales-module";
 import type { Locale } from "@/lib/i18n/locale";
 import { formatMinorCurrency } from "@/lib/money-format";
+import { parseResponseJson } from "@/lib/parse-response-json";
+import { toast } from "sonner";
 
 import {
   SalesInvoiceCreateDialog,
@@ -42,6 +55,13 @@ type SalesDetailProps = {
   mode: "quotes" | "invoices";
   documentId: string;
 };
+
+type LifecycleAction =
+  | "archive-quote"
+  | "unarchive-quote"
+  | "cancel-invoice"
+  | "delete-quote"
+  | "delete-invoice";
 
 function formatDate(iso: string | null, locale: Locale): string {
   if (!iso) return "—";
@@ -77,6 +97,7 @@ export function SalesDetail({
   const copy = getSalesTableCopy(locale);
   const formCopy = getSalesFormCopy(locale);
   const printCopy = getSalesPrintCopy(locale);
+  const lifecycleCopy = getSalesLifecycleCopy(locale);
   const listHref =
     mode === "quotes" ? "/web/sales/quotes" : "/web/sales/invoices";
   const [loading, setLoading] = useState(true);
@@ -99,6 +120,121 @@ export function SalesDetail({
     () => new Map(),
   );
   const [invoiceFromQuoteOpen, setInvoiceFromQuoteOpen] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<LifecycleAction | null>(null);
+  const [actionBusy, setActionBusy] = useState(false);
+
+  const fetchDocument = async (
+    path: string,
+    init?: RequestInit,
+  ): Promise<unknown | null> => {
+    const res = await fetch(path, { ...init, credentials: "include" });
+    if (res.status === 204) return { ok: true };
+    const text = await res.text();
+    const json = parseResponseJson(text);
+    if (!res.ok) {
+      const code =
+        json &&
+        typeof json === "object" &&
+        "error" in json &&
+        typeof (json as { error: unknown }).error === "string"
+          ? (json as { error: string }).error
+          : "unknown";
+      throw new Error(code);
+    }
+    return json;
+  };
+
+  const lifecycleErrorText = (errCode: string): string => {
+    if (errCode === "invalid_state") return lifecycleCopy.actionFailed;
+    if (errCode === "quote_has_invoices") return lifecycleCopy.confirmDescDeleteQuote;
+    if (errCode === "cannot_cancel_paid") return lifecycleCopy.confirmDescCancelInvoice;
+    if (errCode === "not_found") return copy.notFound;
+    return lifecycleCopy.actionFailed;
+  };
+
+  const runLifecycleAction = async (action: LifecycleAction) => {
+    if (actionBusy) return;
+    setActionBusy(true);
+    try {
+      if (action === "archive-quote") {
+        const json = await fetchDocument(
+          `/api/web/sales/quotes/${encodeURIComponent(documentId)}/archive`,
+          { method: "POST" },
+        );
+        const parsed = salesQuoteDetailResponseSchema.safeParse(json);
+        if (!parsed.success) throw new Error("invalid_payload");
+        setDetail({ mode: "quotes", data: parsed.data });
+        setEditing(false);
+        toast.success(lifecycleCopy.actionDone);
+        return;
+      }
+      if (action === "unarchive-quote") {
+        const json = await fetchDocument(
+          `/api/web/sales/quotes/${encodeURIComponent(documentId)}/unarchive`,
+          { method: "POST" },
+        );
+        const parsed = salesQuoteDetailResponseSchema.safeParse(json);
+        if (!parsed.success) throw new Error("invalid_payload");
+        setDetail({ mode: "quotes", data: parsed.data });
+        setEditing(false);
+        toast.success(lifecycleCopy.actionDone);
+        return;
+      }
+      if (action === "cancel-invoice") {
+        const json = await fetchDocument(
+          `/api/web/sales/invoices/${encodeURIComponent(documentId)}/cancel`,
+          { method: "POST" },
+        );
+        const parsed = salesInvoiceDetailResponseSchema.safeParse(json);
+        if (!parsed.success) throw new Error("invalid_payload");
+        setDetail({ mode: "invoices", data: parsed.data });
+        setEditing(false);
+        toast.success(lifecycleCopy.actionDone);
+        return;
+      }
+      if (action === "delete-quote") {
+        await fetchDocument(`/api/web/sales/quotes/${encodeURIComponent(documentId)}`, {
+          method: "DELETE",
+        });
+        toast.success(lifecycleCopy.deletedRedirectHint);
+        router.push(listHref);
+        return;
+      }
+      await fetchDocument(`/api/web/sales/invoices/${encodeURIComponent(documentId)}`, {
+        method: "DELETE",
+      });
+      toast.success(lifecycleCopy.deletedRedirectHint);
+      router.push(listHref);
+    } catch (err) {
+      const code = err instanceof Error ? err.message : "unknown";
+      toast.error(lifecycleErrorText(code));
+    } finally {
+      setActionBusy(false);
+      setConfirmAction(null);
+    }
+  };
+
+  const confirmTitle =
+    confirmAction === "archive-quote"
+      ? lifecycleCopy.confirmTitleArchiveQuote
+      : confirmAction === "unarchive-quote"
+        ? lifecycleCopy.confirmTitleUnarchiveQuote
+        : confirmAction === "cancel-invoice"
+          ? lifecycleCopy.confirmTitleCancelInvoice
+          : confirmAction === "delete-quote"
+            ? lifecycleCopy.confirmTitleDeleteQuote
+            : lifecycleCopy.confirmTitleDeleteInvoice;
+
+  const confirmDescription =
+    confirmAction === "archive-quote"
+      ? lifecycleCopy.confirmDescArchiveQuote
+      : confirmAction === "unarchive-quote"
+        ? lifecycleCopy.confirmDescUnarchiveQuote
+        : confirmAction === "cancel-invoice"
+          ? lifecycleCopy.confirmDescCancelInvoice
+          : confirmAction === "delete-quote"
+            ? lifecycleCopy.confirmDescDeleteQuote
+            : lifecycleCopy.confirmDescDeleteInvoice;
 
   useEffect(() => {
     let cancelled = false;
@@ -237,6 +373,33 @@ export function SalesDetail({
           >
             {editing ? formCopy.cancel : formCopy.edit}
           </Button>
+          {q.status === "expired" ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setConfirmAction("unarchive-quote")}
+            >
+              {lifecycleCopy.unarchiveQuote}
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setConfirmAction("archive-quote")}
+            >
+              {lifecycleCopy.archiveQuote}
+            </Button>
+          )}
+          <Button
+            type="button"
+            variant="destructive"
+            size="sm"
+            onClick={() => setConfirmAction("delete-quote")}
+          >
+            {lifecycleCopy.deleteQuote}
+          </Button>
         </div>
         <SalesInvoiceCreateDialog
           locale={locale}
@@ -313,6 +476,35 @@ export function SalesDetail({
             )
           }
         />
+        <AlertDialog
+          open={confirmAction !== null}
+          onOpenChange={(open) => {
+            if (!open && !actionBusy) setConfirmAction(null);
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{confirmTitle}</AlertDialogTitle>
+              <AlertDialogDescription>{confirmDescription}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={actionBusy}>
+                {lifecycleCopy.confirmCancel}
+              </AlertDialogCancel>
+              <AlertDialogAction
+                disabled={actionBusy || confirmAction === null}
+                onClick={(event) => {
+                  event.preventDefault();
+                  if (confirmAction) {
+                    void runLifecycleAction(confirmAction);
+                  }
+                }}
+              >
+                {actionBusy ? (locale === "en" ? "Working…" : "Bitte warten …") : lifecycleCopy.confirmAction}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     );
   }
@@ -341,6 +533,22 @@ export function SalesDetail({
           onClick={() => setEditing((e) => !e)}
         >
           {editing ? formCopy.cancel : formCopy.edit}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setConfirmAction("cancel-invoice")}
+        >
+          {lifecycleCopy.cancelInvoice}
+        </Button>
+        <Button
+          type="button"
+          variant="destructive"
+          size="sm"
+          onClick={() => setConfirmAction("delete-invoice")}
+        >
+          {lifecycleCopy.deleteInvoice}
         </Button>
       </div>
       {editing ? (
@@ -427,6 +635,35 @@ export function SalesDetail({
           )
         }
       />
+      <AlertDialog
+        open={confirmAction !== null}
+        onOpenChange={(open) => {
+          if (!open && !actionBusy) setConfirmAction(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{confirmTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{confirmDescription}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={actionBusy}>
+              {lifecycleCopy.confirmCancel}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={actionBusy || confirmAction === null}
+              onClick={(event) => {
+                event.preventDefault();
+                if (confirmAction) {
+                  void runLifecycleAction(confirmAction);
+                }
+              }}
+            >
+              {actionBusy ? (locale === "en" ? "Working…" : "Bitte warten …") : lifecycleCopy.confirmAction}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

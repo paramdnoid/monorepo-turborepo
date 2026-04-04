@@ -103,3 +103,50 @@ export async function PATCH(request: Request, context: RouteContext) {
     );
   }
 }
+
+export async function DELETE(request: Request, context: RouteContext) {
+  const { id } = await context.params;
+  const locale = getRequestLocale(request);
+  const text = getUiText(locale);
+
+  const session = await validateWebAccessTokenSession();
+  if (!session.ok) {
+    return NextResponse.json(
+      { error: text.api.auth.bffSessionInvalid },
+      noStoreInit({ status: 401 }),
+    );
+  }
+
+  try {
+    const res = await fetch(
+      `${API_BASE}/v1/sales/quotes/${encodeURIComponent(id)}`,
+      {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${session.token}`,
+        },
+      },
+    );
+    if (res.status === 204) {
+      return new NextResponse(null, {
+        status: 204,
+        headers: {
+          "Cache-Control": "private, no-store",
+        },
+      });
+    }
+    const bodyText = await res.text();
+    return new NextResponse(bodyText, {
+      status: res.status,
+      headers: {
+        "Content-Type": res.headers.get("content-type") ?? "application/json",
+        "Cache-Control": "private, no-store",
+      },
+    });
+  } catch {
+    return NextResponse.json(
+      { error: text.api.auth.loginAuthServiceUnavailable },
+      noStoreInit({ status: 503 }),
+    );
+  }
+}
