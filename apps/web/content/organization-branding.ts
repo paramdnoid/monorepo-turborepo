@@ -22,6 +22,8 @@ export type OrganizationBrandingCopy = {
   legalHint: string;
   retry: string;
   nameRequired: string;
+  loading: string;
+  logoPreviewAlt: string;
 };
 
 const de: OrganizationBrandingCopy = {
@@ -48,6 +50,8 @@ const de: OrganizationBrandingCopy = {
     "Fuer rechtskonforme Rechnungen sind vollstaendige Absenderdaten in der Regel erforderlich — pruefen Sie bei Ihrem Steuerberater.",
   retry: "Erneut laden",
   nameRequired: "Der Firmenname darf nicht leer sein.",
+  loading: "Daten werden geladen…",
+  logoPreviewAlt: "Aktuelles Organisationslogo",
 };
 
 const en: OrganizationBrandingCopy = {
@@ -75,6 +79,8 @@ const en: OrganizationBrandingCopy = {
     "Fully compliant invoices usually require complete sender details — confirm with your tax advisor.",
   retry: "Retry",
   nameRequired: "Company name cannot be empty.",
+  loading: "Loading…",
+  logoPreviewAlt: "Current organization logo",
 };
 
 export function getOrganizationBrandingCopy(

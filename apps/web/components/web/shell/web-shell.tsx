@@ -7,6 +7,7 @@ import { LayoutGrid } from "lucide-react";
 
 import { TradeFeatureIcon } from "@/components/marketing/trades/trade-feature-icon";
 import { getSalesHeaderMeta, getSalesSidebarCopy } from "@/content/sales-module";
+import { getUiText } from "@/content/ui-text";
 import {
   getCustomersHeaderMeta,
   getCustomersSidebarCopy,
@@ -75,7 +76,7 @@ function getHeaderMeta(
   if (p === "/web") {
     return {
       title: "Übersicht",
-      subtitle: "Next.js · shadcn Sidebar-Layout (Radix Nova)",
+      subtitle: getUiText(locale).dashboard.overviewDescription,
     };
   }
   const salesMeta = getSalesHeaderMeta(p, locale);
@@ -364,7 +365,11 @@ export function WebShell({ webSession, children }: WebShellProps) {
               </p>
             </div>
           </header>
-          <main className="flex min-h-0 min-w-0 flex-1 flex-col gap-6 overflow-auto p-6">
+          <main
+            id="main-content"
+            tabIndex={-1}
+            className="flex min-h-0 min-w-0 flex-1 flex-col gap-6 overflow-auto p-6"
+          >
             {children}
           </main>
         </SidebarInset>

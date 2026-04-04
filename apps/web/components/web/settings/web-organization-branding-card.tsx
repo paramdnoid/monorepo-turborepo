@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState, useTransition } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -42,6 +48,7 @@ export function WebOrganizationBrandingCard() {
 
   const [pending, startTransition] = useTransition();
   const [logoBusy, setLogoBusy] = useState(false);
+  const logoFileInputRef = useRef<HTMLInputElement>(null);
 
   const refresh = useCallback(async () => {
     setLoadError(null);
@@ -191,9 +198,13 @@ export function WebOrganizationBrandingCard() {
           <CardTitle>{copy.cardTitle}</CardTitle>
           <CardDescription>{copy.cardDescription}</CardDescription>
         </CardHeader>
-        <CardContent className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" aria-hidden />
-          …
+        <CardContent
+          className="flex items-center gap-2 text-sm text-muted-foreground"
+          role="status"
+          aria-live="polite"
+        >
+          <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
+          {copy.loading}
         </CardContent>
       </Card>
     );
@@ -290,33 +301,48 @@ export function WebOrganizationBrandingCard() {
             </FieldContent>
           </Field>
           <Field>
-            <FieldLabel htmlFor="org-logo">{copy.logoLabel}</FieldLabel>
-            <FieldContent className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <Input
-                id="org-logo"
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                disabled={logoBusy}
-                className="cursor-pointer"
-                onChange={(e) =>
-                  void handleLogoPick(e.target.files?.[0] ?? undefined)
-                }
-              />
-              {org.hasLogo ? (
+            <FieldLabel htmlFor="org-logo-file">{copy.logoLabel}</FieldLabel>
+            <FieldContent className="flex flex-col gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <input
+                  ref={logoFileInputRef}
+                  id="org-logo-file"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  tabIndex={-1}
+                  disabled={logoBusy}
+                  className="sr-only"
+                  aria-describedby="org-logo-hint"
+                  onChange={(e) =>
+                    void handleLogoPick(e.target.files?.[0] ?? undefined)
+                  }
+                />
                 <Button
                   type="button"
                   variant="outline"
-                  size="sm"
                   disabled={logoBusy}
-                  onClick={() => void handleClearLogo()}
+                  onClick={() => logoFileInputRef.current?.click()}
                 >
-                  {logoBusy ? (
-                    <Loader2 className="mr-2 size-4 animate-spin" />
-                  ) : null}
-                  {copy.clearLogo}
+                  {copy.uploadLogo}
                 </Button>
-              ) : null}
-              <FieldDescription>{copy.logoHint}</FieldDescription>
+                {org.hasLogo ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={logoBusy}
+                    onClick={() => void handleClearLogo()}
+                  >
+                    {logoBusy ? (
+                      <Loader2 className="mr-2 size-4 animate-spin" />
+                    ) : null}
+                    {copy.clearLogo}
+                  </Button>
+                ) : null}
+              </div>
+              <FieldDescription id="org-logo-hint">
+                {copy.logoHint}
+              </FieldDescription>
             </FieldContent>
           </Field>
           {org.hasLogo ? (
@@ -327,7 +353,7 @@ export function WebOrganizationBrandingCard() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/api/web/organization/logo"
-                alt=""
+                alt={copy.logoPreviewAlt}
                 className="max-h-16 w-auto max-w-[12rem] object-contain object-left"
               />
             </div>
@@ -336,7 +362,11 @@ export function WebOrganizationBrandingCard() {
         </FieldGroup>
       </CardContent>
       <CardFooter className="justify-end border-t bg-muted/30">
-        <Button type="button" onClick={handleSave} disabled={pending}>
+        <Button
+          type="button"
+          onClick={handleSave}
+          disabled={pending || logoBusy}
+        >
           {pending ? (
             <Loader2 className="mr-2 size-4 animate-spin" />
           ) : null}
