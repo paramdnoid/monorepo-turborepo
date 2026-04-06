@@ -3,7 +3,22 @@
 **Stand der Analyse:** 2026-04-06  
 **Bezug:** Screenshot-Navigation (Gruppen *Navigation*, *Stammdaten*, *Belege*, *Team & Planung*) sowie Code unter `apps/web/app/web/`, Shell `apps/web/components/web/shell/web-shell.tsx`, BFF `apps/web/app/api/web/`, Schema `packages/db/src/schema.ts`.
 
+## Änderungsstand (vollständig abgeglichen)
+
+- Forderungsmanagement auf tatsächlichen Umfang gehoben (E-06 v4: Templates/Gebühr, PDF/Druck, Einstellungen).
+- DATEV von „nur Schnittstelle“ auf „Basis produktiv vorhanden“ präzisiert (Settings + Buchungs-CSV; fachliche Tiefe offen).
+- Zeiterfassung/Scheduling/Audit als „teilweise umgesetzt“ differenziert, statt pauschal offen.
+
 **Ziel dieses Dokuments:** Vollständige, modulweise Liste **fehlender oder nur teilweise vorhandener** Funktionalitäten für ein branchentaugliches Produkt mit **paralleler Frontend-/Backend-Integration**. Bereits vorhandene Bausteine werden kurz benannt, damit Lücken und Beziehungen zwischen Modulen klar werden.
+
+---
+
+## Nicht mehr als Lücke zu werten (Stand jetzt)
+
+- E-01-Basis: Projekt-Kunden-/Baustellenbezug (mit Legacy-Fallback) ist geliefert.
+- E-02-Basis: Projekt-Hub mit Belegen/Dateien/GAEB/7-Tage-Termine/Zeiterfassung/OP ist geliefert.
+- E-06-v4: Mahntext-Templates + optionale Gebühr + PDF/Druck + Einstellungs-UI ist geliefert.
+- DATEV-Basis: Settings + Ausgangs-Buchungs-CSV sind geliefert (Vertiefung bleibt Backlog).
 
 ---
 
@@ -16,7 +31,7 @@
 | Stammdaten | Kunden | `/web/customers/list` — Kundenstamm inkl. Batch-Aktionen, Export |
 | Stammdaten | Adressen | `/web/customers/addresses` — adresszentrierte Sicht |
 | Belege | Angebote | `/web/sales/quotes` — CRUD, Positionen, PDF, Druck, Status, Verknüpfung zu Projekt/Kunde |
-| Belege | Rechnungen | `/web/sales/invoices` — CRUD, Positionen, PDF, Zahlstatus (`paidAt`), Verknüpfungen |
+| Belege | Rechnungen | `/web/sales/invoices` — CRUD, Positionen, PDF, Zahlstatus (`paidAt`), **Teilzahlungen** (`sales_invoice_payments`, Saldo, Löschen einzelner Zeilen), **Mahnungen** (Historie, PDF/Druck; **Mahntext/Gebuehr** mandantenweit unter Einstellungen), **Offene Posten** `/web/sales/invoices/open` (+ CSV-Export), Verknüpfungen |
 | Team & Planung | Mitarbeiterverwaltung | `/web/employees` — Stammdaten, Skills, Abwesenheit, Anhänge (API umfangreich) |
 | Team & Planung | Terminplanung | `/web/scheduling` — Tages-/Wochenplan, Einsätze, ICS |
 
@@ -28,18 +43,18 @@
 
 ### 2.1 Kunden ↔ Projekte
 
-- **Ist:** `projects.customerLabel` ist ein **Freitext**; Kundenstamm (`customers`) existiert separat mit `customerId` in Belegen.
-- **Lücke:** Keine **durchgängige FK-Verknüpfung Projekt → Kunde** im Sinne eines verbindlichen Stammdaten-Objekts. Folgen: Dubletten, schwierige Auswertungen „Umsatz je Kunde“, eingeschränkte Konsistenz bei Adress-/Zahlungsänderungen, erschwerte Kundenportal-/Kommunikationsprozesse.
+- **Ist:** Projekte koennen jetzt optional **verbindlich** mit dem Kundenstamm verknuepft werden (`projects.customerId`), inkl. optionaler Baustellenadresse-Referenz (`projects.siteAddressId`). Legacy-Freitext (`projects.customerLabel`) bleibt als Fallback moeglich.
+- **Status:** umgesetzt (E-01, 2026-04-06). Rest: Migration/Backfill operativ ausfuehren und Altdaten nachpflegen.
 
 ### 2.2 Projekte ↔ Belege (Angebote/Rechnungen)
 
 - **Ist:** `salesQuotes` / `salesInvoices` haben `projectId` (optional); UI kann Projekte auswählen.
-- **Lücke:** Fehlende **Projekt-Ansicht als 360°-Hub** (alle Belege, Einsätze, Dokumente, Kalkulationen, Material, Zeiten an einem Ort mit Statuspipeline „Angebot → Auftrag → Ausführung → Abrechnung“).
+- **Status:** in Arbeit (E-02) — Hub unter `/web/projects/[projectId]` liefert Stammdaten + projektbezogene Belege/Dateien/GAEB, **Terminplanung naechste 7 Tage**, Zeiterfassung (Monat bis heute + letzte Buchungen), Forderungen/OP (Top-OP, Mahnungs-Kurzinfo + Druck/PDF letzte Mahnung, Link `…#invoice-reminders`). Rest: Mini-Pipeline/KPIs, Material (E-11), optional Hub-Aggregations-API.
 
 ### 2.3 Terminplanung ↔ Projekt / Auftrag / Baustelle
 
-- **Ist:** `schedulingAssignments` (Mitarbeiter, Datum, Zeit, Titel, Ort) **ohne** `projectId` / `customerId` / Baustellenadresse aus Stammdaten.
-- **Lücke:** Einsätze sind **inhaltlich nicht mit Auftrags-/Projektobjekt verknüpft** — Kernproblem für Maler: Planung nach Baustelle, Nachweis gegenüber Kunde, Auslastung pro Objekt, spätere Abrechnung/Protokolle.
+- **Ist:** `schedulingAssignments` hat optional **`project_id`** (FK auf `projects`); UI/API mit Projekt-Picker und Filtern (E-04, erste Iteration). **`GET /v1/scheduling/assignments`** unterstuetzt zusaetzlich **`dateFrom`/`dateTo`** (Zeitraum, max. 31 Tage) neben einem einzelnen **`date`**. Kunde/Baustelle sind über das Projekt ableitbar, nicht denormalisiert auf dem Termin.
+- **Rest-Lücken:** Pflicht vs. optional pro Betrieb; „Ort“ aus Baustellenadresse zuverlässig vorbefüllen; Ressourcenkonflikte / Routen (später).
 
 ### 2.4 Branchenmodule (Maler) ↔ operatives Geschäft
 
@@ -57,7 +72,7 @@
 ### Fehlende / zu vertiefende Funktionalitäten
 
 1. **Pipeline Auftragsbearbeitung:** Conversion-Rate Angebot → Auftrag, gewichtete Pipeline, erwarteter Umsatz nach Phase.
-2. **Liquidität & Forderungen:** Offene Posten summiert, Zahlungsziel-Überwachung über einfache „überfällig“-Liste hinaus (Zinslauf, Skonto).
+2. **Liquidität & Forderungen:** Teilzahlungen/Saldo **pro Rechnung** sind erfasst; mandantenweite **OP-Liste** inkl. CSV unter `/web/sales/invoices/open` umgesetzt (optional `projectId`-Filter fuer Projektkontext); **Mahnwesen (manuell)** inkl. Historie + PDF/Druck ist umgesetzt; **Mahntexte und optionale Mahngebuehr** pro Mandant (Stufe 1–10, `de`/`en`) unter Einstellungen, genutzt in PDF/Druck. Projekt-Hub zeigt eine projektbezogene OP-Karte. Weiterhin offen: Forecast (Zinslauf, Skonto), Platzhalter in Mahntexten, CAMT/Zuordnung.
 3. **Projekt-/Baustellen-KPIs:** Budget vs. Ist (wenn Kosten/Zeiten ergänzt werden), Deckungsbeitrag.
 4. **Team-Auslastung:** Kapazität vs. geplante Stunden (benötigt Verknüpfung Planung ↔ Projekt und ggf. Zeiterfassung).
 5. **Material & Bestellungen:** (falls eingeführt) kritische Liefertermine, Nachbestellungen — aktuell kein Modul im Screenshot, fachlich aber relevant.
@@ -70,11 +85,12 @@
 ### Vorhanden (Kurz)
 
 - Lebenszyklus-Status, Projektnummer, Freitext-Kunde, Zeitraum, Archiv; Verknüpfung aus Belegen heraus.
+- Projekt-Hub (`/web/projects/[projectId]`) mit Belegen, Dateien, GAEB, Terminplanung (**7 Tage**), Zeiterfassungs-Karte und OP-Karte inkl. Mahnungs-Verknuepfung (projektbezogen).
 
 ### Fehlende Funktionalitäten
 
-1. **Verbindlicher Kundenbezug:** `customerId` + Anzeige/Übernahme Rechnungs-/Lieferadresse aus Stammdaten.
-2. **Baustellen-/Objekt-Stammdaten:** eigene Adresse pro Projekt (abweichend vom Kundenstamm), Zugriffs-/Schlüsselinfos, Ansprechpartner vor Ort.
+1. **Verbindlicher Kundenbezug:** umgesetzt (E-01) — `projects.customerId` + UI-Auswahl aus Kundenstamm. (Adressen-Übernahme in Belege folgt in nachgelagerten Epics.)
+2. **Baustellen-/Objekt-Stammdaten:** teilweise umgesetzt (E-01) — pro Projekt eine Referenz auf Kundenadresse (`projects.siteAddressId`). Offene Punkte: zusaetzliche Felder (Zugriff/Schluessel/Ansprechpartner) und ggf. eigene Projektadresse unabhängig vom Kundenstamm.
 3. **Auftragsarten:** Innen/Außen, Neubau/Renovierung, Subunternehmer-Anteile — für Planung und Abrechnung.
 4. **Leistungsbeschreibung / Leistungsverzeichnis-Light:** nicht nur LV-Import (GAEB), sondern **interne** strukturierte Leistung für wiederkehrende Maler-Pakete.
 5. **Budget & Kostenstellen:** auch wenn nur „einfach“ — Schätzung vs. Ist für Handwerker-KMU üblich.
@@ -91,7 +107,7 @@
 
 ### Fehlende Funktionalitäten
 
-1. **Zahlungsbedingungen & Mahnstufen** pro Kunde (Default für neue Rechnungen).
+1. **Zahlungsbedingungen & Mahnstufen** pro Kunde (Default für neue Rechnungen/Mahnungen). **Status:** umgesetzt als Basis (E-03) — `paymentTermsDays` + Skonto-Felder im Kundenstamm; `dueAt` wird bei neuer Rechnung serverseitig vorbelegt, wenn nicht ueberschrieben; Mahnfristen-Defaults (`reminderLevel1DaysAfterDue`/`reminderLevel2DaysAfterDue`/`reminderLevel3DaysAfterDue`) sind editierbar und werden bei Mahnungen als Prefill genutzt.
 2. **Kreditlimit / Risiko-Flags** (optional, aber im B2B-Rechnungswesen üblich).
 3. **Mehrere Rollen:** Auftraggeber vs. Rechnungsempfänger vs. Objekteigentümer (Maler-Alltag: Vermieter/Mieter, Generalunternehmer).
 4. **SEPA-Mandate / Bankverbindung** (sensible Daten — nur mit klarer Security-Story).
@@ -114,11 +130,11 @@
 4. **Gutschriften / Stornos** mit nachvollziehbarer Buchhaltungslogik (nicht nur „cancel“).
 5. **Lieferscheine / Leistungsnachweise** als eigener Belegtyp (Material und/oder Stunden/Leistung) — oft **Voraussetzung** für spätere Rechnung und Streitbeilegung.
 6. **Auftragsbestätigung** (vom angenommenen Angebot) als eigener Schritt inkl. Bedingungen.
-7. **Mahnwesen:** Mahnstufen, Gebühren, Templates, E-Mail-Versand, Historie, automatische Eskalation.
-8. **Zahlungsabgleich:** Einzel- und Sammelzahlungen, Teilzahlungen, Zuordnung zu Rechnung, offene Posten-Liste.
+7. **Mahnwesen:** manuelle Mahnstufen + Historie + PDF/Druck sind umgesetzt; **Templates + optionale Gebuehr** (PDF/Druck, Einstellungen) umgesetzt. Offen: Platzhalter im Text, E-Mail-Versand, automatische Eskalation.
+8. **Zahlungsabgleich:** **Teilzahlungen und Saldo pro Rechnung** sind umgesetzt (API + UI); **einzelne Zahlungszeilen löschen** (Korrektur) umgesetzt. Weiterhin offen: **Sammelzahlungen**, Zuordnung einer Bankzahlung zu **mehreren** Rechnungen, **CAMT**/Import, Ausgleich gegen Kundenkonto.
 9. **Elektronische Rechnung:** **XRechnung / ZUGFeRD** (Deutschland/EU-Trend) — Architektur früh mitdenken.
 10. **GoBD / Unveränderbarkeit:** revisionssichere Ablage, Revisionen von Belegen, Löschverbote nach Finalisierung.
-11. **DATEV-Export:** im System angelegte **Schnittstelle** (BFF-Routen existieren) — fachliche Vollständigkeit Buchungsstapel vs. **Kontenrahmen SKR03/SKR04**, Lieferanten, Debitoren.
+11. **DATEV-Export:** im System angebunden (Settings + Buchungs-CSV fuer Ausgangsrechnungen) — fachliche Vollständigkeit Buchungsstapel (z. B. Zahlungsbuchungen/erweiterte Mapping-Faelle) bleibt offen.
 12. **Leistungszeiträume / §13b-Hinweise** wo relevant (Schnittstelle zu Steuer-Fachkonzept).
 13. **Angebots-Vergleich / Versionierung:** mehrere Versionen eines Angebots, Nachverhandlung dokumentiert.
 
@@ -146,7 +162,7 @@
 
 ### Fehlende Funktionalitäten
 
-1. **Projekt-/Kundenbezug** pro Termin (Pflichtfeld optional, aber fachlich zentral).
+1. **Projekt-/Kundenbezug** pro Termin — **teilweise umgesetzt** (optional `project_id`, E-04 v1); offen: Pflicht-Policy, bessere Defaults aus Baustelle.
 2. **Routen / Mehr-Baustellen-Tag** (optimierte Reihenfolge — später).
 3. **Ressourcenkonflikte:** Überschneidungen, Doppelbuchung, Kapazität pro Team.
 4. **Soll-/Ist-Stunden** je Einsatz (Brücke zur Zeiterfassung).
@@ -158,7 +174,7 @@
 
 Funktionen, die typischerweise **mehrere Module** verbinden — derzeit **nicht oder nur rudimentär** abgedeckt:
 
-1. **Zeiterfassung** (mobil & web): Zuordnung zu **Projekt** und **Mitarbeiter**, optional **Leistungsposition**; Export für Lohn (extern) oder interne Ist-Kalkulation.
+1. **Zeiterfassung** (mobil & web): Zuordnung zu **Projekt** und **Mitarbeiter** ist als Basis da (Projekt optional), optional **Leistungsposition** weiterhin offen; Export für Lohn (extern) oder interne Ist-Kalkulation offen.
 2. **Materialwirtschaft:** Bedarf aus Aufmaß/LV, Bestellung, Wareneingang, Zuordnung zum Projekt, Preis aus Katalog (DATANORM/BMEcat liegt im Monorepo als Bibliothek — **Produktintegration** in Auftrags- und Rechnungsfluss fehlt als durchgängiger Prozess).
 3. **Nachkalkulation:** Angebotspreis vs. Ist (Material + Zeit).
 4. **Baustellenprotokolle / Mängel:** Fotos, Unterschrift, PDF-Protokoll — rechtlich und operativ relevant.
@@ -177,7 +193,7 @@ Kurz die **Integrationslücke** je Richtung (Details je Komponente können im Co
 | Digitale Projektmappen | End-to-end mit `project_assets`, Berechtigungen, Vorschau |
 | Untergrundprüfung / Raumbuch | Felder für Haftung/Nachweis, Verknüpfung zu Angebot |
 | Großhandel / Material | Bestellprozess, Lager, Preisaktualisierung |
-| DATEV-Schnittstelle | Mapping Konten, Steuerschlüssel, Buchungsperiode, Fehlerbehandlung |
+| DATEV-Schnittstelle | Basis vorhanden (Settings + Buchungs-CSV); offen: tieferes Mapping, Fehlerbehandlung, breiterer Exportumfang |
 | Farbmanagement | Bereits teilweise API (`userColorPreferences`, `teamColorPalettes`) — Lücke: Nutzung in Belegtexten/Arbeitsanweisungen |
 
 Zusätzlich existieren **Platzhalter-Seiten** („Vorschau — Funktionen folgen“) für nicht explizit gemappte Segmente.
@@ -187,7 +203,7 @@ Zusätzlich existieren **Platzhalter-Seiten** („Vorschau — Funktionen folgen
 ## 11. Nicht-funktionale und organisationale Themen (für spätere Integration)
 
 1. **Rollen & Berechtigungen:** fein granular pro Modul (Lesen/Schreiben/Export) — teils vorhanden (`web-permissions`); Ausbaustufe für Tätigkeitstrennung (Buchhaltung vs. Bauleitung).
-2. **Audit-Log** mandantenweit für Belege und Stammdaten (Revisionssicherheit).
+2. **Audit-Log** mandantenweit für Belege und Stammdaten (Revisionssicherheit). Teilbausteine sind da (z. B. Lifecycle-/Aktivitäts-Events), aber keine zentrale Audit-Sicht.
 3. **Multi-Mandant:** bereits angelegt — **Organisationseinstellungen** (Firmenlogo, Bank, Fußzeile PDF) konsistent in allen Belegen.
 4. **Performance bei großen LV:** Importe, Pagination, Hintergrundjobs.
 5. **Offline / App:** Sync-Konzept (`syncMutationReceipts` im Schema) — Produktentscheid für Maler vor Ort.
@@ -201,9 +217,9 @@ Für **Auftragsbearbeitung + Rechnungswesen** Maler/Lackierer typischerweise:
 1. **Stammdaten konsolidieren:** Projekt ↔ Kunde ↔ Baustelle.  
 2. **Scheduling mit Projekt/Baustelle verknüpfen.**  
 3. **Zeiterfassung** mit Projektbezug.  
-4. **Mahn- und Zahlungsabgleich** bei Rechnungen.  
+4. **Mahn- und Zahlungsabgleich** bei Rechnungen — Teilzahlungen/Saldo **v1**, OP-Liste/CSV und Korrektur Zahlungszeile **v2**, Mahnung/Historie + PDF/Druck **v3**, Mahntext-Templates/Gebuehr **v4** erledigt; **Bankimport (CAMT)** und Sammelzahlungen **offen**.  
 5. **Steuer/Belegtiefe** nach Zielmarkt (DE).  
-6. **XRechnung / DATEV**-Export qualitativ schließen.  
+6. **XRechnung / ZUGFeRD starten** und **DATEV** qualitativ vertiefen.  
 7. **Material/Purchase** anbinden, sobald Kataloge im Produkt genutzt werden.
 
 ---
@@ -213,7 +229,7 @@ Für **Auftragsbearbeitung + Rechnungswesen** Maler/Lackierer typischerweise:
 - Shell & Navigation: `apps/web/components/web/shell/web-shell.tsx`
 - Painter-Routen: `apps/web/app/web/painter/[module]/page.tsx`, Registry `apps/web/lib/trades/painter-modules.ts`
 - BFF-Spiegel: `apps/web/app/api/web/**`
-- Datenmodell: `packages/db/src/schema.ts` (u. a. `projects`, `customers`, `salesQuotes`, `salesInvoices`, `schedulingAssignments`, `project_assets`, `lv_documents`)
+- Datenmodell: `packages/db/src/schema.ts` (u. a. `projects`, `customers`, `salesQuotes`, `salesInvoices`, `salesInvoicePayments`, `schedulingAssignments`, `project_assets`, `lv_documents`)
 
 ---
 

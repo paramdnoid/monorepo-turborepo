@@ -5,6 +5,7 @@ import {
   type MeResponse,
   salesInvoiceDetailResponseSchema,
   salesQuoteDetailResponseSchema,
+  salesReminderTemplatesResolvedResponseSchema,
 } from "@repo/api-contracts";
 import type { z } from "zod";
 
@@ -58,6 +59,36 @@ export async function fetchQuoteForPrint(
   }
 
   return { ok: true, quote: parsed.data.quote, me };
+}
+
+export async function fetchResolvedSalesReminderTemplateForPrint(
+  token: string,
+  locale: "de" | "en",
+  level: number,
+): Promise<
+  | { ok: true; introText: string; feeCents: number | null }
+  | { ok: false; status: number }
+> {
+  const res = await fetch(
+    `${API_BASE}/v1/sales/reminder-templates/resolved?locale=${encodeURIComponent(locale)}&level=${encodeURIComponent(String(level))}`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    },
+  );
+  if (!res.ok) {
+    return { ok: false, status: res.status };
+  }
+  const json: unknown = await res.json();
+  const parsed = salesReminderTemplatesResolvedResponseSchema.safeParse(json);
+  if (!parsed.success) {
+    return { ok: false, status: 500 };
+  }
+  return {
+    ok: true,
+    introText: parsed.data.introText,
+    feeCents: parsed.data.feeCents,
+  };
 }
 
 export async function fetchInvoiceForPrint(

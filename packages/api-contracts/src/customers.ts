@@ -83,6 +83,18 @@ export const customerDetailSchema = z.object({
   vatId: z.string().nullable(),
   taxNumber: z.string().nullable(),
   notes: z.string().nullable(),
+  /** Zahlungsziel in Tagen (Default für neue Rechnungen). */
+  paymentTermsDays: z.number().int().nonnegative().nullable(),
+  /** Skonto in Basispunkten (2.5% => 250). */
+  cashDiscountPercentBps: z.number().int().nonnegative().nullable(),
+  /** Skonto-Frist in Tagen. */
+  cashDiscountDays: z.number().int().nonnegative().nullable(),
+  /** Mahnung Stufe 1: Tage nach Rechnungs-Faelligkeit (`dueAt`). */
+  reminderLevel1DaysAfterDue: z.number().int().nonnegative().nullable(),
+  /** Mahnung Stufe 2: Tage nach Rechnungs-Faelligkeit (`dueAt`). */
+  reminderLevel2DaysAfterDue: z.number().int().nonnegative().nullable(),
+  /** Mahnung Stufe 3: Tage nach Rechnungs-Faelligkeit (`dueAt`). */
+  reminderLevel3DaysAfterDue: z.number().int().nonnegative().nullable(),
   archivedAt: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -136,6 +148,30 @@ export const customerCreateSchema = z.object({
     .optional()
     .default(null),
   notes: optionalTrimmedNull,
+  paymentTermsDays: z
+    .union([z.number().int().min(0).max(3650), z.null()])
+    .optional()
+    .default(null),
+  cashDiscountPercentBps: z
+    .union([z.number().int().min(0).max(10000), z.null()])
+    .optional()
+    .default(null),
+  cashDiscountDays: z
+    .union([z.number().int().min(0).max(365), z.null()])
+    .optional()
+    .default(null),
+  reminderLevel1DaysAfterDue: z
+    .union([z.number().int().min(0).max(3650), z.null()])
+    .optional()
+    .default(null),
+  reminderLevel2DaysAfterDue: z
+    .union([z.number().int().min(0).max(3650), z.null()])
+    .optional()
+    .default(null),
+  reminderLevel3DaysAfterDue: z
+    .union([z.number().int().min(0).max(3650), z.null()])
+    .optional()
+    .default(null),
   defaultAddress: customerCreateAddressSchema.optional(),
 });
 
@@ -175,6 +211,20 @@ export const customerPatchSchema = z.object({
   vatId: z.union([z.string().trim().max(80), z.null()]).optional(),
   taxNumber: z.union([z.string().trim().max(80), z.null()]).optional(),
   notes: z.union([z.string().trim().max(8000), z.null()]).optional(),
+  paymentTermsDays: z.union([z.number().int().min(0).max(3650), z.null()]).optional(),
+  cashDiscountPercentBps: z
+    .union([z.number().int().min(0).max(10000), z.null()])
+    .optional(),
+  cashDiscountDays: z.union([z.number().int().min(0).max(365), z.null()]).optional(),
+  reminderLevel1DaysAfterDue: z
+    .union([z.number().int().min(0).max(3650), z.null()])
+    .optional(),
+  reminderLevel2DaysAfterDue: z
+    .union([z.number().int().min(0).max(3650), z.null()])
+    .optional(),
+  reminderLevel3DaysAfterDue: z
+    .union([z.number().int().min(0).max(3650), z.null()])
+    .optional(),
   archived: z.boolean().optional(),
 });
 

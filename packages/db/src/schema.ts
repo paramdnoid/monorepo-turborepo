@@ -67,6 +67,12 @@ export const projects = pgTable("projects", {
   projectNumber: text("project_number"),
   /** planned | active | on-hold | completed */
   status: text("status").notNull().default("active"),
+  customerId: uuid("customer_id").references(() => customers.id, {
+    onDelete: "set null",
+  }),
+  siteAddressId: uuid("site_address_id").references(() => customerAddresses.id, {
+    onDelete: "set null",
+  }),
   customerLabel: text("customer_label"),
   startDate: date("start_date"),
   endDate: date("end_date"),
@@ -82,6 +88,11 @@ export const projects = pgTable("projects", {
     t.tenantId,
     t.projectNumber,
   ),
+  tenantCustomerIdx: index("projects_tenant_customer_idx").on(
+    t.tenantId,
+    t.customerId,
+  ),
+  siteAddressIdx: index("projects_site_address_idx").on(t.siteAddressId),
 }));
 
 /** Kunde / Geschaeftspartner je Mandant (Stammdaten). */
@@ -98,6 +109,18 @@ export const customers = pgTable(
     vatId: text("vat_id"),
     taxNumber: text("tax_number"),
     notes: text("notes"),
+    /** Zahlungsziel in Tagen (Default für neue Rechnungen). */
+    paymentTermsDays: integer("payment_terms_days"),
+    /** Skonto in Basispunkten (2.5% => 250), optional. */
+    cashDiscountPercentBps: integer("cash_discount_percent_bps"),
+    /** Skonto-Frist in Tagen, optional. */
+    cashDiscountDays: integer("cash_discount_days"),
+    /** Mahnung Stufe 1: Tage nach `due_at` (Default-Policy pro Kunde). */
+    reminderLevel1DaysAfterDue: integer("reminder_level_1_days_after_due"),
+    /** Mahnung Stufe 2: Tage nach `due_at` (Default-Policy pro Kunde). */
+    reminderLevel2DaysAfterDue: integer("reminder_level_2_days_after_due"),
+    /** Mahnung Stufe 3: Tage nach `due_at` (Default-Policy pro Kunde). */
+    reminderLevel3DaysAfterDue: integer("reminder_level_3_days_after_due"),
     archivedAt: timestamp("archived_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
@@ -488,6 +511,9 @@ export const schedulingAssignments = pgTable(
     title: text("title").notNull(),
     place: text("place"),
     reminderMinutesBefore: integer("reminder_minutes_before"),
+    projectId: uuid("project_id").references(() => projects.id, {
+      onDelete: "set null",
+    }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -504,6 +530,52 @@ export const schedulingAssignments = pgTable(
     employeeDateStartIdx: index(
       "scheduling_assignments_employee_date_start_idx",
     ).on(t.employeeId, t.date, t.startTime),
+    tenantProjectIdx: index("scheduling_assignments_tenant_project_idx").on(
+      t.tenantId,
+      t.projectId,
+    ),
+  }),
+);
+
+/**
+ * Erfasste Arbeitszeiten (Ist-Stunden) je Mandant, mit optionalem Projektbezug.
+ */
+export const workTimeEntries = pgTable(
+  "work_time_entries",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => organizations.tenantId, { onDelete: "cascade" }),
+    employeeId: uuid("employee_id")
+      .notNull()
+      .references(() => employees.id, { onDelete: "cascade" }),
+    workDate: date("work_date").notNull(),
+    durationMinutes: integer("duration_minutes").notNull(),
+    projectId: uuid("project_id").references(() => projects.id, {
+      onDelete: "set null",
+    }),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    tenantWorkDateIdx: index("work_time_entries_tenant_work_date_idx").on(
+      t.tenantId,
+      t.workDate,
+    ),
+    tenantEmployeeIdx: index("work_time_entries_tenant_employee_idx").on(
+      t.tenantId,
+      t.employeeId,
+    ),
+    tenantProjectIdx: index("work_time_entries_tenant_project_idx").on(
+      t.tenantId,
+      t.projectId,
+    ),
   }),
 );
 
@@ -948,6 +1020,100 @@ export const salesInvoices = pgTable(
     tenantDocumentNumber: unique("sales_invoices_tenant_document_number").on(
       t.tenantId,
       t.documentNumber,
+    ),
+  }),
+);
+
+/**
+ * Zahlungseingaenge auf eine Rechnung (Teilzahlungen; Saldo = total_cents − Summe).
+ */
+export const salesInvoicePayments = pgTable(
+  "sales_invoice_payments",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => organizations.tenantId, { onDelete: "cascade" }),
+    invoiceId: uuid("invoice_id")
+      .notNull()
+      .references(() => salesInvoices.id, { onDelete: "cascade" }),
+    amountCents: integer("amount_cents").notNull(),
+    paidAt: timestamp("paid_at", { withTimezone: true }).notNull(),
+    note: text("note"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    invoiceIdx: index("sales_invoice_payments_invoice_idx").on(t.invoiceId),
+    tenantPaidAtIdx: index("sales_invoice_payments_tenant_paid_at_idx").on(
+      t.tenantId,
+      t.paidAt,
+    ),
+  }),
+);
+
+/**
+ * Mahn-Historie zu einer Rechnung (manuell; später ggf. E-Mail).
+ */
+export const salesInvoiceReminders = pgTable(
+  "sales_invoice_reminders",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => organizations.tenantId, { onDelete: "cascade" }),
+    invoiceId: uuid("invoice_id")
+      .notNull()
+      .references(() => salesInvoices.id, { onDelete: "cascade" }),
+    /** 1..N (Mahn-/Erinnerungsstufe). */
+    level: integer("level").notNull(),
+    /** Zeitpunkt der Mahnung (nicht identisch mit DB `created_at`). */
+    sentAt: timestamp("sent_at", { withTimezone: true }).notNull(),
+    /** `manual` | `email` (später) — Validierung in API. */
+    channel: text("channel").notNull().default("manual"),
+    note: text("note"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    invoiceIdx: index("sales_invoice_reminders_invoice_idx").on(t.invoiceId),
+    tenantSentAtIdx: index("sales_invoice_reminders_tenant_sent_at_idx").on(
+      t.tenantId,
+      t.sentAt,
+    ),
+  }),
+);
+
+/**
+ * Mandantenspezifische Mahntexte und optionale Mahngebuehr pro Stufe/Sprache (PDF/Druck).
+ * `bodyText` null: Standardfließtext; `feeCents` null: keine Gebuehrzeile.
+ */
+export const salesReminderTemplates = pgTable(
+  "sales_reminder_templates",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => organizations.tenantId, { onDelete: "cascade" }),
+    /** `de` | `en` — Validierung in API. */
+    locale: text("locale").notNull(),
+    /** 1..10; hoehere Mahnstufen nutzen die Vorlage der Stufe 10 (siehe API). */
+    level: integer("level").notNull(),
+    bodyText: text("body_text"),
+    feeCents: integer("fee_cents"),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    tenantLocaleLevelUnique: unique(
+      "sales_reminder_templates_tenant_locale_level_unique",
+    ).on(t.tenantId, t.locale, t.level),
+    tenantLocaleIdx: index("sales_reminder_templates_tenant_locale_idx").on(
+      t.tenantId,
+      t.locale,
     ),
   }),
 );

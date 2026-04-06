@@ -9,7 +9,7 @@ import {
   projectsListResponseSchema,
   projectStatusSchema,
 } from "@repo/api-contracts";
-import { projects, type Db } from "@repo/db";
+import { customerAddresses, customers, projects, type Db } from "@repo/db";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -38,7 +38,10 @@ type ProjectRowForApi = {
   title: string;
   projectNumber: string | null;
   status: string;
+  customerId: string | null;
+  siteAddressId: string | null;
   customerLabel: string | null;
+  customerDisplayName?: string | null;
   startDate: unknown;
   endDate: unknown;
   archivedAt: Date | null;
@@ -53,13 +56,51 @@ function mapProjectRow(row: ProjectRowForApi) {
     title: row.title,
     projectNumber: row.projectNumber ?? null,
     status: statusParsed.success ? statusParsed.data : "active",
-    customerLabel: row.customerLabel ?? null,
+    customerId: row.customerId ?? null,
+    siteAddressId: row.siteAddressId ?? null,
+    customerLabel: row.customerDisplayName ?? row.customerLabel ?? null,
     startDate: row.startDate ? formatDateForApi(row.startDate) : null,
     endDate: row.endDate ? formatDateForApi(row.endDate) : null,
     archivedAt: row.archivedAt ? row.archivedAt.toISOString() : null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
+}
+
+type CustomerLookupRow = { id: string; displayName: string };
+
+async function getCustomerForTenant(
+  db: Db,
+  tenantId: string,
+  customerId: string,
+): Promise<CustomerLookupRow | null> {
+  const rows = await db
+    .select({
+      id: customers.id,
+      displayName: customers.displayName,
+    })
+    .from(customers)
+    .where(and(eq(customers.id, customerId), eq(customers.tenantId, tenantId)))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+async function hasCustomerSiteAddress(
+  db: Db,
+  customerId: string,
+  siteAddressId: string,
+): Promise<boolean> {
+  const rows = await db
+    .select({ id: customerAddresses.id })
+    .from(customerAddresses)
+    .where(
+      and(
+        eq(customerAddresses.id, siteAddressId),
+        eq(customerAddresses.customerId, customerId),
+      ),
+    )
+    .limit(1);
+  return Boolean(rows[0]);
 }
 
 function parseListQuery(c: Context) {
@@ -119,6 +160,7 @@ export function createProjectsListHandler(getDb: () => Db | undefined) {
         sql`(
           ${projects.title} ilike ${pattern} escape '\\'
           or coalesce(${projects.projectNumber}, '') ilike ${pattern} escape '\\'
+          or coalesce(${customers.displayName}, '') ilike ${pattern} escape '\\'
           or coalesce(${projects.customerLabel}, '') ilike ${pattern} escape '\\'
         )`,
       );
@@ -127,6 +169,13 @@ export function createProjectsListHandler(getDb: () => Db | undefined) {
     const [countRow] = await db
       .select({ n: sql<number>`cast(count(*) as int)` })
       .from(projects)
+      .leftJoin(
+        customers,
+        and(
+          eq(customers.id, projects.customerId),
+          eq(customers.tenantId, auth.tenantId),
+        ),
+      )
       .where(and(...conditions));
 
     const rows = await db
@@ -135,6 +184,9 @@ export function createProjectsListHandler(getDb: () => Db | undefined) {
         title: projects.title,
         projectNumber: projects.projectNumber,
         status: projects.status,
+        customerId: projects.customerId,
+        siteAddressId: projects.siteAddressId,
+        customerDisplayName: customers.displayName,
         customerLabel: projects.customerLabel,
         startDate: projects.startDate,
         endDate: projects.endDate,
@@ -143,6 +195,13 @@ export function createProjectsListHandler(getDb: () => Db | undefined) {
         updatedAt: projects.updatedAt,
       })
       .from(projects)
+      .leftJoin(
+        customers,
+        and(
+          eq(customers.id, projects.customerId),
+          eq(customers.tenantId, auth.tenantId),
+        ),
+      )
       .where(and(...conditions))
       .orderBy(desc(projects.updatedAt), desc(projects.createdAt))
       .limit(parsedQuery.limit)
@@ -181,6 +240,30 @@ export function createProjectsCreateHandler(getDb: () => Db | undefined) {
       return c.json({ error: "validation_error" }, 400);
     }
 
+    const customerId = parsedBody.data.customerId ?? null;
+    let customer: CustomerLookupRow | null = null;
+    if (customerId) {
+      customer = await getCustomerForTenant(db, auth.tenantId, customerId);
+      if (!customer) {
+        return c.json({ error: "invalid_customer" }, 400);
+      }
+    }
+
+    const siteAddressId = parsedBody.data.siteAddressId ?? null;
+    if (siteAddressId) {
+      if (!customerId) {
+        return c.json({ error: "invalid_site_address" }, 400);
+      }
+      const isCustomerAddress = await hasCustomerSiteAddress(
+        db,
+        customerId,
+        siteAddressId,
+      );
+      if (!isCustomerAddress) {
+        return c.json({ error: "invalid_site_address" }, 400);
+      }
+    }
+
     const now = new Date();
     try {
       const [inserted] = await db
@@ -190,7 +273,9 @@ export function createProjectsCreateHandler(getDb: () => Db | undefined) {
           title: parsedBody.data.title.trim(),
           projectNumber: parsedBody.data.projectNumber ?? null,
           status: parsedBody.data.status ?? "active",
-          customerLabel: parsedBody.data.customerLabel ?? null,
+          customerId,
+          siteAddressId,
+          customerLabel: customer?.displayName ?? parsedBody.data.customerLabel ?? null,
           startDate: parsedBody.data.startDate ?? null,
           endDate: parsedBody.data.endDate ?? null,
           updatedAt: now,
@@ -199,7 +284,12 @@ export function createProjectsCreateHandler(getDb: () => Db | undefined) {
       if (!inserted) {
         return c.json({ error: "insert_failed" }, 500);
       }
-      const out = projectResponseSchema.safeParse({ project: mapProjectRow(inserted) });
+      const out = projectResponseSchema.safeParse({
+        project: mapProjectRow({
+          ...inserted,
+          customerDisplayName: customer?.displayName ?? null,
+        }),
+      });
       if (!out.success) {
         return c.json({ error: "serialize_error" }, 500);
       }
@@ -210,6 +300,62 @@ export function createProjectsCreateHandler(getDb: () => Db | undefined) {
       }
       throw err;
     }
+  };
+}
+
+export function createProjectDetailHandler(getDb: () => Db | undefined) {
+  return async (c: Context) => {
+    const auth = c.get("auth");
+    if (!auth) {
+      return c.json({ error: "missing_auth" }, 500);
+    }
+    const db = getDb();
+    if (!db) {
+      return c.json({ error: "database_unavailable" }, 503);
+    }
+
+    const id = c.req.param("id") ?? "";
+    if (!UUID_RE.test(id)) {
+      return c.json({ error: "not_found" }, 404);
+    }
+
+    const rows = await db
+      .select({
+        id: projects.id,
+        title: projects.title,
+        projectNumber: projects.projectNumber,
+        status: projects.status,
+        customerId: projects.customerId,
+        siteAddressId: projects.siteAddressId,
+        customerDisplayName: customers.displayName,
+        customerLabel: projects.customerLabel,
+        startDate: projects.startDate,
+        endDate: projects.endDate,
+        archivedAt: projects.archivedAt,
+        createdAt: projects.createdAt,
+        updatedAt: projects.updatedAt,
+      })
+      .from(projects)
+      .leftJoin(
+        customers,
+        and(
+          eq(customers.id, projects.customerId),
+          eq(customers.tenantId, auth.tenantId),
+        ),
+      )
+      .where(and(eq(projects.id, id), eq(projects.tenantId, auth.tenantId)))
+      .limit(1);
+
+    const row = rows[0];
+    if (!row) {
+      return c.json({ error: "not_found" }, 404);
+    }
+
+    const out = projectResponseSchema.safeParse({ project: mapProjectRow(row) });
+    if (!out.success) {
+      return c.json({ error: "serialize_error" }, 500);
+    }
+    return c.json(out.data);
   };
 }
 
@@ -267,13 +413,66 @@ export function createProjectPatchHandler(getDb: () => Db | undefined) {
       return c.json({ error: "validation_error" }, 400);
     }
 
+    const nextCustomerId =
+      p.customerId !== undefined ? p.customerId : existing.customerId;
+    const nextSiteAddressId =
+      p.customerId !== undefined
+        ? p.customerId
+          ? p.siteAddressId !== undefined
+            ? p.siteAddressId
+            : existing.customerId === p.customerId
+              ? existing.siteAddressId
+              : null
+          : null
+        : p.siteAddressId !== undefined
+          ? p.siteAddressId
+          : existing.siteAddressId;
+
+    let nextCustomer: CustomerLookupRow | null = null;
+    if (nextCustomerId) {
+      nextCustomer = await getCustomerForTenant(db, auth.tenantId, nextCustomerId);
+      if (!nextCustomer) {
+        return c.json({ error: "invalid_customer" }, 400);
+      }
+    }
+    if (nextSiteAddressId) {
+      if (!nextCustomerId) {
+        return c.json({ error: "invalid_site_address" }, 400);
+      }
+      const isCustomerAddress = await hasCustomerSiteAddress(
+        db,
+        nextCustomerId,
+        nextSiteAddressId,
+      );
+      if (!isCustomerAddress) {
+        return c.json({ error: "invalid_site_address" }, 400);
+      }
+    }
+
     const updates: Partial<typeof projects.$inferInsert> = {
       updatedAt: new Date(),
     };
     if (p.title !== undefined) updates.title = p.title.trim();
     if (p.projectNumber !== undefined) updates.projectNumber = p.projectNumber;
     if (p.status !== undefined) updates.status = p.status;
-    if (p.customerLabel !== undefined) updates.customerLabel = p.customerLabel;
+    if (p.customerId !== undefined) {
+      updates.customerId = nextCustomerId;
+      if (nextCustomer) {
+        updates.customerLabel = nextCustomer.displayName;
+      }
+      if (nextCustomerId === null || existing.customerId !== nextCustomerId) {
+        updates.siteAddressId = nextSiteAddressId;
+      }
+    }
+    if (p.siteAddressId !== undefined) {
+      updates.siteAddressId = nextSiteAddressId;
+    }
+    if (
+      p.customerLabel !== undefined &&
+      (p.customerId === undefined || p.customerId === null)
+    ) {
+      updates.customerLabel = p.customerLabel;
+    }
     if (p.startDate !== undefined) updates.startDate = p.startDate;
     if (p.endDate !== undefined) updates.endDate = p.endDate;
     if (p.archived !== undefined) {
@@ -289,7 +488,12 @@ export function createProjectPatchHandler(getDb: () => Db | undefined) {
       if (!updated) {
         return c.json({ error: "not_found" }, 404);
       }
-      const out = projectResponseSchema.safeParse({ project: mapProjectRow(updated) });
+      const out = projectResponseSchema.safeParse({
+        project: mapProjectRow({
+          ...updated,
+          customerDisplayName: nextCustomer?.displayName ?? null,
+        }),
+      });
       if (!out.success) {
         return c.json({ error: "serialize_error" }, 500);
       }

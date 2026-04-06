@@ -25,6 +25,7 @@ type SalesMessages = {
     root: HeaderPair;
     quotesDetail: HeaderPair;
     invoicesDetail: HeaderPair;
+    invoicesOpen: HeaderPair;
     quotesPrint: HeaderPair;
     invoicesPrint: HeaderPair;
   };
@@ -41,6 +42,7 @@ type SalesMessages = {
     senderHint: string;
     vatIdLabel: string;
     taxNumberLabel: string;
+    reminderFeeLabel: string;
   };
   salesTable: {
     docNumber: string;
@@ -62,6 +64,46 @@ type SalesMessages = {
     project: string;
     listHint: string;
     previewPrint: string;
+  };
+  openInvoices: {
+    csvDownload: string;
+    empty: string;
+    searchPlaceholder: string;
+    paidTotal: string;
+    balance: string;
+    exportMaxHint: string;
+  };
+  invoicePayments: {
+    heading: string;
+    paidTotal: string;
+    balance: string;
+    empty: string;
+    amount: string;
+    paidAt: string;
+    note: string;
+    notePlaceholder: string;
+    submit: string;
+    submitting: string;
+    legacyPaidHint: string;
+    paymentFailed: string;
+    exceedsBalance: string;
+    deletePayment: string;
+    confirmDeletePaymentTitle: string;
+    confirmDeletePaymentDesc: string;
+    paymentDeleteFailed: string;
+  };
+  invoiceReminders: {
+    heading: string;
+    empty: string;
+    level: string;
+    sentAt: string;
+    note: string;
+    notePlaceholder: string;
+    submit: string;
+    submitting: string;
+    validationLevel: string;
+    validationSentAt: string;
+    createFailed: string;
   };
   salesLines: {
     heading: string;
@@ -131,6 +173,7 @@ type SalesMessages = {
     actionFailed: string;
     actionDone: string;
     deletedRedirectHint: string;
+    cannotCancelWithPayments: string;
   };
 };
 
@@ -148,6 +191,12 @@ const de: SalesMessages = {
         href: "/web/sales/invoices",
         label: "Rechnungen",
         tooltip: "Rechnungen",
+        icon: "Banknote",
+      },
+      {
+        href: "/web/sales/invoices/open",
+        label: "Offene Posten",
+        tooltip: "Offene Forderungen",
         icon: "Banknote",
       },
     ],
@@ -181,6 +230,18 @@ const de: SalesMessages = {
       title: "Rechnung — Druckvorschau",
       subtitle: "Drucken oder als PDF speichern (Browserdialog)",
     },
+    invoicesOpen: {
+      title: "Offene Posten",
+      subtitle: "Rechnungen mit positivem Saldo (Zahlungsausgleich)",
+    },
+  },
+  openInvoices: {
+    csvDownload: "CSV exportieren",
+    empty: "Keine offenen Posten.",
+    searchPlaceholder: "Belegnummer oder Kunde …",
+    paidTotal: "Bezahlt",
+    balance: "Saldo",
+    exportMaxHint: "Export maximal 10.000 Zeilen.",
   },
   print: {
     backToDocument: "Zurueck zum Beleg",
@@ -196,6 +257,7 @@ const de: SalesMessages = {
       "Vollstaendige Absenderadresse und Steuerdaten hinterlegen Sie unter Einstellungen.",
     vatIdLabel: "USt-IdNr.",
     taxNumberLabel: "Steuernummer",
+    reminderFeeLabel: "Mahngebuehr",
   },
   salesTable: {
     docNumber: "Nummer",
@@ -218,6 +280,40 @@ const de: SalesMessages = {
     listHint:
       "Alle Eintraege des Mandanten — Kopfdaten anlegen und bearbeiten; Druckvorschau und Browser-PDF sowie serverseitiges PDF im Detail und in der Vorschau.",
     previewPrint: "Vorschau / Druck",
+  },
+  invoicePayments: {
+    heading: "Zahlungen",
+    paidTotal: "Bereits bezahlt",
+    balance: "Offener Betrag",
+    empty: "Noch keine Teilzahlungen erfasst.",
+    amount: "Betrag",
+    paidAt: "Zahlungsdatum",
+    note: "Notiz (optional)",
+    notePlaceholder: "z. B. Überweisung",
+    submit: "Zahlung buchen",
+    submitting: "Wird gebucht …",
+    legacyPaidHint:
+      "Als bezahlt gekennzeichnet ohne Zahlungszeilen (Bestandsdaten). Buchungen erscheinen in der Liste unten.",
+    paymentFailed: "Zahlung konnte nicht gebucht werden.",
+    exceedsBalance: "Betrag übersteigt den offenen Saldo.",
+    deletePayment: "Zahlung entfernen",
+    confirmDeletePaymentTitle: "Zahlungszeile entfernen?",
+    confirmDeletePaymentDesc:
+      "Die Buchung wird gelöscht. Saldo und Status der Rechnung werden neu berechnet.",
+    paymentDeleteFailed: "Zahlung konnte nicht entfernt werden.",
+  },
+  invoiceReminders: {
+    heading: "Mahnungen",
+    empty: "Noch keine Mahnungen erfasst.",
+    level: "Stufe",
+    sentAt: "Datum",
+    note: "Notiz (optional)",
+    notePlaceholder: "z. B. telefonisch erinnert",
+    submit: "Mahnung erfassen",
+    submitting: "Wird gespeichert …",
+    validationLevel: "Bitte gültige Mahnstufe eingeben.",
+    validationSentAt: "Bitte gültiges Datum wählen.",
+    createFailed: "Mahnung konnte nicht gespeichert werden.",
   },
   salesLines: {
     heading: "Positionen",
@@ -293,6 +389,8 @@ const de: SalesMessages = {
     actionFailed: "Aktion fehlgeschlagen.",
     actionDone: "Aktion erfolgreich.",
     deletedRedirectHint: "Beleg wurde geloescht und die Liste geoeffnet.",
+    cannotCancelWithPayments:
+      "Stornieren ist nicht moeglich, solange Zahlungen gebucht sind.",
   },
 };
 
@@ -310,6 +408,12 @@ const en: SalesMessages = {
         href: "/web/sales/invoices",
         label: "Invoices",
         tooltip: "Invoices",
+        icon: "Banknote",
+      },
+      {
+        href: "/web/sales/invoices/open",
+        label: "Open items",
+        tooltip: "Outstanding receivables",
         icon: "Banknote",
       },
     ],
@@ -343,6 +447,18 @@ const en: SalesMessages = {
       title: "Invoice — print preview",
       subtitle: "Print or save as PDF (browser dialog)",
     },
+    invoicesOpen: {
+      title: "Open items",
+      subtitle: "Invoices with a positive outstanding balance",
+    },
+  },
+  openInvoices: {
+    csvDownload: "Download CSV",
+    empty: "No open items.",
+    searchPlaceholder: "Document no. or customer …",
+    paidTotal: "Paid to date",
+    balance: "Open balance",
+    exportMaxHint: "Export limited to 10,000 rows.",
   },
   print: {
     backToDocument: "Back to document",
@@ -358,6 +474,7 @@ const en: SalesMessages = {
       "Add a full sender address and tax IDs under Settings (company / documents header).",
     vatIdLabel: "VAT ID",
     taxNumberLabel: "Tax number",
+    reminderFeeLabel: "Reminder fee",
   },
   salesTable: {
     docNumber: "No.",
@@ -380,6 +497,40 @@ const en: SalesMessages = {
     listHint:
       "All organization documents — create and edit headers; print preview, browser PDF, and server PDF from detail and preview screens.",
     previewPrint: "Preview / print",
+  },
+  invoicePayments: {
+    heading: "Payments",
+    paidTotal: "Paid to date",
+    balance: "Open balance",
+    empty: "No partial payments recorded yet.",
+    amount: "Amount",
+    paidAt: "Payment date",
+    note: "Note (optional)",
+    notePlaceholder: "e.g. bank transfer",
+    submit: "Record payment",
+    submitting: "Recording…",
+    legacyPaidHint:
+      "Marked paid without payment lines (legacy). New entries appear in the list below.",
+    paymentFailed: "Could not record payment.",
+    exceedsBalance: "Amount exceeds the open balance.",
+    deletePayment: "Remove payment",
+    confirmDeletePaymentTitle: "Remove payment line?",
+    confirmDeletePaymentDesc:
+      "The entry will be deleted. Invoice balance and status will be recalculated.",
+    paymentDeleteFailed: "Could not remove payment.",
+  },
+  invoiceReminders: {
+    heading: "Reminders",
+    empty: "No reminders recorded yet.",
+    level: "Level",
+    sentAt: "Date",
+    note: "Note (optional)",
+    notePlaceholder: "e.g. called customer",
+    submit: "Record reminder",
+    submitting: "Saving…",
+    validationLevel: "Enter a valid reminder level.",
+    validationSentAt: "Enter a valid date.",
+    createFailed: "Could not save reminder.",
   },
   salesLines: {
     heading: "Line items",
@@ -455,6 +606,8 @@ const en: SalesMessages = {
     actionFailed: "Action failed.",
     actionDone: "Action completed.",
     deletedRedirectHint: "Document deleted and list opened.",
+    cannotCancelWithPayments:
+      "Cannot cancel while payments are recorded.",
   },
 };
 
@@ -484,6 +637,7 @@ export function getSalesHeaderMeta(
     return parts.length >= 2 ? m.quotesDetail : m.quotes;
   }
   if (parts[0] === "invoices") {
+    if (parts[1] === "open") return m.invoicesOpen;
     if (parts.length >= 3 && parts[2] === "print") return m.invoicesPrint;
     return parts.length >= 2 ? m.invoicesDetail : m.invoices;
   }
@@ -506,6 +660,18 @@ export function getSalesPageDescription(
 
 export function getSalesTableCopy(locale: Locale) {
   return messages(locale).salesTable;
+}
+
+export function getSalesInvoicePaymentsCopy(locale: Locale) {
+  return messages(locale).invoicePayments;
+}
+
+export function getSalesInvoiceRemindersCopy(locale: Locale) {
+  return messages(locale).invoiceReminders;
+}
+
+export function getSalesOpenInvoicesCopy(locale: Locale) {
+  return messages(locale).openInvoices;
 }
 
 export function getSalesFormCopy(locale: Locale) {

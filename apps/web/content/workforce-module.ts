@@ -2,7 +2,7 @@ import type { TradeFeatureItem } from "@/content/trades";
 import type { Locale } from "@/lib/i18n/locale";
 
 /** Icons aus `TradeFeatureIcon` / `iconMap`. */
-export type WorkforceNavIconName = "UsersRound" | "CalendarRange";
+export type WorkforceNavIconName = "UsersRound" | "CalendarRange" | "Clock";
 
 export type WorkforceNavItem = {
   href: string;
@@ -16,7 +16,7 @@ export type WorkforceSidebarCopy = {
   items: WorkforceNavItem[];
 };
 
-export type WorkforcePageKind = "employees" | "scheduling";
+export type WorkforcePageKind = "employees" | "scheduling" | "workTime";
 
 type HeaderPair = { title: string; subtitle: string };
 
@@ -42,6 +42,12 @@ const de: WorkforceMessages = {
         tooltip: "Terminplanung",
         icon: "CalendarRange",
       },
+      {
+        href: "/web/work-time",
+        label: "Zeiterfassung",
+        tooltip: "Zeiterfassung",
+        icon: "Clock",
+      },
     ],
   },
   headers: {
@@ -54,6 +60,11 @@ const de: WorkforceMessages = {
       title: "Terminplanung",
       subtitle:
         "Einsaetze, Kundenbesuche und Teamkapazitaeten in einer Plantafel buchen.",
+    },
+    workTime: {
+      title: "Zeiterfassung",
+      subtitle:
+        "Ist-Stunden je Mitarbeitendem erfassen — mit optionalem Projektbezug.",
     },
   },
   schedulingFeature: {
@@ -80,6 +91,12 @@ const en: WorkforceMessages = {
         tooltip: "Scheduling",
         icon: "CalendarRange",
       },
+      {
+        href: "/web/work-time",
+        label: "Time tracking",
+        tooltip: "Time tracking",
+        icon: "Clock",
+      },
     ],
   },
   headers: {
@@ -92,6 +109,11 @@ const en: WorkforceMessages = {
       title: "Scheduling",
       subtitle:
         "Book field jobs, customer visits, and team capacity on one planning board.",
+    },
+    workTime: {
+      title: "Time tracking",
+      subtitle:
+        "Log actual hours per employee — optionally linked to a project.",
     },
   },
   schedulingFeature: {
@@ -127,6 +149,9 @@ export function getWorkforceHeaderMeta(
   }
   if (p === "/web/scheduling") {
     return c.headers.scheduling;
+  }
+  if (p === "/web/work-time") {
+    return c.headers.workTime;
   }
   return null;
 }

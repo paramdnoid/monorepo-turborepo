@@ -22,6 +22,7 @@ type PdfLabels = {
   recipient: string;
   status: string;
   total: string;
+  openBalance: string;
   validUntil: string;
   issued: string;
   due: string;
@@ -29,6 +30,12 @@ type PdfLabels = {
   quoteRef: string;
   projectId: string;
   updated: string;
+  reminderTitle: string;
+  reminderLevel: string;
+  reminderDate: string;
+  reminderIntro: string;
+  reminderFeeLabel: string;
+  noteLabel: string;
   positions: string;
   colDesc: string;
   colQty: string;
@@ -49,6 +56,7 @@ const labels: Record<SalesPdfLang, { quoteTitle: string; invoiceTitle: string } 
     recipient: "Leistungsempfaenger / Kunde",
     status: "Status",
     total: "Betrag (Kopf)",
+    openBalance: "Offener Betrag",
     validUntil: "Gueltig bis",
     issued: "Rechnungsdatum",
     due: "Faellig am",
@@ -56,6 +64,13 @@ const labels: Record<SalesPdfLang, { quoteTitle: string; invoiceTitle: string } 
     quoteRef: "Angebots-ID",
     projectId: "Projekt-ID",
     updated: "Stand",
+    reminderTitle: "Mahnung",
+    reminderLevel: "Stufe",
+    reminderDate: "Datum",
+    reminderIntro:
+      "Bitte begleichen Sie den offenen Betrag. Falls Sie bereits gezahlt haben, betrachten Sie dieses Schreiben bitte als gegenstandslos.",
+    reminderFeeLabel: "Mahngebuehr",
+    noteLabel: "Notiz",
     positions: "Positionen",
     colDesc: "Beschreibung",
     colQty: "Menge",
@@ -75,6 +90,7 @@ const labels: Record<SalesPdfLang, { quoteTitle: string; invoiceTitle: string } 
     recipient: "Bill to / customer",
     status: "Status",
     total: "Amount (header)",
+    openBalance: "Open balance",
     validUntil: "Valid until",
     issued: "Issued",
     due: "Due",
@@ -82,6 +98,13 @@ const labels: Record<SalesPdfLang, { quoteTitle: string; invoiceTitle: string } 
     quoteRef: "Quote ID",
     projectId: "Project ID",
     updated: "Updated",
+    reminderTitle: "Reminder",
+    reminderLevel: "Level",
+    reminderDate: "Date",
+    reminderIntro:
+      "Please settle the open balance. If you have already paid, please disregard this message.",
+    reminderFeeLabel: "Reminder fee",
+    noteLabel: "Note",
     positions: "Line items",
     colDesc: "Description",
     colQty: "Qty",
@@ -95,6 +118,10 @@ const labels: Record<SalesPdfLang, { quoteTitle: string; invoiceTitle: string } 
     taxNumber: "Tax number",
   },
 };
+
+export function salesDefaultReminderIntro(lang: SalesPdfLang): string {
+  return labels[lang].reminderIntro;
+}
 
 export type SalesLetterhead = {
   orgName: string;
@@ -231,6 +258,30 @@ export type InvoicePdfInput = {
   projectId: string | null;
   quoteId: string | null;
   lines: QuotePdfInput["lines"];
+};
+
+export type InvoiceReminderPdfInput = {
+  invoice: Pick<
+    InvoicePdfInput,
+    | "documentNumber"
+    | "customerLabel"
+    | "status"
+    | "currency"
+    | "totalCents"
+    | "issuedAt"
+    | "dueAt"
+    | "paidAt"
+    | "updatedAt"
+    | "projectId"
+    | "quoteId"
+  > & {
+    balanceCents: number;
+  };
+  reminder: {
+    level: number;
+    sentAt: string;
+    note: string | null;
+  };
 };
 
 export function buildQuotePdfBuffer(params: {
@@ -432,7 +483,89 @@ export function buildInvoicePdfBuffer(params: {
   });
 }
 
+export function buildInvoiceReminderPdfBuffer(params: {
+  letterhead: SalesLetterhead;
+  invoice: InvoiceReminderPdfInput["invoice"];
+  reminder: InvoiceReminderPdfInput["reminder"];
+  lang: SalesPdfLang;
+  /** Vollstaendiger Fließtext; sonst `labels[lang].reminderIntro`. */
+  introText?: string;
+  /** Optionale Mahngebuehr (Rechnungswaehrung), nur wenn > 0. */
+  feeCents?: number | null;
+}): Promise<Buffer> {
+  const { letterhead, invoice, reminder, lang, introText, feeCents } = params;
+  const L = labels[lang];
+  const intro =
+    introText != null && introText.trim() !== ""
+      ? introText.trim()
+      : L.reminderIntro;
+
+  return runPdf((doc) => {
+    drawSalesLetterhead(doc, letterhead, lang);
+    doc.fontSize(20).font("Helvetica-Bold").text(L.reminderTitle);
+    doc.font("Helvetica").fontSize(11);
+    doc.moveDown(0.5);
+    doc.text(`${L.docNo} ${pdfSafeText(invoice.documentNumber)}`);
+    doc.moveDown(1);
+
+    doc.fontSize(10).font("Helvetica-Bold").text(L.recipient);
+    doc.font("Helvetica").fontSize(10);
+    doc.text(pdfSafeText(invoice.customerLabel), {
+      width: doc.page.width - 96,
+    });
+    doc.moveDown(0.8);
+
+    const meta: [string, string][] = [
+      [L.reminderLevel, String(reminder.level)],
+      [L.reminderDate, formatPdfDate(reminder.sentAt, lang)],
+      [L.openBalance, formatMoney(invoice.balanceCents, invoice.currency, lang)],
+      [L.total, formatMoney(invoice.totalCents, invoice.currency, lang)],
+      [L.issued, formatPdfDate(invoice.issuedAt, lang)],
+      [L.due, formatPdfDate(invoice.dueAt, lang)],
+      [L.paid, formatPdfDate(invoice.paidAt, lang)],
+      [L.updated, formatPdfDate(invoice.updatedAt, lang)],
+    ];
+    if (invoice.quoteId) {
+      meta.push([L.quoteRef, invoice.quoteId]);
+    }
+    if (invoice.projectId) {
+      meta.push([L.projectId, invoice.projectId]);
+    }
+    for (const [k, v] of meta) {
+      doc.fontSize(9).text(`${k}: ${pdfSafeText(v)}`);
+    }
+
+    doc.moveDown(1.2);
+    doc.fontSize(10).font("Helvetica").text(pdfSafeText(intro));
+
+    if (feeCents != null && feeCents > 0) {
+      doc.moveDown(0.6);
+      doc
+        .fontSize(10)
+        .font("Helvetica")
+        .text(
+          `${L.reminderFeeLabel}: ${formatMoney(feeCents, invoice.currency, lang)}`,
+        );
+    }
+
+    if (reminder.note && reminder.note.trim() !== "") {
+      doc.moveDown(1);
+      doc.fontSize(10).font("Helvetica-Bold").text(L.noteLabel);
+      doc.font("Helvetica").fontSize(10).text(pdfSafeText(reminder.note));
+    }
+  });
+}
+
 export function salesPdfFilename(kind: "quote" | "invoice", documentNumber: string): string {
   const safe = pdfSafeText(documentNumber).replace(/[^\w.\-+]+/g, "_");
   return kind === "quote" ? `Angebot_${safe}.pdf` : `Rechnung_${safe}.pdf`;
+}
+
+export function salesReminderPdfFilename(
+  invoiceDocumentNumber: string,
+  reminderLevel: number,
+): string {
+  const safe = pdfSafeText(invoiceDocumentNumber).replace(/[^\w.\-+]+/g, "_");
+  const lvl = Number.isFinite(reminderLevel) ? Math.max(1, Math.trunc(reminderLevel)) : 1;
+  return `Mahnung_${safe}_Stufe_${lvl}.pdf`;
 }

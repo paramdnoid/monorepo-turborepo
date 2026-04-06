@@ -15,6 +15,7 @@ import {
   employeeSickReports,
   employeeVacationRequests,
   employees,
+  projects,
   schedulingAssignments,
   type Db,
 } from "@repo/db";
@@ -45,6 +46,23 @@ function parseIsoDateToWeekday(isoDate: string): number | null {
   return utc.getUTCDay();
 }
 
+/** Inklusive Tage von dateFrom bis dateTo (YYYY-MM-DD); null wenn ungueltig oder from > to. */
+function daysBetweenInclusiveYmd(dateFrom: string, dateTo: string): number | null {
+  const m1 = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateFrom);
+  const m2 = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateTo);
+  if (!m1 || !m2) {
+    return null;
+  }
+  const t1 = Date.UTC(Number(m1[1]), Number(m1[2]) - 1, Number(m1[3]));
+  const t2 = Date.UTC(Number(m2[1]), Number(m2[2]) - 1, Number(m2[3]));
+  if (Number.isNaN(t1) || Number.isNaN(t2) || t1 > t2) {
+    return null;
+  }
+  return Math.floor((t2 - t1) / 86_400_000) + 1;
+}
+
+const SCHEDULING_ASSIGNMENTS_RANGE_MAX_DAYS = 31;
+
 function formatTimeForApi(value: unknown): string {
   if (typeof value === "string") {
     return value.length === 8 ? value.slice(0, 5) : value;
@@ -68,9 +86,29 @@ function mapAssignmentRow(r: typeof schedulingAssignments.$inferSelect) {
     title: r.title,
     place: r.place ?? null,
     reminderMinutesBefore: r.reminderMinutesBefore ?? null,
+    projectId: r.projectId ?? null,
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
   };
+}
+
+async function resolveSchedulingProjectId(
+  db: Db,
+  tenantId: string,
+  projectId: string | null | undefined,
+): Promise<{ ok: true; projectId: string | null } | { ok: false }> {
+  if (projectId === undefined || projectId === null) {
+    return { ok: true, projectId: null };
+  }
+  const rows = await db
+    .select({ id: projects.id })
+    .from(projects)
+    .where(and(eq(projects.id, projectId), eq(projects.tenantId, tenantId)))
+    .limit(1);
+  if (!rows[0]) {
+    return { ok: false };
+  }
+  return { ok: true, projectId };
 }
 
 type DependencyWarning = {
@@ -366,21 +404,48 @@ export function createSchedulingAssignmentsListHandler(getDb: () => Db | undefin
     }
 
     const date = c.req.query("date")?.trim() ?? "";
-    if (date && !DATE_RE.test(date)) {
+    const dateFrom = c.req.query("dateFrom")?.trim() ?? "";
+    const dateTo = c.req.query("dateTo")?.trim() ?? "";
+    if (date && (!DATE_RE.test(date))) {
+      return c.json({ error: "validation_error" }, 400);
+    }
+    if (dateFrom && !DATE_RE.test(dateFrom)) {
+      return c.json({ error: "validation_error" }, 400);
+    }
+    if (dateTo && !DATE_RE.test(dateTo)) {
+      return c.json({ error: "validation_error" }, 400);
+    }
+    if ((dateFrom && !dateTo) || (!dateFrom && dateTo)) {
+      return c.json({ error: "validation_error" }, 400);
+    }
+    if (dateFrom && dateTo) {
+      const span = daysBetweenInclusiveYmd(dateFrom, dateTo);
+      if (span === null || span > SCHEDULING_ASSIGNMENTS_RANGE_MAX_DAYS) {
+        return c.json({ error: "validation_error" }, 400);
+      }
+    }
+    const projectId = c.req.query("projectId")?.trim() ?? "";
+    if (projectId && !UUID_RE.test(projectId)) {
       return c.json({ error: "validation_error" }, 400);
     }
 
-    const where = date
-      ? and(
-          eq(schedulingAssignments.tenantId, auth.tenantId),
-          eq(schedulingAssignments.date, date),
-        )
-      : eq(schedulingAssignments.tenantId, auth.tenantId);
+    const listConditions = [
+      eq(schedulingAssignments.tenantId, auth.tenantId),
+      ...(date
+        ? [eq(schedulingAssignments.date, date)]
+        : dateFrom && dateTo
+          ? [
+              gte(schedulingAssignments.date, dateFrom),
+              lte(schedulingAssignments.date, dateTo),
+            ]
+          : []),
+      ...(projectId ? [eq(schedulingAssignments.projectId, projectId)] : []),
+    ];
 
     const rows = await db
       .select()
       .from(schedulingAssignments)
-      .where(where)
+      .where(and(...listConditions))
       .orderBy(
         asc(schedulingAssignments.date),
         asc(schedulingAssignments.startTime),
@@ -450,6 +515,15 @@ export function createSchedulingAssignmentPostHandler(getDb: () => Db | undefine
       .limit(1);
     if (sameSlotRows[0]) {
       return c.json({ error: "employee_slot_conflict" }, 409);
+    }
+
+    const projectResolved = await resolveSchedulingProjectId(
+      db,
+      auth.tenantId,
+      parsed.data.projectId,
+    );
+    if (!projectResolved.ok) {
+      return c.json({ error: "project_not_found" }, 404);
     }
 
     const relationshipRows = await db
@@ -540,6 +614,7 @@ export function createSchedulingAssignmentPostHandler(getDb: () => Db | undefine
         title: parsed.data.title.trim(),
         place: parsed.data.place?.trim() ? parsed.data.place.trim() : null,
         reminderMinutesBefore: parsed.data.reminderMinutesBefore ?? null,
+        projectId: projectResolved.projectId,
         updatedAt: now,
       })
       .returning();
@@ -620,6 +695,19 @@ export function createSchedulingAssignmentPatchHandler(getDb: () => Db | undefin
       patch.reminderMinutesBefore !== undefined
         ? patch.reminderMinutesBefore
         : current.reminderMinutesBefore;
+
+    let nextProjectId: string | null = current.projectId ?? null;
+    if (patch.projectId !== undefined) {
+      const projectResolved = await resolveSchedulingProjectId(
+        db,
+        auth.tenantId,
+        patch.projectId,
+      );
+      if (!projectResolved.ok) {
+        return c.json({ error: "project_not_found" }, 404);
+      }
+      nextProjectId = projectResolved.projectId;
+    }
 
     const employeeRows = await db
       .select({ id: employees.id })
@@ -741,6 +829,7 @@ export function createSchedulingAssignmentPatchHandler(getDb: () => Db | undefin
         title: nextTitle,
         place: nextPlace,
         reminderMinutesBefore: nextReminder ?? null,
+        projectId: nextProjectId,
         updatedAt: now,
       })
       .where(
@@ -813,17 +902,21 @@ export function createSchedulingAssignmentsIcsHandler(getDb: () => Db | undefine
     if (date && !DATE_RE.test(date)) {
       return c.json({ error: "validation_error" }, 400);
     }
-    const where = date
-      ? and(
-          eq(schedulingAssignments.tenantId, auth.tenantId),
-          eq(schedulingAssignments.date, date),
-        )
-      : eq(schedulingAssignments.tenantId, auth.tenantId);
+    const projectId = c.req.query("projectId")?.trim() ?? "";
+    if (projectId && !UUID_RE.test(projectId)) {
+      return c.json({ error: "validation_error" }, 400);
+    }
+
+    const icsConditions = [
+      eq(schedulingAssignments.tenantId, auth.tenantId),
+      ...(date ? [eq(schedulingAssignments.date, date)] : []),
+      ...(projectId ? [eq(schedulingAssignments.projectId, projectId)] : []),
+    ];
 
     const assignments = await db
       .select()
       .from(schedulingAssignments)
-      .where(where)
+      .where(and(...icsConditions))
       .orderBy(asc(schedulingAssignments.date), asc(schedulingAssignments.startTime));
 
     if (assignments.length === 0) {
@@ -843,16 +936,37 @@ export function createSchedulingAssignmentsIcsHandler(getDb: () => Db | undefine
     }
 
     const employeeIds = Array.from(new Set(assignments.map((a) => a.employeeId)));
-    const employeeRows = await db
-      .select({ id: employees.id, displayName: employees.displayName })
-      .from(employees)
-      .where(
-        and(
-          eq(employees.tenantId, auth.tenantId),
-          inArray(employees.id, employeeIds),
+    const assignmentProjectIds = Array.from(
+      new Set(
+        assignments
+          .map((a) => a.projectId)
+          .filter((id): id is string => typeof id === "string" && id.length > 0),
+      ),
+    );
+    const [employeeRows, projectRows] = await Promise.all([
+      db
+        .select({ id: employees.id, displayName: employees.displayName })
+        .from(employees)
+        .where(
+          and(
+            eq(employees.tenantId, auth.tenantId),
+            inArray(employees.id, employeeIds),
+          ),
         ),
-      );
+      assignmentProjectIds.length === 0
+        ? Promise.resolve([] as { id: string; title: string }[])
+        : db
+            .select({ id: projects.id, title: projects.title })
+            .from(projects)
+            .where(
+              and(
+                eq(projects.tenantId, auth.tenantId),
+                inArray(projects.id, assignmentProjectIds),
+              ),
+            ),
+    ]);
     const employeeNameById = new Map(employeeRows.map((e) => [e.id, e.displayName]));
+    const projectTitleById = new Map(projectRows.map((p) => [p.id, p.title]));
 
     const stamp = formatIcsStampUtc(new Date());
     const lines = [
@@ -874,8 +988,13 @@ export function createSchedulingAssignmentsIcsHandler(getDb: () => Db | undefine
         lines.push(`LOCATION:${escapeIcsText(a.place)}`);
       }
       const employeeName = employeeNameById.get(a.employeeId);
-      if (employeeName) {
-        lines.push(`DESCRIPTION:${escapeIcsText(employeeName)}`);
+      const projectTitle = a.projectId ? projectTitleById.get(a.projectId) : undefined;
+      const descParts = [
+        employeeName,
+        projectTitle ? `Project: ${projectTitle}` : null,
+      ].filter((p): p is string => Boolean(p));
+      if (descParts.length > 0) {
+        lines.push(`DESCRIPTION:${escapeIcsText(descParts.join(" · "))}`);
       }
       if (a.reminderMinutesBefore != null && a.reminderMinutesBefore > 0) {
         lines.push("BEGIN:VALARM");

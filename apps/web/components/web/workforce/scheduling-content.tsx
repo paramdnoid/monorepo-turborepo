@@ -6,6 +6,7 @@ import { de } from "react-day-picker/locale/de";
 import { enUS } from "react-day-picker/locale/en-US";
 
 import {
+  projectsListResponseSchema,
   schedulingAssignmentCreateResponseSchema,
   schedulingAssignmentsListResponseSchema,
   schedulingDayResponseSchema,
@@ -45,6 +46,14 @@ import { cn } from "@repo/ui/utils";
 import type { Locale } from "@/lib/i18n/locale";
 import { parseResponseJson } from "@/lib/parse-response-json";
 
+const PROJECT_SELECT_NONE = "__none__" as const;
+
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value,
+  );
+}
+
 type SchedulingAssignment = {
   id: string;
   date: string;
@@ -52,12 +61,19 @@ type SchedulingAssignment = {
   title: string;
   place: string;
   employeeId: string;
+  projectId: string | null;
   reminderMinutesBefore: number | null;
 };
 
 type AssignmentEditFieldErrors = Partial<
   Record<
-    "date" | "startTime" | "employeeId" | "title" | "place" | "reminderMinutesBefore",
+    | "date"
+    | "startTime"
+    | "employeeId"
+    | "title"
+    | "place"
+    | "reminderMinutesBefore"
+    | "projectId",
     string
   >
 >;
@@ -130,12 +146,23 @@ function readPatchFieldErrors(
         locale === "en"
           ? "Reminder value is invalid."
           : "Erinnerungswert ist ungueltig.";
+    } else if (key === "projectId") {
+      out.projectId =
+        locale === "en"
+          ? "Choose a valid project or clear the field."
+          : "Bitte ein gueltiges Projekt waehlen oder leer lassen.";
     }
   }
   return out;
 }
 
-export function SchedulingContent({ locale }: { locale: Locale }) {
+export function SchedulingContent({
+  locale,
+  initialProjectId,
+}: {
+  locale: Locale;
+  initialProjectId?: string;
+}) {
   const initialMonth = React.useMemo(() => new Date(), []);
   const [month, setMonth] = React.useState(initialMonth);
   const [selected, setSelected] = React.useState<Date | undefined>(
@@ -179,8 +206,85 @@ export function SchedulingContent({ locale }: { locale: Locale }) {
   const [editFieldErrors, setEditFieldErrors] =
     React.useState<AssignmentEditFieldErrors>({});
 
+  const [projectOptions, setProjectOptions] = React.useState<
+    { id: string; title: string }[]
+  >([]);
+  const [draftProjectId, setDraftProjectId] = React.useState<string>(
+    PROJECT_SELECT_NONE,
+  );
+  const [editProjectId, setEditProjectId] = React.useState<string>(
+    PROJECT_SELECT_NONE,
+  );
+  const projectPrefillDoneRef = React.useRef(false);
+
   const rdpLocale = locale === "en" ? enUS : de;
   const selectedDate = selected ? toIsoDateLocal(selected) : null;
+
+  React.useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/web/projects?limit=200", {
+          credentials: "include",
+        });
+        const text = await res.text();
+        const json = parseResponseJson(text);
+        const parsed = projectsListResponseSchema.safeParse(json);
+        if (!res.ok || !parsed.success || cancelled) {
+          return;
+        }
+        setProjectOptions(
+          parsed.data.projects.map((p) => ({ id: p.id, title: p.title })),
+        );
+      } catch {
+        // Projects list is optional; scheduling still works without it.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  React.useEffect(() => {
+    if (projectPrefillDoneRef.current) {
+      return;
+    }
+    if (!initialProjectId || !isUuid(initialProjectId)) {
+      return;
+    }
+    if (
+      projectOptions.length > 0 &&
+      projectOptions.some((p) => p.id === initialProjectId)
+    ) {
+      setDraftProjectId(initialProjectId);
+      projectPrefillDoneRef.current = true;
+    }
+  }, [initialProjectId, projectOptions]);
+
+  const projectTitleById = React.useMemo(() => {
+    const m = new Map<string, string>();
+    for (const p of projectOptions) {
+      m.set(p.id, p.title);
+    }
+    return m;
+  }, [projectOptions]);
+
+  const editProjectSelectItems = React.useMemo(() => {
+    const items = projectOptions.map((p) => ({ ...p }));
+    if (
+      editProjectId !== PROJECT_SELECT_NONE &&
+      !items.some((p) => p.id === editProjectId)
+    ) {
+      items.push({
+        id: editProjectId,
+        title:
+          locale === "en"
+            ? "Linked project (not in current list)"
+            : "Verknuepftes Projekt (nicht in Liste)",
+      });
+    }
+    return items;
+  }, [projectOptions, editProjectId, locale]);
 
   const availableEmployees = React.useMemo(
     () => employees.filter((e) => e.isAvailable),
@@ -290,6 +394,7 @@ export function SchedulingContent({ locale }: { locale: Locale }) {
             title: a.title,
             place: a.place ?? "",
             employeeId: a.employeeId,
+            projectId: a.projectId,
             reminderMinutesBefore: a.reminderMinutesBefore,
           })),
         );
@@ -366,6 +471,9 @@ export function SchedulingContent({ locale }: { locale: Locale }) {
   const assignmentTitle = locale === "en" ? "Assignments" : "Einsaetze";
   const assignmentAdd =
     locale === "en" ? "Add assignment" : "Einsatz hinzufügen";
+  const projectLabel =
+    locale === "en" ? "Project (optional)" : "Projekt (optional)";
+  const projectNoneLabel = locale === "en" ? "No project" : "Kein Projekt";
   const unavailableMap: Record<
     NonNullable<SchedulingDayEmployee["unavailableReason"]>,
     string
@@ -422,12 +530,26 @@ export function SchedulingContent({ locale }: { locale: Locale }) {
             draftReminderMinutes === "none"
               ? null
               : Number(draftReminderMinutes),
+          projectId:
+            draftProjectId === PROJECT_SELECT_NONE ? null : draftProjectId,
         }),
       });
       const text = await res.text();
       const json = parseResponseJson(text);
       const parsed = schedulingAssignmentCreateResponseSchema.safeParse(json);
       if (!res.ok || !parsed.success) {
+        const apiError =
+          typeof json === "object" && json !== null && "error" in json
+            ? (json as { error?: string }).error
+            : undefined;
+        if (res.status === 404 && apiError === "project_not_found") {
+          setAssignmentError(
+            locale === "en"
+              ? "Project not found or not accessible."
+              : "Projekt nicht gefunden oder kein Zugriff.",
+          );
+          return;
+        }
         setAssignmentError(
           locale === "en"
             ? "Could not create assignment."
@@ -461,6 +583,7 @@ export function SchedulingContent({ locale }: { locale: Locale }) {
     setEditTitle(assignment.title);
     setEditPlace(assignment.place);
     setEditEmployeeId(assignment.employeeId);
+    setEditProjectId(assignment.projectId ?? PROJECT_SELECT_NONE);
     const reminder = assignment.reminderMinutesBefore;
     setEditReminderMinutes(
       reminder === 15
@@ -529,6 +652,8 @@ export function SchedulingContent({ locale }: { locale: Locale }) {
             place: editPlace.trim() ? editPlace.trim() : null,
             reminderMinutesBefore:
               editReminderMinutes === "none" ? null : Number(editReminderMinutes),
+            projectId:
+              editProjectId === PROJECT_SELECT_NONE ? null : editProjectId,
           }),
         },
       );
@@ -549,6 +674,14 @@ export function SchedulingContent({ locale }: { locale: Locale }) {
             locale === "en"
               ? "Please fix the highlighted fields."
               : "Bitte die markierten Felder korrigieren.",
+          );
+          return;
+        }
+        if (res.status === 404 && apiError === "project_not_found") {
+          setAssignmentError(
+            locale === "en"
+              ? "Project not found or not accessible."
+              : "Projekt nicht gefunden oder kein Zugriff.",
           );
           return;
         }
@@ -860,6 +993,27 @@ export function SchedulingContent({ locale }: { locale: Locale }) {
                   onChange={(ev) => setDraftPlace(ev.target.value)}
                 />
               </div>
+              <div className="grid gap-2 md:col-span-2">
+                <Label htmlFor="sched-project">{projectLabel}</Label>
+                <Select
+                  value={draftProjectId}
+                  onValueChange={setDraftProjectId}
+                >
+                  <SelectTrigger id="sched-project">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={PROJECT_SELECT_NONE}>
+                      {projectNoneLabel}
+                    </SelectItem>
+                    {projectOptions.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="md:col-span-2">
                 <Button
                   type="button"
@@ -905,6 +1059,9 @@ export function SchedulingContent({ locale }: { locale: Locale }) {
                         </p>
                         <p className="text-xs text-muted-foreground">
                           {employee?.displayName ?? "—"}
+                          {a.projectId
+                            ? ` · ${projectTitleById.get(a.projectId) ?? a.projectId}`
+                            : ""}
                           {a.place ? ` · ${a.place}` : ""}
                           {a.reminderMinutesBefore != null
                             ? locale === "en"
@@ -1071,6 +1228,31 @@ export function SchedulingContent({ locale }: { locale: Locale }) {
               />
               {editFieldErrors.place ? (
                 <p className="text-xs text-destructive">{editFieldErrors.place}</p>
+              ) : null}
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="sched-edit-project">{projectLabel}</Label>
+              <Select
+                value={editProjectId}
+                onValueChange={setEditProjectId}
+                disabled={assignmentBusy}
+              >
+                <SelectTrigger id="sched-edit-project">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={PROJECT_SELECT_NONE}>
+                    {projectNoneLabel}
+                  </SelectItem>
+                  {editProjectSelectItems.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {editFieldErrors.projectId ? (
+                <p className="text-xs text-destructive">{editFieldErrors.projectId}</p>
               ) : null}
             </div>
           </div>

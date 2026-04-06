@@ -28,6 +28,7 @@ export type ProjectStatus = z.infer<typeof projectStatusSchema>;
 
 const optionalTrimmedOrNull = (max: number) =>
   z.union([z.string().trim().max(max), z.null()]).optional();
+const optionalUuidOrNull = z.union([z.string().uuid(), z.null()]).optional();
 
 const isoDate = z
   .string()
@@ -40,6 +41,8 @@ export const projectSchema = z.object({
   title: z.string(),
   projectNumber: z.string().nullable(),
   status: projectStatusSchema,
+  customerId: z.string().uuid().nullable(),
+  siteAddressId: z.string().uuid().nullable(),
   customerLabel: z.string().nullable(),
   startDate: z.string().nullable(),
   endDate: z.string().nullable(),
@@ -72,6 +75,8 @@ export const projectCreateRequestSchema = z
     title: z.string().trim().min(1).max(500),
     projectNumber: optionalTrimmedOrNull(80),
     status: projectStatusSchema.optional(),
+    customerId: optionalUuidOrNull,
+    siteAddressId: optionalUuidOrNull,
     customerLabel: optionalTrimmedOrNull(240),
     startDate: z.union([isoDate, z.null()]).optional(),
     endDate: z.union([isoDate, z.null()]).optional(),
@@ -85,6 +90,13 @@ export const projectCreateRequestSchema = z
         path: ["endDate"],
       });
     }
+    if (v.siteAddressId != null && !v.customerId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "siteAddressId requires customerId",
+        path: ["siteAddressId"],
+      });
+    }
   });
 
 export type ProjectCreateRequest = z.infer<typeof projectCreateRequestSchema>;
@@ -94,6 +106,8 @@ export const projectPatchRequestSchema = z
     title: z.string().trim().min(1).max(500).optional(),
     projectNumber: optionalTrimmedOrNull(80),
     status: projectStatusSchema.optional(),
+    customerId: optionalUuidOrNull,
+    siteAddressId: optionalUuidOrNull,
     customerLabel: optionalTrimmedOrNull(240),
     startDate: z.union([isoDate, z.null()]).optional(),
     endDate: z.union([isoDate, z.null()]).optional(),
@@ -106,6 +120,13 @@ export const projectPatchRequestSchema = z
         code: z.ZodIssueCode.custom,
         message: "startDate must be <= endDate",
         path: ["endDate"],
+      });
+    }
+    if (v.siteAddressId != null && !v.customerId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "siteAddressId requires customerId",
+        path: ["siteAddressId"],
       });
     }
   });

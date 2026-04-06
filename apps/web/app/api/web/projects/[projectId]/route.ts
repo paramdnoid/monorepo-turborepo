@@ -19,6 +19,44 @@ function noStoreInit(init?: ResponseInit): ResponseInit {
 
 type RouteParams = { params: Promise<{ projectId: string }> };
 
+export async function GET(request: Request, { params }: RouteParams) {
+  const locale = getRequestLocale(request);
+  const text = getUiText(locale);
+
+  const session = await validateWebAccessTokenSession();
+  if (!session.ok) {
+    return NextResponse.json(
+      { error: text.api.auth.bffSessionInvalid },
+      noStoreInit({ status: 401 }),
+    );
+  }
+
+  const { projectId } = await params;
+  if (!projectId?.trim()) {
+    return NextResponse.json({ error: "invalid_project_id" }, noStoreInit({ status: 400 }));
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/v1/projects/${encodeURIComponent(projectId)}`, {
+      headers: { Authorization: `Bearer ${session.token}` },
+      cache: "no-store",
+    });
+    const bodyText = await res.text();
+    return new NextResponse(bodyText, {
+      status: res.status,
+      headers: {
+        "Content-Type": res.headers.get("content-type") ?? "application/json",
+        "Cache-Control": "private, no-store",
+      },
+    });
+  } catch {
+    return NextResponse.json(
+      { error: text.api.auth.loginAuthServiceUnavailable },
+      noStoreInit({ status: 503 }),
+    );
+  }
+}
+
 export async function PATCH(request: Request, { params }: RouteParams) {
   const locale = getRequestLocale(request);
   const text = getUiText(locale);

@@ -61,6 +61,7 @@ export const schedulingAssignmentSchema = z.object({
   title: z.string(),
   place: z.string().nullable(),
   reminderMinutesBefore: z.number().int().min(0).max(1440).nullable(),
+  projectId: z.string().uuid().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -84,6 +85,7 @@ export const schedulingAssignmentCreateSchema = z.object({
     .union([z.number().int().min(0).max(1440), z.null()])
     .optional()
     .default(null),
+  projectId: z.union([z.string().uuid(), z.null()]).optional().default(null),
 });
 
 export const schedulingAssignmentPatchSchema = z
@@ -96,6 +98,7 @@ export const schedulingAssignmentPatchSchema = z
     reminderMinutesBefore: z
       .union([z.number().int().min(0).max(1440), z.null()])
       .optional(),
+    projectId: z.union([z.string().uuid(), z.null()]).optional(),
   })
   .strict()
   .refine((v) => Object.keys(v).length > 0, {

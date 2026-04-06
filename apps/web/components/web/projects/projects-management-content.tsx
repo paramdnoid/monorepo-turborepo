@@ -1,9 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { Archive, Loader2, Pencil, Plus, RotateCcw, Search, X } from "lucide-react";
 
 import {
+  customerDetailResponseSchema,
+  customersListResponseSchema,
   projectResponseSchema,
   projectsListResponseSchema,
   type Project,
@@ -27,12 +30,16 @@ type ProjectForm = {
   title: string;
   projectNumber: string;
   status: ProjectStatus;
+  customerId: string;
+  siteAddressId: string;
   customerLabel: string;
   startDate: string;
   endDate: string;
 };
 
 type EditForm = ProjectForm & { archived: boolean };
+type CustomerOption = { id: string; label: string };
+type SiteAddressOption = { id: string; label: string };
 
 const PAGE_SIZE = 20;
 
@@ -41,6 +48,8 @@ function emptyCreateForm(): ProjectForm {
     title: "",
     projectNumber: "",
     status: "active",
+    customerId: "",
+    siteAddressId: "",
     customerLabel: "",
     startDate: "",
     endDate: "",
@@ -66,16 +75,116 @@ function formatStatusLabel(locale: Locale, status: ProjectStatus): string {
   return m[status];
 }
 
+function formatSiteAddressLabel(a: {
+  kind: "billing" | "shipping" | "site" | "other";
+  label: string | null;
+  recipientName: string;
+  street: string;
+  postalCode: string;
+  city: string;
+}): string {
+  const prefix =
+    a.kind === "site"
+      ? "Baustelle"
+      : a.kind === "billing"
+        ? "Rechnung"
+        : a.kind === "shipping"
+          ? "Lieferung"
+          : "Adresse";
+  const parts = [a.label, a.recipientName, a.street, `${a.postalCode} ${a.city}`]
+    .map((p) => p?.trim())
+    .filter((p): p is string => Boolean(p && p.length > 0));
+  return [prefix, ...parts].join(" · ");
+}
+
+async function fetchCustomerOptions(): Promise<CustomerOption[]> {
+  try {
+    const res = await fetch("/api/web/customers?limit=500&offset=0", {
+      credentials: "include",
+    });
+    if (!res.ok) {
+      return [];
+    }
+    const json: unknown = await res.json().catch(() => null);
+    const parsed = customersListResponseSchema.safeParse(json);
+    if (!parsed.success) {
+      return [];
+    }
+    return parsed.data.customers
+      .filter((c) => c.archivedAt === null)
+      .map((c) => ({
+        id: c.id,
+        label: c.customerNumber
+          ? `${c.displayName} (${c.customerNumber})`
+          : c.displayName,
+      }));
+  } catch {
+    return [];
+  }
+}
+
+async function fetchCustomerSiteAddressOptions(
+  customerId: string,
+): Promise<SiteAddressOption[]> {
+  if (!customerId.trim()) {
+    return [];
+  }
+  try {
+    const res = await fetch(`/api/web/customers/${encodeURIComponent(customerId)}`, {
+      credentials: "include",
+    });
+    if (!res.ok) {
+      return [];
+    }
+    const json: unknown = await res.json().catch(() => null);
+    const parsed = customerDetailResponseSchema.safeParse(json);
+    if (!parsed.success) {
+      return [];
+    }
+    const sorted = [...parsed.data.customer.addresses].sort((a, b) => {
+      const rank = (x: (typeof parsed.data.customer.addresses)[number]) =>
+        (x.isDefault ? 0 : 10) +
+        (x.kind === "site" ? 0 : x.kind === "billing" ? 1 : x.kind === "shipping" ? 2 : 3);
+      return rank(a) - rank(b);
+    });
+    return sorted.map((a) => ({
+      id: a.id,
+      label: formatSiteAddressLabel(a),
+    }));
+  } catch {
+    return [];
+  }
+}
+
 function toPatchPayload(form: EditForm) {
-  return {
+  const customerId = form.customerId.trim() === "" ? null : form.customerId.trim();
+  const siteAddressId =
+    customerId && form.siteAddressId.trim() !== "" ? form.siteAddressId.trim() : null;
+  const payload: {
+    title: string;
+    projectNumber: string | null;
+    status: ProjectStatus;
+    customerId: string | null;
+    siteAddressId: string | null;
+    customerLabel?: string | null;
+    startDate: string | null;
+    endDate: string | null;
+    archived: boolean;
+  } = {
     title: form.title.trim(),
     projectNumber: form.projectNumber.trim() === "" ? null : form.projectNumber.trim(),
     status: form.status,
-    customerLabel: form.customerLabel.trim() === "" ? null : form.customerLabel.trim(),
+    customerId,
+    siteAddressId,
     startDate: form.startDate === "" ? null : form.startDate,
     endDate: form.endDate === "" ? null : form.endDate,
     archived: form.archived,
   };
+  if (customerId === null) {
+    payload.customerLabel =
+      form.customerLabel.trim() === "" ? null : form.customerLabel.trim();
+  }
+  return payload;
 }
 
 function fromProjectToEditForm(project: Project): EditForm {
@@ -83,7 +192,9 @@ function fromProjectToEditForm(project: Project): EditForm {
     title: project.title,
     projectNumber: project.projectNumber ?? "",
     status: project.status,
-    customerLabel: project.customerLabel ?? "",
+    customerId: project.customerId ?? "",
+    siteAddressId: project.siteAddressId ?? "",
+    customerLabel: project.customerId ? "" : project.customerLabel ?? "",
     startDate: project.startDate ?? "",
     endDate: project.endDate ?? "",
     archived: project.archivedAt !== null,
@@ -103,6 +214,11 @@ export function ProjectsManagementContent({ locale }: { locale: Locale }) {
       projectNumber: isEn ? "Project no." : "Projektnummer",
       status: isEn ? "Status" : "Status",
       customer: isEn ? "Customer" : "Kunde",
+      customerMaster: isEn ? "Master customer" : "Stammkunde",
+      noCustomerMaster: isEn ? "No master customer" : "Kein Stammkunde",
+      siteAddress: isEn ? "Site address" : "Baustellenadresse",
+      noSiteAddress: isEn ? "No site address" : "Keine Baustellenadresse",
+      legacyCustomer: isEn ? "Legacy customer (free text)" : "Legacy-Kunde (Freitext)",
       period: isEn ? "Period" : "Zeitraum",
       startDate: isEn ? "Start date" : "Startdatum",
       endDate: isEn ? "End date" : "Enddatum",
@@ -131,6 +247,9 @@ export function ProjectsManagementContent({ locale }: { locale: Locale }) {
       allStatuses: isEn ? "All statuses" : "Alle Stati",
       loadFailed: isEn ? "Loading failed." : "Laden fehlgeschlagen.",
       saveFailed: isEn ? "Saving failed." : "Speichern fehlgeschlagen.",
+      invalidCustomerReference: isEn
+        ? "Please select a valid customer and matching site address."
+        : "Bitte einen gueltigen Kunden und eine passende Baustellenadresse waehlen.",
       validationTitle: isEn ? "Title is required." : "Titel ist erforderlich.",
       conflictNumber: isEn
         ? "Project number already exists."
@@ -152,10 +271,17 @@ export function ProjectsManagementContent({ locale }: { locale: Locale }) {
 
   const [createForm, setCreateForm] = useState<ProjectForm>(() => emptyCreateForm());
   const [createBusy, setCreateBusy] = useState(false);
+  const [customerOptions, setCustomerOptions] = useState<CustomerOption[]>([]);
+  const [createSiteAddressOptions, setCreateSiteAddressOptions] = useState<
+    SiteAddressOption[]
+  >([]);
 
   const [editId, setEditId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<EditForm | null>(null);
   const [editBusy, setEditBusy] = useState(false);
+  const [editSiteAddressOptions, setEditSiteAddressOptions] = useState<
+    SiteAddressOption[]
+  >([]);
 
   const page = Math.floor(offset / PAGE_SIZE) + 1;
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -210,6 +336,74 @@ export function ProjectsManagementContent({ locale }: { locale: Locale }) {
     void refreshList();
   }, [refreshList]);
 
+  useEffect(() => {
+    let cancelled = false;
+    void fetchCustomerOptions().then((options) => {
+      if (!cancelled) {
+        setCustomerOptions(options);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const customerId = createForm.customerId.trim();
+    if (customerId === "") {
+      setCreateSiteAddressOptions([]);
+      setCreateForm((prev) =>
+        prev.siteAddressId === "" ? prev : { ...prev, siteAddressId: "" },
+      );
+      return;
+    }
+    void fetchCustomerSiteAddressOptions(customerId).then((options) => {
+      if (cancelled) {
+        return;
+      }
+      setCreateSiteAddressOptions(options);
+      setCreateForm((prev) => {
+        if (prev.customerId.trim() !== customerId) {
+          return prev;
+        }
+        const keep = options.some((o) => o.id === prev.siteAddressId);
+        return keep ? prev : { ...prev, siteAddressId: "" };
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [createForm.customerId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const customerId = editForm?.customerId.trim() ?? "";
+    if (customerId === "") {
+      setEditSiteAddressOptions([]);
+      setEditForm((prev) =>
+        prev && prev.siteAddressId !== "" ? { ...prev, siteAddressId: "" } : prev,
+      );
+      return;
+    }
+    void fetchCustomerSiteAddressOptions(customerId).then((options) => {
+      if (cancelled) {
+        return;
+      }
+      setEditSiteAddressOptions(options);
+      setEditForm((prev) => {
+        if (!prev || prev.customerId.trim() !== customerId) {
+          return prev;
+        }
+        const keep = options.some((o) => o.id === prev.siteAddressId);
+        return keep ? prev : { ...prev, siteAddressId: "" };
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [editForm?.customerId]);
+
   function resetFilters() {
     setQ("");
     setStatusFilter("all");
@@ -237,10 +431,15 @@ export function ProjectsManagementContent({ locale }: { locale: Locale }) {
               ? null
               : createForm.projectNumber.trim(),
           status: createForm.status,
+          customerId: createForm.customerId.trim() === "" ? null : createForm.customerId.trim(),
+          siteAddressId:
+            createForm.customerId.trim() !== "" && createForm.siteAddressId.trim() !== ""
+              ? createForm.siteAddressId.trim()
+              : null,
           customerLabel:
-            createForm.customerLabel.trim() === ""
-              ? null
-              : createForm.customerLabel.trim(),
+            createForm.customerId.trim() === "" && createForm.customerLabel.trim() !== ""
+              ? createForm.customerLabel.trim()
+              : null,
           startDate: createForm.startDate === "" ? null : createForm.startDate,
           endDate: createForm.endDate === "" ? null : createForm.endDate,
         }),
@@ -248,6 +447,16 @@ export function ProjectsManagementContent({ locale }: { locale: Locale }) {
       const json: unknown = await res.json().catch(() => null);
       if (res.status === 409) {
         setError(t.conflictNumber);
+        return;
+      }
+      if (
+        typeof json === "object" &&
+        json !== null &&
+        "error" in json &&
+        ((json as { error?: unknown }).error === "invalid_customer" ||
+          (json as { error?: unknown }).error === "invalid_site_address")
+      ) {
+        setError(t.invalidCustomerReference);
         return;
       }
       if (!res.ok) {
@@ -288,6 +497,16 @@ export function ProjectsManagementContent({ locale }: { locale: Locale }) {
       const json: unknown = await res.json().catch(() => null);
       if (res.status === 409) {
         setError(t.conflictNumber);
+        return;
+      }
+      if (
+        typeof json === "object" &&
+        json !== null &&
+        "error" in json &&
+        ((json as { error?: unknown }).error === "invalid_customer" ||
+          (json as { error?: unknown }).error === "invalid_site_address")
+      ) {
+        setError(t.invalidCustomerReference);
         return;
       }
       if (!res.ok) {
@@ -380,15 +599,60 @@ export function ProjectsManagementContent({ locale }: { locale: Locale }) {
               </select>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="project-create-customer">{t.customer}</Label>
-              <Input
-                id="project-create-customer"
-                value={createForm.customerLabel}
-                onChange={(e) =>
-                  setCreateForm((p) => ({ ...p, customerLabel: e.target.value }))
-                }
-              />
+              <Label htmlFor="project-create-customer-master">{t.customerMaster}</Label>
+              <select
+                id="project-create-customer-master"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={createForm.customerId}
+                onChange={(e) => {
+                  const customerId = e.target.value;
+                  setCreateForm((p) => ({
+                    ...p,
+                    customerId,
+                    siteAddressId: customerId === "" ? "" : p.siteAddressId,
+                    customerLabel: customerId === "" ? p.customerLabel : "",
+                  }));
+                }}
+              >
+                <option value="">{t.noCustomerMaster}</option>
+                {customerOptions.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
             </div>
+            <div className="grid gap-2">
+              <Label htmlFor="project-create-site-address">{t.siteAddress}</Label>
+              <select
+                id="project-create-site-address"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm disabled:opacity-60"
+                value={createForm.siteAddressId}
+                disabled={createForm.customerId.trim() === ""}
+                onChange={(e) =>
+                  setCreateForm((p) => ({ ...p, siteAddressId: e.target.value }))
+                }
+              >
+                <option value="">{t.noSiteAddress}</option>
+                {createSiteAddressOptions.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {createForm.customerId.trim() === "" ? (
+              <div className="grid gap-2">
+                <Label htmlFor="project-create-customer-legacy">{t.legacyCustomer}</Label>
+                <Input
+                  id="project-create-customer-legacy"
+                  value={createForm.customerLabel}
+                  onChange={(e) =>
+                    setCreateForm((p) => ({ ...p, customerLabel: e.target.value }))
+                  }
+                />
+              </div>
+            ) : null}
             <div className="grid gap-2">
               <Label htmlFor="project-create-start">{t.startDate}</Label>
               <Input
@@ -523,7 +787,14 @@ export function ProjectsManagementContent({ locale }: { locale: Locale }) {
                 ) : (
                   rows.map((p) => (
                     <tr key={p.id} className={p.archivedAt ? "opacity-70" : undefined}>
-                      <td className="px-3 py-2">{p.title}</td>
+                      <td className="px-3 py-2">
+                        <Link
+                          href={`/web/projects/${p.id}`}
+                          className="rounded-sm underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        >
+                          {p.title}
+                        </Link>
+                      </td>
                       <td className="px-3 py-2">{p.projectNumber ?? "—"}</td>
                       <td className="px-3 py-2">{formatStatusLabel(locale, p.status)}</td>
                       <td className="px-3 py-2">{p.customerLabel ?? "—"}</td>
@@ -647,15 +918,64 @@ export function ProjectsManagementContent({ locale }: { locale: Locale }) {
               </select>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="project-edit-customer">{t.customer}</Label>
-              <Input
-                id="project-edit-customer"
-                value={editForm.customerLabel}
-                onChange={(e) =>
-                  setEditForm((p) => (p ? { ...p, customerLabel: e.target.value } : p))
-                }
-              />
+              <Label htmlFor="project-edit-customer-master">{t.customerMaster}</Label>
+              <select
+                id="project-edit-customer-master"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={editForm.customerId}
+                onChange={(e) => {
+                  const customerId = e.target.value;
+                  setEditForm((p) =>
+                    p
+                      ? {
+                          ...p,
+                          customerId,
+                          siteAddressId: customerId === "" ? "" : p.siteAddressId,
+                          customerLabel: customerId === "" ? p.customerLabel : "",
+                        }
+                      : p,
+                  );
+                }}
+              >
+                <option value="">{t.noCustomerMaster}</option>
+                {customerOptions.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
             </div>
+            <div className="grid gap-2">
+              <Label htmlFor="project-edit-site-address">{t.siteAddress}</Label>
+              <select
+                id="project-edit-site-address"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm disabled:opacity-60"
+                value={editForm.siteAddressId}
+                disabled={editForm.customerId.trim() === ""}
+                onChange={(e) =>
+                  setEditForm((p) => (p ? { ...p, siteAddressId: e.target.value } : p))
+                }
+              >
+                <option value="">{t.noSiteAddress}</option>
+                {editSiteAddressOptions.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {editForm.customerId.trim() === "" ? (
+              <div className="grid gap-2">
+                <Label htmlFor="project-edit-customer-legacy">{t.legacyCustomer}</Label>
+                <Input
+                  id="project-edit-customer-legacy"
+                  value={editForm.customerLabel}
+                  onChange={(e) =>
+                    setEditForm((p) => (p ? { ...p, customerLabel: e.target.value } : p))
+                  }
+                />
+              </div>
+            ) : null}
             <div className="grid gap-2">
               <Label htmlFor="project-edit-start">{t.startDate}</Label>
               <Input

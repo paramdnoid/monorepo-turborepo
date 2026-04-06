@@ -89,7 +89,11 @@ export function getWebModuleFromPath(pathname: string): WebModuleKey {
   if (normalized.startsWith("/web/customers")) {
     return "customers";
   }
-  if (normalized.startsWith("/web/employees") || normalized.startsWith("/web/scheduling")) {
+  if (
+    normalized.startsWith("/web/employees") ||
+    normalized.startsWith("/web/scheduling") ||
+    normalized.startsWith("/web/work-time")
+  ) {
     return "workforce";
   }
   if (normalized.startsWith("/web/painter")) {
@@ -106,7 +110,7 @@ export function routeRequiresEditPermission(pathname: string): boolean {
   if (normalized === "/web/projects") {
     return true;
   }
-  if (normalized === "/web/scheduling") {
+  if (normalized === "/web/scheduling" || normalized === "/web/work-time") {
     return true;
   }
   if (/^\/web\/sales\/(quotes|invoices)\/[^/]+$/.test(normalized)) {

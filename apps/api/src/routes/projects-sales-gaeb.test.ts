@@ -2,9 +2,12 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  customerAddresses,
+  customers,
   lvDocuments,
   projects,
   salesInvoiceLines,
+  salesInvoicePayments,
   salesInvoices,
   salesLifecycleEvents,
   salesQuoteLines,
@@ -155,6 +158,8 @@ describe("projects + reference usage tests", () => {
         title: "Fassadensanierung Nord",
         projectNumber: "P-100",
         status: "active",
+        customerId: null,
+        siteAddressId: null,
         customerLabel: "Musterbau GmbH",
         startDate: "2026-05-01",
         endDate: "2026-06-01",
@@ -183,6 +188,53 @@ describe("projects + reference usage tests", () => {
     assert.equal(body.project.projectNumber, "P-100");
   });
 
+  it("rejects project create with unknown customer", async () => {
+    const db = new DbStub();
+    db.enqueueSelect(customers, []);
+
+    const handler = createProjectsCreateHandler(() => db as never);
+    const res = await handler(
+      createContext({
+        jsonBody: {
+          title: "Fassadensanierung Nord",
+          customerId: "95ea4cf4-3b30-4fce-a8f1-95f35fce7d11",
+        },
+      }) as never,
+    );
+
+    assert.equal(res.status, 400);
+    const body = (await res.json()) as { error: string };
+    assert.equal(body.error, "invalid_customer");
+    assert.equal(db.insertedCount(projects), 0);
+  });
+
+  it("rejects project create with site address outside customer", async () => {
+    const db = new DbStub();
+    db.enqueueSelect(customers, [
+      {
+        id: "95ea4cf4-3b30-4fce-a8f1-95f35fce7d11",
+        displayName: "Musterbau GmbH",
+      },
+    ]);
+    db.enqueueSelect(customerAddresses, []);
+
+    const handler = createProjectsCreateHandler(() => db as never);
+    const res = await handler(
+      createContext({
+        jsonBody: {
+          title: "Fassadensanierung Nord",
+          customerId: "95ea4cf4-3b30-4fce-a8f1-95f35fce7d11",
+          siteAddressId: "2ed5f939-d53f-4b44-92fc-90dbf6e78aa1",
+        },
+      }) as never,
+    );
+
+    assert.equal(res.status, 400);
+    const body = (await res.json()) as { error: string };
+    assert.equal(body.error, "invalid_site_address");
+    assert.equal(db.insertedCount(projects), 0);
+  });
+
   it("archives a project via patch", async () => {
     const db = new DbStub();
     const existing = {
@@ -191,6 +243,8 @@ describe("projects + reference usage tests", () => {
       title: "Innenausbau",
       projectNumber: "P-101",
       status: "active",
+      customerId: null,
+      siteAddressId: null,
       customerLabel: "Bauherr KG",
       startDate: null,
       endDate: null,
@@ -217,6 +271,39 @@ describe("projects + reference usage tests", () => {
     const lastSet = db.lastUpdateSet(projects);
     assert.equal(lastSet !== null, true);
     assert.equal(lastSet?.archivedAt instanceof Date, true);
+  });
+
+  it("rejects project patch with unknown customer", async () => {
+    const db = new DbStub();
+    const existing = {
+      id: "95ea4cf4-3b30-4fce-a8f1-95f35fce7d11",
+      tenantId: "tenant-1",
+      title: "Innenausbau",
+      projectNumber: "P-101",
+      status: "active",
+      customerId: null,
+      siteAddressId: null,
+      customerLabel: "Bauherr KG",
+      startDate: null,
+      endDate: null,
+      archivedAt: null,
+      createdAt: new Date("2026-04-01T09:00:00.000Z"),
+      updatedAt: new Date("2026-04-01T09:00:00.000Z"),
+    };
+    db.enqueueSelect(projects, [existing]);
+    db.enqueueSelect(customers, []);
+
+    const handler = createProjectPatchHandler(() => db as never);
+    const res = await handler(
+      createContext({
+        params: { id: existing.id },
+        jsonBody: { customerId: "95ea4cf4-3b30-4fce-a8f1-95f35fce7d11" },
+      }) as never,
+    );
+
+    assert.equal(res.status, 400);
+    const body = (await res.json()) as { error: string };
+    assert.equal(body.error, "invalid_customer");
   });
 
   it("rejects sales quote with projectId outside tenant", async () => {
@@ -425,6 +512,7 @@ describe("projects + reference usage tests", () => {
         updatedAt: now,
       },
     ]);
+    db.enqueueSelect(salesInvoicePayments, [{ c: 0 }]);
     db.enqueueUpdate(salesInvoices, []);
     db.enqueueSelect(salesInvoices, [
       {
@@ -446,6 +534,7 @@ describe("projects + reference usage tests", () => {
       },
     ]);
     db.enqueueSelect(salesInvoiceLines, []);
+    db.enqueueSelect(salesInvoicePayments, []);
 
     const handler = createSalesInvoiceCancelPostHandler(() => db as never);
     const res = await handler(

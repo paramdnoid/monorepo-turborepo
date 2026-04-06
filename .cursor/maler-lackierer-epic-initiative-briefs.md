@@ -3,13 +3,42 @@
 **Stand:** 2026-04-06  
 **Bezug:** [Funktionslücken](./maler-lackierer-modul-funktionsluecken.md) · [Epic-Roadmap](./maler-lackierer-roadmap-epics.md)
 
+## Änderungsstand (vollständig abgeglichen)
+
+- Alle Epic-Status auf den aktuellen Code-Stand harmonisiert (insb. E-06 v4 sowie E-07 bis E-13).
+- Inkonsistenz in E-05 bereinigt: Projektbezug bei Zeiterfassung ist **optional** (wie Schema/API), nicht Pflicht.
+- E-06-V4-Iteration inkl. API-Smoke (`http-smoke-mock.mts`) als abgeschlossen dokumentiert; Rest-Backlog klar getrennt.
+
 Zweck: **parallele Frontend-/Backend-Planung** — pro Epic ein gemeinsames Verständnis aus Problemraum, Erfolgskriterien, technischen Risiken (Spikes) und **MVP vs. Phase 2**.
 
 **Legende Messgrößen:** Wo keine Produktanalytics existieren, sind **Proxy-Metriken** (manuell oder später Instrumentierung) vorgeschlagen.
 
 ---
 
+## Umsetzungsreife (kompakt)
+
+| Epic | Reifegrad | Fokus im nächsten Implementierungszug |
+|------|-----------|----------------------------------------|
+| **E-01** | umgesetzt | Stabilisieren/Backfill operativ abschließen |
+| **E-02** | in Arbeit | Hub-v3: KPI/Pipeline oder Aggregations-Endpoint |
+| **E-03** | in Arbeit | Kommerz-Defaults vertiefen (optional Kreditlimit) |
+| **E-04** | in Arbeit | Konflikte/Serien/Sollstunden |
+| **E-05** | in Arbeit | Soll/Ist + Auswertung |
+| **E-06** | in Arbeit | E-Mail/CAMT/Template-Platzhalter |
+| **E-07** | teilweise umgesetzt | Steuer-/Rabatt-/Teilrechnungslogik |
+| **E-08** | teilweise umgesetzt | Finalisierung + Snapshot + Sperren |
+| **E-09** | teilweise umgesetzt | XRechnung/ZUGFeRD + DATEV-Tiefe |
+| **E-10** | teilweise umgesetzt | End-to-End-Übernahme in Angebotsfluss |
+| **E-11** | teilweise vorbereitet | Bestellung/Wareneingang/Nachkalkulation |
+| **E-12** | offen | späterer Scope |
+| **E-13** | teilweise umgesetzt | zentrale Audit-/Permission-/Offline-Strategie |
+
+---
+
 ## E-01 — Projekt ↔ Kunde ↔ Baustelle
+
+**Status:** umgesetzt (2026-04-06)  
+**Lieferung (MVP):** `projects.customerId` + `projects.siteAddressId`, validierte API, UI-Verknüpfung Stammkunde/Baustellenadresse, Safe-Backfill-Script (Dry-Run default).
 
 ### Initiative Brief
 
@@ -37,6 +66,9 @@ Zweck: **parallele Frontend-/Backend-Planung** — pro Epic ein gemeinsames Vers
 
 ## E-02 — Projekt-360° (Auftrags-Hub)
 
+**Status:** in Arbeit (seit 2026-04-06)  
+**Lieferung (v1 + v2, 2026-04-06):** Projekt-Detail (`GET /v1/projects/:id`) + Hub-Seite `/web/projects/[projectId]` mit Belegen (Angebote/Rechnungen), Dateien (Upload/List), GAEB-Imports (List), Terminplanung (**nächste 7 Tage** via `GET /v1/scheduling/assignments?dateFrom&dateTo`, Deep-Link `/web/scheduling?project=…`), Zeiterfassung (Monat bis heute + letzte Buchungen, `/web/work-time`) und Forderungen/OP (Top offene Posten, `/web/sales/invoices/open?projectId=…`). **v2:** Rechnungslinks mit `#invoice-reminders` (Scroll zur Mahnungskarte), in der OP-Hub-Karte Kurzinfo Mahnungen + Druck/PDF der letzten Mahnung (Rechnungsdetail wird für die Top-OP nachgeladen). OP-Liste/Export optional nach `projectId` filterbar.
+
 ### Initiative Brief
 
 | Feld | Inhalt |
@@ -50,18 +82,21 @@ Zweck: **parallele Frontend-/Backend-Planung** — pro Epic ein gemeinsames Vers
 | Bereich | Spike / Klärungsfrage |
 |---------|------------------------|
 | **Schema** | Meist **read aggregations**: braucht es `project_id` auf weiteren Entitäten (GAEB, Assets) oder reicht Join über bestehende FKs? Performance: eine Hub-API vs. mehrere parallele Calls. |
-| **API** | Neuer Endpunkt `GET /projects/:id/hub` (Zod-Schema) vs. bestehende Endpunkte kombinieren — Caching, Berechtigungen pro Subliste. |
-| **UI** | Layout: Tabs vs. eine lange Seite; Lazy-Load pro Tab; leere Zustände wenn E-04/E-05 noch nicht liefert. |
+| **API** | Aktuell: bestehende Endpunkte kombiniert (parallel). Optional spaeter: `GET /projects/:id/hub` fuer weniger Roundtrips, zentrale Berechtigungs-/Caching-Strategie und konsistente Teillisten. |
+| **UI** | Layout: lange Seite mit Karten/Sections; **7-Tage-Termine** und **Mahnungs-Anker/Details in der OP-Karte** geliefert. Offen: eingebettete Mini-Pipeline, KPI-Kacheln, optional weniger parallele Requests (Hub-Endpunkt). |
 
 ### MVP vs. Phase 2
 
 | MVP | Phase 2 |
 |-----|---------|
-| Hub-Seite mit **Belege** (Listen + Links), **Projekt-Stammdaten**, **Dateien** (`project_assets` soweit API da), Link zu GAEB-Import wenn `projectId` gesetzt. | Eingebettete **Mini-Pipeline** (Status aus Quotes/Invoices), projektbezogene KPI-Kacheln, Zeiten/Material-Widgets (nach E-05/E-11). |
+| ~~Hub-Seite mit Belegen/Stammdaten/Dateien/GAEB~~ **geliefert**, inkl. **Terminplanung 7 Tage**, Zeiterfassung (Monat bis heute + letzte Buchungen), Forderungen/OP inkl. **#invoice-reminders** und Mahnungs-Kurzaktionen. | Eingebettete **Mini-Pipeline** (Status aus Quotes/Invoices), weitere KPI-Kacheln, Material-Widgets (nach E-11), ggf. `GET /projects/:id/hub`. |
 
 ---
 
 ## E-03 — Kundenstamm erweitern (Zahlung & Kommerz)
+
+**Status:** in Arbeit (seit 2026-04-06)  
+**Lieferung (erweitert, 2026-04-06):** Kunden-Felder `paymentTermsDays` + Skonto-Felder (Bps/Days) + **Mahnfristen-Defaults** (`reminderLevel1DaysAfterDue`/`reminderLevel2DaysAfterDue`/`reminderLevel3DaysAfterDue`) in DB/API/UI; Rechnung-Create uebernimmt `dueAt` serverseitig aus Kunden-Default, wenn nicht gesetzt (bei gesetztem `issuedAt` oder nicht-draft). Mahnungen nutzen die Defaults als Prefill.
 
 ### Initiative Brief
 
@@ -75,19 +110,21 @@ Zweck: **parallele Frontend-/Backend-Planung** — pro Epic ein gemeinsames Vers
 
 | Bereich | Spike / Klärungsfrage |
 |---------|------------------------|
-| **Schema** | Neue Spalten auf `customers` (Zahlungsziel Tage, Skonto %, Skonto-Tage) vs. eigene Tabelle „commercial_terms“. Migration Defaults Mandant-weit? |
+| **Schema** | Neue Spalten auf `customers` (Zahlungsziel Tage, Skonto %, Skonto-Tage, Mahnfristen Stufe 1–3) vs. eigene Tabelle „commercial_terms“. Migration Defaults Mandant-weit? |
 | **API** | PATCH Customer erweitern; Sales-Create: Server übernimmt Default-Berechnung `dueAt` aus Kunde wenn Feld leer? |
-| **UI** | Kunden-Detail Formular-Sections; Hinweis in Rechnungseditor „von Kunde übernommen“. |
+| **UI** | Kunden-Detail Formular-Sections; Hinweis in Rechnungseditor „von Kunde übernommen“. Mahnfristen-Defaults sichtbar/editierbar. |
 
 ### MVP vs. Phase 2
 
 | MVP | Phase 2 |
 |-----|---------|
-| `paymentTermsDays`, optional Skonto-Felder; Übernahme in **neue** Rechnung wenn nicht überschrieben. | Kreditlimit-Flag, Kommunikationslog (Timeline), DSGVO-Export-Paket Button, Mahnstufen-Defaults mit UI. |
+| `paymentTermsDays`, optional Skonto-Felder; **Mahnfristen-Defaults** (Stufe 1–3, Tage nach Fälligkeit); Übernahme in **neue** Rechnung wenn nicht überschrieben. | Kreditlimit-Flag, Kommunikationslog (Timeline), DSGVO-Export-Paket Button, kundenspezifische Mahntexte / Gebührenregeln. |
 
 ---
 
 ## E-04 — Terminplanung mit Projektbezug
+
+**Status:** in Arbeit — erste Iteration umgesetzt (2026-04-06): `scheduling_assignments.project_id`, API/Web mit Projekt-Dropdown und Filtern; ICS und Rest siehe Roadmap.
 
 ### Initiative Brief
 
@@ -115,6 +152,8 @@ Zweck: **parallele Frontend-/Backend-Planung** — pro Epic ein gemeinsames Vers
 
 ## E-05 — Zeiterfassung
 
+**Status:** in Arbeit — erste Iteration umgesetzt (2026-04-06): `work_time_entries`, API `/v1/work-time/entries`, Web `/web/work-time`. Rest: Soll/Ist vs. Planung, Feintuning Berechtigungen.
+
 ### Initiative Brief
 
 | Feld | Inhalt |
@@ -135,11 +174,13 @@ Zweck: **parallele Frontend-/Backend-Planung** — pro Epic ein gemeinsames Vers
 
 | MVP | Phase 2 |
 |-----|---------|
-| Erfassung **Web**, Projekt-Pflicht, ein Mitarbeiter pro Eintrag (Session-User oder mit Berechtigung andere). | Soll/Ist vs. Scheduling; Leistungsart; Integration Mobile; Genehmigungsworkflow. |
+| Erfassung **Web**, Projektbezug **optional** (wie aktuelles Schema/API), ein Mitarbeiter pro Eintrag (Session-User oder mit Berechtigung andere). | Soll/Ist vs. Scheduling; Leistungsart; Integration Mobile; Genehmigungsworkflow. |
 
 ---
 
 ## E-06 — Forderungsmanagement (Mahnung, Zahlung, OP)
+
+**Status:** in Arbeit — **v1 + v2 + v3 + v4 umgesetzt** (2026-04-06): wie v3, zusaetzlich **`sales_reminder_templates`** (Stufe 1–10, Locale `de`/`en`, optional `fee_cents`); `GET`/`PUT /v1/sales/reminder-templates`, `GET …/resolved`; Reminder-PDF und Browser-Druck verwenden aufgeloesten Fließtext und Gebuehr; Web **Einstellungen** (nur Mandanten-Admin) zum Pflegen. **Offen:** Platzhalter im Text; E-Mail-Versand-Spike; CAMT/Sammelzahlungen.
 
 ### Initiative Brief
 
@@ -153,19 +194,52 @@ Zweck: **parallele Frontend-/Backend-Planung** — pro Epic ein gemeinsames Vers
 
 | Bereich | Spike / Klärungsfrage |
 |---------|------------------------|
-| **Schema** | `invoice_payments` (Betrag, Datum, Mittel); `invoice_reminders` (Stufe, Datum, channel); Saldo berechnet vs. materialisiert? |
-| **API** | Buchung Zahlung; Mahnung erzeugen (PDF-Template); OP-Report Endpoint; Idempotenz bei Zahlungsimport? |
-| **UI** | Rechnungsdetail: Zahlungsliste; Mahn-Historie; OP-Liste mandantenweit; CSV-Export. |
+| **Schema** | ~~Teilzahlungen~~ → **`sales_invoice_payments`**. ~~Mahn-Historie~~ → **`sales_invoice_reminders`**. ~~Mandanten-Mahntexte~~ → **`sales_reminder_templates`**. **Offen:** ggf. Zins-Hinweis getrennt von Gebuehr; CAMT-Import. |
+| **API** | Zahlung + Loeschen erledigt. Mahnung + PDF/Druck erledigt. ~~Mahntext `GET`/`PUT` + Resolved~~ erledigt. **Offen:** Idempotenz Zahlungsimport; optional PATCH Zahlungszeile; E-Mail-Versand. ~~OP-Liste / CSV~~ erledigt. |
+| **UI** | Rechnungsdetail, OP, Mahnungen erledigt. ~~Einstellungen: Mahntexte/Gebuehr (Admin)~~ erledigt. **Offen:** Dashboard-Kachel „Summe OP“ (optional). |
 
 ### MVP vs. Phase 2
 
 | MVP | Phase 2 |
 |-----|---------|
-| Teilzahlungen, Saldo-Anzeige, manuelle Mahnstufe + PDF, einfache Mahnvorlagen. | E-Mail-Versand aus Produkt, automatische Eskalation nach Regeln, Zahlungsimport (CAMT) — hoher Aufwand. |
+| ~~Teilzahlungen, Saldo-Anzeige~~ **(v1)**; ~~OP-Liste + CSV, Löschen Zahlungszeile~~ **(v2)**; ~~manuelle Mahnung + Historie + PDF/Druck~~ **(v3)**; ~~Mahntext-Templates + optionale Gebuehr, PDF/Druck, Admin-UI~~ **(v4)**. | E-Mail-Versand aus Produkt, automatische Eskalation nach Regeln, Zahlungsimport (CAMT), Sammelzahlungen — hoher Aufwand. |
+
+### Abgeschlossene Iteration — OP + CSV + Korrektur (v2)
+
+| # | Ticket | Status |
+|---|--------|--------|
+| **T1–T2** | Saldo-Logik zentral + `GET /v1/sales/invoices/open-items` | umgesetzt |
+| **T3** | CSV `…/open-items/export` | umgesetzt |
+| **T4–T5** | BFF + Web `/web/sales/invoices/open` | umgesetzt |
+| **T6** | E2E Playwright | optional / offen |
+| — | **`DELETE …/payments/:paymentId`** + BFF + UI (Korrektur falscher Buchung) | umgesetzt |
+
+### Abgeschlossene Iteration — Mahnung & Historie (v3)
+
+| # | Ticket | Status |
+|---|--------|--------|
+| **M1** | **Schema `sales_invoice_reminders`** | umgesetzt |
+| **M2** | **API** (`POST …/reminders`, Reminder-PDF `GET …/reminders/:reminderId/pdf`) | umgesetzt |
+| **M3** | **UI** (Rechnungsdetail: Liste + Erfassen; Druck/PDF) | umgesetzt |
+| **M4** | **E-03 Abgleich** (Kunden-Defaults + Prefill) | umgesetzt |
+
+### Abgeschlossene Iteration — Mahntext-Templates & Gebühren (v4)
+
+| # | Ticket | Status |
+|---|--------|--------|
+| **V4-1** | **`sales_reminder_templates` + `GET`/`PUT /v1/sales/reminder-templates`** | umgesetzt |
+| **V4-2** | **Reminder-PDF + Druck** nutzen aufgelösten Text (`…/resolved`, serverseitig in PDF-Handler) | umgesetzt (Platzhalter im Freitext noch nicht) |
+| **V4-3** | **Optionale `fee_cents`** je Stufe/Locale; Zeile im PDF/Druck | umgesetzt |
+| **V4-4** | **Web Einstellungen** (`WebSalesReminderTemplatesCard`, BFF) | umgesetzt (Rollen: wie sonstige Mandanteneinstellungen) |
+| **V4-5** | **API-Smoke** (`http-smoke-mock.mts`) | umgesetzt |
+
+**Noch offen (Backlog):** E-Mail-Spike; CAMT/Sammelzahlungen; Platzhalter im Template-Text.
 
 ---
 
 ## E-07 — Belegtiefe (Steuern, Rabatte, Teilabrechnung, Storno)
+
+**Status:** teilweise umgesetzt (Basis vorhanden, 2026-04-06): Angebots-/Rechnungsfluss mit Positionen und PDF/Druck steht; tiefe Steuer-/Rabatt-/Teilrechnungslogik bleibt offen.
 
 ### Initiative Brief
 
@@ -193,6 +267,8 @@ Zweck: **parallele Frontend-/Backend-Planung** — pro Epic ein gemeinsames Vers
 
 ## E-08 — GoBD & Revisionssicherheit
 
+**Status:** teilweise umgesetzt (Vorstufe, 2026-04-06): Lifecycle-/Audit-Bausteine vorhanden, aber kein durchgängiger Finalisierungs-/Sperrprozess für Belege.
+
 ### Initiative Brief
 
 | Feld | Inhalt |
@@ -218,6 +294,8 @@ Zweck: **parallele Frontend-/Backend-Planung** — pro Epic ein gemeinsames Vers
 ---
 
 ## E-09 — Export: XRechnung / ZUGFeRD & DATEV
+
+**Status:** teilweise umgesetzt (2026-04-06): DATEV-Settings + Buchungs-CSV sind vorhanden; XRechnung/ZUGFeRD noch offen.
 
 ### Initiative Brief
 
@@ -245,6 +323,8 @@ Zweck: **parallele Frontend-/Backend-Planung** — pro Epic ein gemeinsames Vers
 
 ## E-10 — Maler-Module produktiv integrieren
 
+**Status:** teilweise umgesetzt (2026-04-06): GAEB/LV und digitale Projektmappe sind angebunden; End-to-End-Übernahme in Belegfluss und serverseitige Persistenz aller Module ist noch unvollständig.
+
 ### Initiative Brief
 
 | Feld | Inhalt |
@@ -270,6 +350,8 @@ Zweck: **parallele Frontend-/Backend-Planung** — pro Epic ein gemeinsames Vers
 ---
 
 ## E-11 — Materialwirtschaft & Nachkalkulation (MVP)
+
+**Status:** teilweise vorbereitet (2026-04-06): Katalog-/Import-Bausteine vorhanden; operativer Materialprozess (Bestellung, Wareneingang, Projektkosten-Loop) noch offen.
 
 ### Initiative Brief
 
@@ -297,6 +379,8 @@ Zweck: **parallele Frontend-/Backend-Planung** — pro Epic ein gemeinsames Vers
 
 ## E-12 — Subunternehmer & Eingangsrechnungen
 
+**Status:** offen (2026-04-06) — als späteres/optionales Epic.
+
 ### Initiative Brief
 
 | Feld | Inhalt |
@@ -322,6 +406,8 @@ Zweck: **parallele Frontend-/Backend-Planung** — pro Epic ein gemeinsames Vers
 ---
 
 ## E-13 — Plattform (Rollen, Audit, Performance, Offline)
+
+**Status:** teilweise umgesetzt (2026-04-06): Rollenmatrix und einzelne Audit-Pfade vorhanden; zentrale Audit-Sicht, feinere Action-Permissions und verbindliche Offline-Story offen.
 
 ### Initiative Brief
 

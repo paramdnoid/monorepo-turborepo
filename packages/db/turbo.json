@@ -26,6 +26,13 @@
         "SEED_ORG_NAME",
         "SEED_TRADE_SLUG"
       ]
+    },
+    "db:migrate": {
+      "cache": false,
+      "env": [
+        "DATABASE_URL",
+        "PGPASSWORD"
+      ]
     }
   }
 }

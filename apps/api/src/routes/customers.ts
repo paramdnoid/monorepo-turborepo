@@ -173,6 +173,12 @@ async function loadCustomerDetail(
       vatId: row.vatId ?? null,
       taxNumber: row.taxNumber ?? null,
       notes: row.notes ?? null,
+      paymentTermsDays: row.paymentTermsDays ?? null,
+      cashDiscountPercentBps: row.cashDiscountPercentBps ?? null,
+      cashDiscountDays: row.cashDiscountDays ?? null,
+      reminderLevel1DaysAfterDue: row.reminderLevel1DaysAfterDue ?? null,
+      reminderLevel2DaysAfterDue: row.reminderLevel2DaysAfterDue ?? null,
+      reminderLevel3DaysAfterDue: row.reminderLevel3DaysAfterDue ?? null,
       archivedAt: row.archivedAt ? row.archivedAt.toISOString() : null,
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
@@ -490,6 +496,12 @@ export function createCustomerPostHandler(getDb: () => Db | undefined) {
               : input.notes.trim() === ""
                 ? null
                 : input.notes.trim(),
+          paymentTermsDays: input.paymentTermsDays ?? null,
+          cashDiscountPercentBps: input.cashDiscountPercentBps ?? null,
+          cashDiscountDays: input.cashDiscountDays ?? null,
+          reminderLevel1DaysAfterDue: input.reminderLevel1DaysAfterDue ?? null,
+          reminderLevel2DaysAfterDue: input.reminderLevel2DaysAfterDue ?? null,
+          reminderLevel3DaysAfterDue: input.reminderLevel3DaysAfterDue ?? null,
         })
         .returning({ id: customers.id });
       const id = inserted[0]?.id;
@@ -591,6 +603,12 @@ export function createCustomerPatchHandler(getDb: () => Db | undefined) {
       vatId?: string | null;
       taxNumber?: string | null;
       notes?: string | null;
+      paymentTermsDays?: number | null;
+      cashDiscountPercentBps?: number | null;
+      cashDiscountDays?: number | null;
+      reminderLevel1DaysAfterDue?: number | null;
+      reminderLevel2DaysAfterDue?: number | null;
+      reminderLevel3DaysAfterDue?: number | null;
       archivedAt?: Date | null;
     } = { updatedAt: new Date() };
     if (patch.displayName !== undefined) {
@@ -617,6 +635,24 @@ export function createCustomerPatchHandler(getDb: () => Db | undefined) {
           : patch.notes.trim() === ""
             ? null
             : patch.notes.trim();
+    }
+    if (patch.paymentTermsDays !== undefined) {
+      updates.paymentTermsDays = patch.paymentTermsDays;
+    }
+    if (patch.cashDiscountPercentBps !== undefined) {
+      updates.cashDiscountPercentBps = patch.cashDiscountPercentBps;
+    }
+    if (patch.cashDiscountDays !== undefined) {
+      updates.cashDiscountDays = patch.cashDiscountDays;
+    }
+    if (patch.reminderLevel1DaysAfterDue !== undefined) {
+      updates.reminderLevel1DaysAfterDue = patch.reminderLevel1DaysAfterDue;
+    }
+    if (patch.reminderLevel2DaysAfterDue !== undefined) {
+      updates.reminderLevel2DaysAfterDue = patch.reminderLevel2DaysAfterDue;
+    }
+    if (patch.reminderLevel3DaysAfterDue !== undefined) {
+      updates.reminderLevel3DaysAfterDue = patch.reminderLevel3DaysAfterDue;
     }
     if (patch.archived !== undefined) {
       updates.archivedAt = patch.archived ? new Date() : null;

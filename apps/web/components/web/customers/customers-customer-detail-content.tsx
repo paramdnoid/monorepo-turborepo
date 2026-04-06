@@ -98,6 +98,12 @@ export function CustomersCustomerDetailContent({
   const [vatId, setVatId] = useState("");
   const [taxNumber, setTaxNumber] = useState("");
   const [notes, setNotes] = useState("");
+  const [paymentTermsDays, setPaymentTermsDays] = useState("");
+  const [cashDiscountPercent, setCashDiscountPercent] = useState("");
+  const [cashDiscountDays, setCashDiscountDays] = useState("");
+  const [reminderLevel1DaysAfterDue, setReminderLevel1DaysAfterDue] = useState("");
+  const [reminderLevel2DaysAfterDue, setReminderLevel2DaysAfterDue] = useState("");
+  const [reminderLevel3DaysAfterDue, setReminderLevel3DaysAfterDue] = useState("");
   const [masterBusy, setMasterBusy] = useState(false);
   const [masterDialogOpen, setMasterDialogOpen] = useState(false);
 
@@ -137,6 +143,20 @@ export function CustomersCustomerDetailContent({
     setVatId(c.vatId ?? "");
     setTaxNumber(c.taxNumber ?? "");
     setNotes(c.notes ?? "");
+    setPaymentTermsDays(c.paymentTermsDays == null ? "" : String(c.paymentTermsDays));
+    setCashDiscountPercent(
+      c.cashDiscountPercentBps == null ? "" : String(c.cashDiscountPercentBps / 100),
+    );
+    setCashDiscountDays(c.cashDiscountDays == null ? "" : String(c.cashDiscountDays));
+    setReminderLevel1DaysAfterDue(
+      c.reminderLevel1DaysAfterDue == null ? "" : String(c.reminderLevel1DaysAfterDue),
+    );
+    setReminderLevel2DaysAfterDue(
+      c.reminderLevel2DaysAfterDue == null ? "" : String(c.reminderLevel2DaysAfterDue),
+    );
+    setReminderLevel3DaysAfterDue(
+      c.reminderLevel3DaysAfterDue == null ? "" : String(c.reminderLevel3DaysAfterDue),
+    );
   }, []);
 
   const load = useCallback(async () => {
@@ -189,6 +209,32 @@ export function CustomersCustomerDetailContent({
     setVatId(customer.vatId ?? "");
     setTaxNumber(customer.taxNumber ?? "");
     setNotes(customer.notes ?? "");
+    setPaymentTermsDays(
+      customer.paymentTermsDays == null ? "" : String(customer.paymentTermsDays),
+    );
+    setCashDiscountPercent(
+      customer.cashDiscountPercentBps == null
+        ? ""
+        : String(customer.cashDiscountPercentBps / 100),
+    );
+    setCashDiscountDays(
+      customer.cashDiscountDays == null ? "" : String(customer.cashDiscountDays),
+    );
+    setReminderLevel1DaysAfterDue(
+      customer.reminderLevel1DaysAfterDue == null
+        ? ""
+        : String(customer.reminderLevel1DaysAfterDue),
+    );
+    setReminderLevel2DaysAfterDue(
+      customer.reminderLevel2DaysAfterDue == null
+        ? ""
+        : String(customer.reminderLevel2DaysAfterDue),
+    );
+    setReminderLevel3DaysAfterDue(
+      customer.reminderLevel3DaysAfterDue == null
+        ? ""
+        : String(customer.reminderLevel3DaysAfterDue),
+    );
   }, [masterDialogOpen, customer]);
 
   useEffect(() => {
@@ -211,6 +257,93 @@ export function CustomersCustomerDetailContent({
       toast.error(copy.validation);
       return;
     }
+
+    const termsDaysTrimmed = paymentTermsDays.trim();
+    const cashDaysTrimmed = cashDiscountDays.trim();
+    const cashPercentTrimmed = cashDiscountPercent.trim();
+    const rem1Trimmed = reminderLevel1DaysAfterDue.trim();
+    const rem2Trimmed = reminderLevel2DaysAfterDue.trim();
+    const rem3Trimmed = reminderLevel3DaysAfterDue.trim();
+
+    const parsedTermsDays =
+      termsDaysTrimmed === ""
+        ? { ok: true as const, value: null }
+        : (() => {
+            const n = Number(termsDaysTrimmed);
+            if (!Number.isInteger(n) || n < 0 || n > 3650) {
+              return { ok: false as const };
+            }
+            return { ok: true as const, value: n };
+          })();
+
+    const parsedCashDiscountDays =
+      cashDaysTrimmed === ""
+        ? { ok: true as const, value: null }
+        : (() => {
+            const n = Number(cashDaysTrimmed);
+            if (!Number.isInteger(n) || n < 0 || n > 365) {
+              return { ok: false as const };
+            }
+            return { ok: true as const, value: n };
+          })();
+
+    const parsedCashDiscountPercentBps =
+      cashPercentTrimmed === ""
+        ? { ok: true as const, value: null }
+        : (() => {
+            const normalized = cashPercentTrimmed.replace(",", ".");
+            const n = Number(normalized);
+            if (!Number.isFinite(n) || n < 0 || n > 100) {
+              return { ok: false as const };
+            }
+            return { ok: true as const, value: Math.round(n * 100) };
+          })();
+
+    const parsedReminderLevel1DaysAfterDue =
+      rem1Trimmed === ""
+        ? { ok: true as const, value: null }
+        : (() => {
+            const n = Number(rem1Trimmed);
+            if (!Number.isInteger(n) || n < 0 || n > 3650) {
+              return { ok: false as const };
+            }
+            return { ok: true as const, value: n };
+          })();
+
+    const parsedReminderLevel2DaysAfterDue =
+      rem2Trimmed === ""
+        ? { ok: true as const, value: null }
+        : (() => {
+            const n = Number(rem2Trimmed);
+            if (!Number.isInteger(n) || n < 0 || n > 3650) {
+              return { ok: false as const };
+            }
+            return { ok: true as const, value: n };
+          })();
+
+    const parsedReminderLevel3DaysAfterDue =
+      rem3Trimmed === ""
+        ? { ok: true as const, value: null }
+        : (() => {
+            const n = Number(rem3Trimmed);
+            if (!Number.isInteger(n) || n < 0 || n > 3650) {
+              return { ok: false as const };
+            }
+            return { ok: true as const, value: n };
+          })();
+
+    if (
+      !parsedTermsDays.ok ||
+      !parsedCashDiscountDays.ok ||
+      !parsedCashDiscountPercentBps.ok ||
+      !parsedReminderLevel1DaysAfterDue.ok ||
+      !parsedReminderLevel2DaysAfterDue.ok ||
+      !parsedReminderLevel3DaysAfterDue.ok
+    ) {
+      toast.error(copy.validation);
+      return;
+    }
+
     setMasterBusy(true);
     try {
       const res = await fetch(`/api/web/customers/${customerId}`, {
@@ -224,6 +357,12 @@ export function CustomersCustomerDetailContent({
           vatId: vatId.trim() === "" ? null : vatId.trim(),
           taxNumber: taxNumber.trim() === "" ? null : taxNumber.trim(),
           notes: notes.trim() === "" ? null : notes.trim(),
+          paymentTermsDays: parsedTermsDays.value,
+          cashDiscountPercentBps: parsedCashDiscountPercentBps.value,
+          cashDiscountDays: parsedCashDiscountDays.value,
+          reminderLevel1DaysAfterDue: parsedReminderLevel1DaysAfterDue.value,
+          reminderLevel2DaysAfterDue: parsedReminderLevel2DaysAfterDue.value,
+          reminderLevel3DaysAfterDue: parsedReminderLevel3DaysAfterDue.value,
         }),
       });
       if (res.status === 409) {
@@ -480,6 +619,66 @@ export function CustomersCustomerDetailContent({
                     {customer.taxNumber?.trim() ? customer.taxNumber : "—"}
                   </dd>
                 </div>
+                <div className="space-y-1">
+                  <dt className="text-muted-foreground">{copy.paymentTermsDays}</dt>
+                  <dd className="font-medium">
+                    {customer.paymentTermsDays == null
+                      ? "—"
+                      : `${customer.paymentTermsDays} ${
+                          locale === "en" ? "days" : "Tage"
+                        }`}
+                  </dd>
+                </div>
+                <div className="space-y-1">
+                  <dt className="text-muted-foreground">{copy.cashDiscountPercent}</dt>
+                  <dd className="font-medium">
+                    {customer.cashDiscountPercentBps == null
+                      ? "—"
+                      : `${new Intl.NumberFormat(locale === "en" ? "en-US" : "de-DE", {
+                          maximumFractionDigits: 2,
+                        }).format(customer.cashDiscountPercentBps / 100)}%`}
+                  </dd>
+                </div>
+                <div className="space-y-1">
+                  <dt className="text-muted-foreground">{copy.cashDiscountDays}</dt>
+                  <dd className="font-medium">
+                    {customer.cashDiscountDays == null
+                      ? "—"
+                      : `${customer.cashDiscountDays} ${
+                          locale === "en" ? "days" : "Tage"
+                        }`}
+                  </dd>
+                </div>
+                <div className="space-y-1">
+                  <dt className="text-muted-foreground">{copy.reminderLevel1DaysAfterDue}</dt>
+                  <dd className="font-medium">
+                    {customer.reminderLevel1DaysAfterDue == null
+                      ? "—"
+                      : `${customer.reminderLevel1DaysAfterDue} ${
+                          locale === "en" ? "days" : "Tage"
+                        }`}
+                  </dd>
+                </div>
+                <div className="space-y-1">
+                  <dt className="text-muted-foreground">{copy.reminderLevel2DaysAfterDue}</dt>
+                  <dd className="font-medium">
+                    {customer.reminderLevel2DaysAfterDue == null
+                      ? "—"
+                      : `${customer.reminderLevel2DaysAfterDue} ${
+                          locale === "en" ? "days" : "Tage"
+                        }`}
+                  </dd>
+                </div>
+                <div className="space-y-1">
+                  <dt className="text-muted-foreground">{copy.reminderLevel3DaysAfterDue}</dt>
+                  <dd className="font-medium">
+                    {customer.reminderLevel3DaysAfterDue == null
+                      ? "—"
+                      : `${customer.reminderLevel3DaysAfterDue} ${
+                          locale === "en" ? "days" : "Tage"
+                        }`}
+                  </dd>
+                </div>
                 <div className="space-y-1 sm:col-span-2 xl:col-span-4">
                   <dt className="text-muted-foreground">{copy.notes}</dt>
                   <dd className="font-medium text-foreground/90">
@@ -600,6 +799,70 @@ export function CustomersCustomerDetailContent({
                   id="m-tax"
                   value={taxNumber}
                   onChange={(e) => setTaxNumber(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-3 sm:gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="m-ptd">{copy.paymentTermsDays}</Label>
+                <Input
+                  id="m-ptd"
+                  inputMode="numeric"
+                  value={paymentTermsDays}
+                  onChange={(e) => setPaymentTermsDays(e.target.value)}
+                  placeholder="30"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="m-cdp">{copy.cashDiscountPercent}</Label>
+                <Input
+                  id="m-cdp"
+                  inputMode="decimal"
+                  value={cashDiscountPercent}
+                  onChange={(e) => setCashDiscountPercent(e.target.value)}
+                  placeholder="2.5"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="m-cdd">{copy.cashDiscountDays}</Label>
+                <Input
+                  id="m-cdd"
+                  inputMode="numeric"
+                  value={cashDiscountDays}
+                  onChange={(e) => setCashDiscountDays(e.target.value)}
+                  placeholder="10"
+                />
+              </div>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-3 sm:gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="m-rem1">{copy.reminderLevel1DaysAfterDue}</Label>
+                <Input
+                  id="m-rem1"
+                  inputMode="numeric"
+                  value={reminderLevel1DaysAfterDue}
+                  onChange={(e) => setReminderLevel1DaysAfterDue(e.target.value)}
+                  placeholder="7"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="m-rem2">{copy.reminderLevel2DaysAfterDue}</Label>
+                <Input
+                  id="m-rem2"
+                  inputMode="numeric"
+                  value={reminderLevel2DaysAfterDue}
+                  onChange={(e) => setReminderLevel2DaysAfterDue(e.target.value)}
+                  placeholder="14"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="m-rem3">{copy.reminderLevel3DaysAfterDue}</Label>
+                <Input
+                  id="m-rem3"
+                  inputMode="numeric"
+                  value={reminderLevel3DaysAfterDue}
+                  onChange={(e) => setReminderLevel3DaysAfterDue(e.target.value)}
+                  placeholder="30"
                 />
               </div>
             </div>

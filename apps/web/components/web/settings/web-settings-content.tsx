@@ -31,6 +31,7 @@ import {
   type NotificationPreferencesState,
 } from "@/app/web/settings/notification-preferences-client";
 import { WebOrganizationBrandingCard } from "./web-organization-branding-card";
+import { WebSalesReminderTemplatesCard } from "./web-sales-reminder-templates-card";
 
 export function WebSettingsContent() {
   const { session, logout, logoutBusy, logoutError } = useWebApp();
@@ -170,6 +171,10 @@ export function WebSettingsContent() {
       </Card>
 
       <WebOrganizationBrandingCard />
+
+      {session.permissions.settings.canEdit ? (
+        <WebSalesReminderTemplatesCard />
+      ) : null}
 
       <Card>
         <CardHeader>

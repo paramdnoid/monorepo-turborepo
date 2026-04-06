@@ -85,6 +85,7 @@ export const salesQuoteListItemSchema = z.object({
   documentNumber: z.string(),
   customerLabel: z.string(),
   customerId: z.string().uuid().nullable(),
+  projectId: z.string().uuid().nullable(),
   status: z.string(),
   currency: z.string(),
   totalCents: z.number().int(),
@@ -120,6 +121,7 @@ export const salesQuotesListQuerySchema = z.object({
   status: salesQuoteStatusSchema.optional(),
   dateFrom: isoDate.optional(),
   dateTo: isoDate.optional(),
+  projectId: z.string().uuid().optional(),
   sortBy: salesQuotesSortBySchema.optional(),
   sortDir: salesListSortDirSchema.optional(),
   limit: z.number().int().min(1).max(200).optional(),
@@ -204,6 +206,7 @@ export const salesInvoiceListItemSchema = z.object({
   documentNumber: z.string(),
   customerLabel: z.string(),
   customerId: z.string().uuid().nullable(),
+  projectId: z.string().uuid().nullable(),
   status: z.string(),
   currency: z.string(),
   totalCents: z.number().int(),
@@ -232,6 +235,7 @@ export const salesInvoicesListQuerySchema = z.object({
   status: salesInvoiceStatusSchema.optional(),
   dateFrom: isoDate.optional(),
   dateTo: isoDate.optional(),
+  projectId: z.string().uuid().optional(),
   sortBy: salesInvoicesSortBySchema.optional(),
   sortDir: salesListSortDirSchema.optional(),
   limit: z.number().int().min(1).max(200).optional(),
@@ -246,10 +250,110 @@ export const salesInvoicesListResponseSchema = z.object({
   permissions: salesListPermissionsSchema,
 });
 
+/** Rechnungen mit positivem offenen Saldo (OP-Liste). */
+export const salesOpenInvoiceListItemSchema = salesInvoiceListItemSchema.extend({
+  paidTotalCents: z.number().int().nonnegative(),
+  balanceCents: z.number().int(),
+});
+
+export type SalesOpenInvoiceListItem = z.infer<
+  typeof salesOpenInvoiceListItemSchema
+>;
+
+export const salesOpenInvoicesSortBySchema = z.enum([
+  "documentNumber",
+  "customerLabel",
+  "dueAt",
+  "totalCents",
+  "balanceCents",
+  "updatedAt",
+]);
+
+export type SalesOpenInvoicesSortBy = z.infer<
+  typeof salesOpenInvoicesSortBySchema
+>;
+
+export const salesOpenInvoicesListQuerySchema = z.object({
+  q: z.string().trim().optional(),
+  projectId: z.string().uuid().optional(),
+  sortBy: salesOpenInvoicesSortBySchema.optional(),
+  sortDir: salesListSortDirSchema.optional(),
+  limit: z.number().int().min(1).max(200).optional(),
+  offset: z.number().int().min(0).optional(),
+});
+
+export type SalesOpenInvoicesListQuery = z.infer<
+  typeof salesOpenInvoicesListQuerySchema
+>;
+
+export const salesOpenInvoicesListResponseSchema = z.object({
+  invoices: z.array(salesOpenInvoiceListItemSchema),
+  total: z.number().int().nonnegative(),
+  permissions: salesListPermissionsSchema,
+});
+
+export const salesInvoicePaymentSchema = z.object({
+  id: z.string().uuid(),
+  amountCents: z.number().int().positive(),
+  paidAt: z.string(),
+  note: z.string().nullable(),
+  createdAt: z.string(),
+});
+
+export type SalesInvoicePayment = z.infer<typeof salesInvoicePaymentSchema>;
+
+export const salesInvoiceReminderChannelSchema = z.enum(["manual", "email"]);
+
+export type SalesInvoiceReminderChannel = z.infer<
+  typeof salesInvoiceReminderChannelSchema
+>;
+
+export const salesInvoiceReminderSchema = z.object({
+  id: z.string().uuid(),
+  level: z.number().int().min(1).max(10),
+  sentAt: z.string(),
+  channel: salesInvoiceReminderChannelSchema,
+  note: z.string().nullable(),
+  createdAt: z.string(),
+});
+
+export type SalesInvoiceReminder = z.infer<typeof salesInvoiceReminderSchema>;
+
+/** Body für POST /v1/sales/invoices/:id/payments */
+export const salesCreateInvoicePaymentSchema = z.object({
+  amountCents: z.number().int().min(1).max(1_000_000_000_000),
+  /** ISO-8601 (z. B. aus datetime-local via Mittag UTC). */
+  paidAt: z.string().trim().min(1),
+  note: z.string().trim().max(2000).nullable().optional(),
+});
+
+export type SalesCreateInvoicePaymentInput = z.infer<
+  typeof salesCreateInvoicePaymentSchema
+>;
+
+/** Body für POST /v1/sales/invoices/:id/reminders */
+export const salesCreateInvoiceReminderSchema = z.object({
+  level: z.number().int().min(1).max(10),
+  /** ISO-8601 (z. B. aus date input via Mittag UTC). */
+  sentAt: z.string().trim().min(1),
+  channel: salesInvoiceReminderChannelSchema.optional().default("manual"),
+  note: z.string().trim().max(2000).nullable().optional(),
+});
+
+export type SalesCreateInvoiceReminderInput = z.infer<
+  typeof salesCreateInvoiceReminderSchema
+>;
+
 export const salesInvoiceDetailSchema = salesInvoiceListItemSchema.extend({
   quoteId: z.string().uuid().nullable(),
   projectId: z.string().uuid().nullable(),
   lines: z.array(salesDocumentLineSchema),
+  payments: z.array(salesInvoicePaymentSchema),
+  reminders: z.array(salesInvoiceReminderSchema).default([]),
+  /** Summe der Zahlungszeilen; ohne Zeilen aber Legacy „bezahlt“: gleich totalCents. */
+  paidTotalCents: z.number().int().nonnegative(),
+  /** totalCents − paidTotalCents (kann negativ sein bei Datenfehlern). */
+  balanceCents: z.number().int(),
 });
 
 export const salesInvoiceDetailResponseSchema = z.object({

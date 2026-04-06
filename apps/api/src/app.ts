@@ -39,6 +39,7 @@ import {
   createProjectAssetsListHandler,
 } from "./routes/project-assets.js";
 import {
+  createProjectDetailHandler,
   createProjectPatchHandler,
   createProjectsCreateHandler,
   createProjectsListHandler,
@@ -51,11 +52,20 @@ import {
   createSalesInvoiceLinesReorderHandler,
   createSalesInvoicePatchHandler,
   createSalesInvoicePdfHandler,
+  createSalesInvoiceReminderPdfHandler,
+  createSalesReminderTemplatesListHandler,
+  createSalesReminderTemplatesPutHandler,
+  createSalesReminderTemplatesResolvedHandler,
   createSalesInvoiceFromQuotePostHandler,
   createSalesInvoiceCancelPostHandler,
+  createSalesInvoicePaymentPostHandler,
+  createSalesInvoicePaymentDeleteHandler,
+  createSalesInvoiceReminderPostHandler,
   createSalesInvoiceDeleteHandler,
   createSalesInvoicePostHandler,
   createSalesInvoicesListHandler,
+  createSalesOpenInvoicesExportGetHandler,
+  createSalesOpenInvoicesListHandler,
   createSalesQuoteArchivePostHandler,
   createSalesQuoteDetailHandler,
   createSalesQuoteDeleteHandler,
@@ -77,6 +87,12 @@ import {
   createSchedulingAssignmentsListHandler,
   createSchedulingDayHandler,
 } from "./routes/scheduling.js";
+import {
+  createWorkTimeEntriesListHandler,
+  createWorkTimeEntryDeleteHandler,
+  createWorkTimeEntryPatchHandler,
+  createWorkTimeEntryPostHandler,
+} from "./routes/work-time.js";
 import {
   createCustomerAddressDeleteHandler,
   createCustomerAddressPatchHandler,
@@ -152,6 +168,7 @@ export function createApp(options?: CreateAppOptions) {
   const syncHandler = createSyncHandler(getDb);
   const projectsListHandler = createProjectsListHandler(getDb);
   const projectsCreateHandler = createProjectsCreateHandler(getDb);
+  const projectDetailHandler = createProjectDetailHandler(getDb);
   const projectPatchHandler = createProjectPatchHandler(getDb);
   const gaebImportPost = createGaebImportPostHandler(getDb);
   const gaebListHandler = createGaebListHandler(getDb);
@@ -183,6 +200,8 @@ export function createApp(options?: CreateAppOptions) {
   const salesQuotePdf = createSalesQuotePdfHandler(getDb);
   const salesQuotePatch = createSalesQuotePatchHandler(getDb);
   const salesInvoicesList = createSalesInvoicesListHandler(getDb);
+  const salesOpenInvoicesList = createSalesOpenInvoicesListHandler(getDb);
+  const salesOpenInvoicesExport = createSalesOpenInvoicesExportGetHandler(getDb);
   const salesInvoicePost = createSalesInvoicePostHandler(getDb);
   const salesInvoiceLinePost = createSalesInvoiceLinePostHandler(getDb);
   const salesInvoiceLinesReorder = createSalesInvoiceLinesReorderHandler(getDb);
@@ -190,8 +209,19 @@ export function createApp(options?: CreateAppOptions) {
   const salesInvoiceLineDelete = createSalesInvoiceLineDeleteHandler(getDb);
   const salesInvoiceDetail = createSalesInvoiceDetailHandler(getDb);
   const salesInvoiceCancelPost = createSalesInvoiceCancelPostHandler(getDb);
+  const salesInvoicePaymentPost = createSalesInvoicePaymentPostHandler(getDb);
+  const salesInvoicePaymentDelete =
+    createSalesInvoicePaymentDeleteHandler(getDb);
+  const salesInvoiceReminderPost = createSalesInvoiceReminderPostHandler(getDb);
   const salesInvoiceDelete = createSalesInvoiceDeleteHandler(getDb);
   const salesInvoicePdf = createSalesInvoicePdfHandler(getDb);
+  const salesInvoiceReminderPdf = createSalesInvoiceReminderPdfHandler(getDb);
+  const salesReminderTemplatesList =
+    createSalesReminderTemplatesListHandler(getDb);
+  const salesReminderTemplatesPut =
+    createSalesReminderTemplatesPutHandler(getDb);
+  const salesReminderTemplatesResolved =
+    createSalesReminderTemplatesResolvedHandler(getDb);
   const salesInvoicePatch = createSalesInvoicePatchHandler(getDb);
   const organizationPatch = createOrganizationPatchHandler(getDb);
   const organizationLogoPost = createOrganizationLogoPostHandler(getDb);
@@ -246,6 +276,10 @@ export function createApp(options?: CreateAppOptions) {
   const schedulingAssignmentPatch = createSchedulingAssignmentPatchHandler(getDb);
   const schedulingAssignmentDelete = createSchedulingAssignmentDeleteHandler(getDb);
   const schedulingAssignmentsIcs = createSchedulingAssignmentsIcsHandler(getDb);
+  const workTimeEntriesList = createWorkTimeEntriesListHandler(getDb);
+  const workTimeEntryPost = createWorkTimeEntryPostHandler(getDb);
+  const workTimeEntryPatch = createWorkTimeEntryPatchHandler(getDb);
+  const workTimeEntryDelete = createWorkTimeEntryDeleteHandler(getDb);
 
   const app = new Hono();
 
@@ -409,12 +443,17 @@ export function createApp(options?: CreateAppOptions) {
     schedulingAssignmentDelete,
   );
   v1.get("/scheduling/assignments.ics", orgMiddleware, schedulingAssignmentsIcs);
+  v1.get("/work-time/entries", orgMiddleware, workTimeEntriesList);
+  v1.post("/work-time/entries", orgMiddleware, workTimeEntryPost);
+  v1.patch("/work-time/entries/:id", orgMiddleware, workTimeEntryPatch);
+  v1.delete("/work-time/entries/:id", orgMiddleware, workTimeEntryDelete);
   v1.get("/datev/settings", orgMiddleware, datevSettingsGet);
   v1.patch("/datev/settings", orgMiddleware, datevSettingsPatch);
   v1.get("/datev/export/bookings.csv", orgMiddleware, datevBookingsExport);
   v1.post("/sync", orgMiddleware, syncHandler);
   v1.get("/projects", orgMiddleware, projectsListHandler);
   v1.post("/projects", orgMiddleware, projectsCreateHandler);
+  v1.get("/projects/:id", orgMiddleware, projectDetailHandler);
   v1.patch("/projects/:id", orgMiddleware, projectPatchHandler);
   v1.get(
     "/projects/:projectId/assets/:assetId",
@@ -469,6 +508,19 @@ export function createApp(options?: CreateAppOptions) {
   v1.patch("/sales/quotes/:id", orgMiddleware, salesQuotePatch);
   v1.delete("/sales/quotes/:id", orgMiddleware, salesQuoteDelete);
   v1.get("/sales/invoices", orgMiddleware, salesInvoicesList);
+  v1.get(
+    "/sales/invoices/open-items/export",
+    orgMiddleware,
+    salesOpenInvoicesExport,
+  );
+  v1.get("/sales/invoices/open-items", orgMiddleware, salesOpenInvoicesList);
+  v1.get(
+    "/sales/reminder-templates/resolved",
+    orgMiddleware,
+    salesReminderTemplatesResolved,
+  );
+  v1.get("/sales/reminder-templates", orgMiddleware, salesReminderTemplatesList);
+  v1.put("/sales/reminder-templates", orgMiddleware, salesReminderTemplatesPut);
   v1.post("/sales/invoices", orgMiddleware, salesInvoicePost);
   v1.post("/sales/invoices/:id/lines", orgMiddleware, salesInvoiceLinePost);
   v1.put(
@@ -487,7 +539,19 @@ export function createApp(options?: CreateAppOptions) {
     salesInvoiceLineDelete,
   );
   v1.get("/sales/invoices/:id/pdf", orgMiddleware, salesInvoicePdf);
+  v1.get(
+    "/sales/invoices/:id/reminders/:reminderId/pdf",
+    orgMiddleware,
+    salesInvoiceReminderPdf,
+  );
   v1.get("/sales/invoices/:id", orgMiddleware, salesInvoiceDetail);
+  v1.post("/sales/invoices/:id/payments", orgMiddleware, salesInvoicePaymentPost);
+  v1.delete(
+    "/sales/invoices/:id/payments/:paymentId",
+    orgMiddleware,
+    salesInvoicePaymentDelete,
+  );
+  v1.post("/sales/invoices/:id/reminders", orgMiddleware, salesInvoiceReminderPost);
   v1.post("/sales/invoices/:id/cancel", orgMiddleware, salesInvoiceCancelPost);
   v1.patch("/sales/invoices/:id", orgMiddleware, salesInvoicePatch);
   v1.delete("/sales/invoices/:id", orgMiddleware, salesInvoiceDelete);

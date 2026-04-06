@@ -145,8 +145,12 @@ export default function WebSegmentError({
     if (pathname.startsWith("/web/customers")) {
       return ["/web/customers/list", "/web/customers/addresses", "/web"];
     }
-    if (pathname.startsWith("/web/employees") || pathname.startsWith("/web/scheduling")) {
-      return ["/web/employees/list", "/web/scheduling", "/web"];
+    if (
+      pathname.startsWith("/web/employees") ||
+      pathname.startsWith("/web/scheduling") ||
+      pathname.startsWith("/web/work-time")
+    ) {
+      return ["/web/employees/list", "/web/scheduling", "/web/work-time", "/web"];
     }
     return ["/web", "/web/sales/quotes", "/web/customers/list"];
   }, [pathname]);

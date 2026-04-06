@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Trash2 } from "lucide-react";
 import {
+  customerDetailResponseSchema,
   salesInvoiceDetailResponseSchema,
   salesQuoteDetailResponseSchema,
 } from "@repo/api-contracts";
@@ -27,15 +29,23 @@ import {
   CardHeader,
   CardTitle,
 } from "@repo/ui/card";
+import { Input } from "@repo/ui/input";
+import { Label } from "@repo/ui/label";
 
 import {
   getSalesPrintCopy,
   getSalesFormCopy,
+  getSalesInvoicePaymentsCopy,
+  getSalesInvoiceRemindersCopy,
   getSalesLifecycleCopy,
   getSalesTableCopy,
 } from "@/content/sales-module";
 import type { Locale } from "@/lib/i18n/locale";
-import { formatMinorCurrency } from "@/lib/money-format";
+import {
+  dateInputToIsoNoon,
+  formatMinorCurrency,
+  parseMajorToMinorUnits,
+} from "@/lib/money-format";
 import { parseResponseJson } from "@/lib/parse-response-json";
 import { toast } from "sonner";
 
@@ -73,6 +83,34 @@ function formatDate(iso: string | null, locale: Locale): string {
   }).format(d);
 }
 
+function todayYmd(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function suggestedReminderLevelFromOverdue(params: {
+  dueAtIso: string | null;
+  reminderLevel1DaysAfterDue: number | null;
+  reminderLevel2DaysAfterDue: number | null;
+  reminderLevel3DaysAfterDue: number | null;
+}): number {
+  const { dueAtIso, reminderLevel1DaysAfterDue, reminderLevel2DaysAfterDue, reminderLevel3DaysAfterDue } =
+    params;
+
+  if (!dueAtIso) return 1;
+  const due = new Date(dueAtIso);
+  if (Number.isNaN(due.getTime())) return 1;
+  const daysOverdue = Math.floor((Date.now() - due.getTime()) / 86_400_000);
+  if (daysOverdue < 0) return 1;
+
+  if (reminderLevel3DaysAfterDue != null && daysOverdue >= reminderLevel3DaysAfterDue)
+    return 3;
+  if (reminderLevel2DaysAfterDue != null && daysOverdue >= reminderLevel2DaysAfterDue)
+    return 2;
+  if (reminderLevel1DaysAfterDue != null && daysOverdue >= reminderLevel1DaysAfterDue)
+    return 1;
+  return 1;
+}
+
 function DetailLine({
   label,
   value,
@@ -98,6 +136,8 @@ export function SalesDetail({
   const formCopy = getSalesFormCopy(locale);
   const printCopy = getSalesPrintCopy(locale);
   const lifecycleCopy = getSalesLifecycleCopy(locale);
+  const paymentCopy = getSalesInvoicePaymentsCopy(locale);
+  const reminderCopy = getSalesInvoiceRemindersCopy(locale);
   const listHref =
     mode === "quotes" ? "/web/sales/quotes" : "/web/sales/invoices";
   const [loading, setLoading] = useState(true);
@@ -107,12 +147,16 @@ export function SalesDetail({
 
   type QuoteDetailPayload = z.infer<typeof salesQuoteDetailResponseSchema>;
   type InvoiceDetailPayload = z.infer<typeof salesInvoiceDetailResponseSchema>;
+  type CustomerDetailPayload = z.infer<typeof customerDetailResponseSchema>;
 
   type DetailState =
     | { mode: "quotes"; data: QuoteDetailPayload }
     | { mode: "invoices"; data: InvoiceDetailPayload };
 
   const [detail, setDetail] = useState<DetailState | null>(null);
+  const [customerDetail, setCustomerDetail] = useState<
+    CustomerDetailPayload["customer"] | null
+  >(null);
   const [projectTitles, setProjectTitles] = useState<Map<string, string>>(
     () => new Map(),
   );
@@ -122,6 +166,33 @@ export function SalesDetail({
   const [invoiceFromQuoteOpen, setInvoiceFromQuoteOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<LifecycleAction | null>(null);
   const [actionBusy, setActionBusy] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentDateYmd, setPaymentDateYmd] = useState(todayYmd);
+  const [paymentNote, setPaymentNote] = useState("");
+  const [paymentBusy, setPaymentBusy] = useState(false);
+  const [confirmDeletePaymentId, setConfirmDeletePaymentId] = useState<
+    string | null
+  >(null);
+  const [paymentDeleteBusy, setPaymentDeleteBusy] = useState(false);
+  const [reminderLevel, setReminderLevel] = useState(1);
+  const [reminderDateYmd, setReminderDateYmd] = useState(todayYmd);
+  const [reminderNote, setReminderNote] = useState("");
+  const [reminderBusy, setReminderBusy] = useState(false);
+  const [reminderLevelTouched, setReminderLevelTouched] = useState(false);
+
+  useEffect(() => {
+    if (mode !== "invoices") return;
+    if (!detail || detail.mode !== "invoices") return;
+    if (typeof window === "undefined") return;
+    if (window.location.hash !== "#invoice-reminders") return;
+    const t = window.setTimeout(() => {
+      document.getElementById("invoice-reminders")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 0);
+    return () => window.clearTimeout(t);
+  }, [mode, detail]);
 
   const fetchDocument = async (
     path: string,
@@ -144,12 +215,149 @@ export function SalesDetail({
     return json;
   };
 
+  const paymentDeleteErrorText = (errCode: string): string => {
+    if (errCode === "invalid_state") return lifecycleCopy.actionFailed;
+    if (errCode === "not_found") return copy.notFound;
+    if (errCode === "forbidden") return lifecycleCopy.actionFailed;
+    return paymentCopy.paymentDeleteFailed;
+  };
+
+  const reminderErrorText = (errCode: string): string => {
+    if (errCode === "invalid_state") return lifecycleCopy.actionFailed;
+    if (errCode === "not_found") return copy.notFound;
+    if (errCode === "forbidden") return lifecycleCopy.actionFailed;
+    return reminderCopy.createFailed;
+  };
+
   const lifecycleErrorText = (errCode: string): string => {
     if (errCode === "invalid_state") return lifecycleCopy.actionFailed;
     if (errCode === "quote_has_invoices") return lifecycleCopy.confirmDescDeleteQuote;
     if (errCode === "cannot_cancel_paid") return lifecycleCopy.confirmDescCancelInvoice;
+    if (errCode === "cannot_cancel_with_payments")
+      return lifecycleCopy.cannotCancelWithPayments;
     if (errCode === "not_found") return copy.notFound;
     return lifecycleCopy.actionFailed;
+  };
+
+  const recordInvoicePayment = async () => {
+    if (paymentBusy) return;
+    if (!detail || detail.mode !== "invoices") return;
+    const inv = detail.data.invoice;
+    const cents = parseMajorToMinorUnits(paymentAmount, locale);
+    if (cents === null || cents < 1) {
+      toast.error(formCopy.validationAmount);
+      return;
+    }
+    const paidAtIso = dateInputToIsoNoon(paymentDateYmd);
+    if (!paidAtIso) {
+      toast.error(formCopy.validationAmount);
+      return;
+    }
+    setPaymentBusy(true);
+    try {
+      const json = await fetchDocument(
+        `/api/web/sales/invoices/${encodeURIComponent(inv.id)}/payments`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            amountCents: cents,
+            paidAt: paidAtIso,
+            note: paymentNote.trim() === "" ? null : paymentNote.trim(),
+          }),
+        },
+      );
+      const parsed = salesInvoiceDetailResponseSchema.safeParse(json);
+      if (!parsed.success) throw new Error("invalid_payload");
+      setDetail({ mode: "invoices", data: parsed.data });
+      setPaymentAmount("");
+      setPaymentNote("");
+      setPaymentDateYmd(todayYmd());
+      toast.success(lifecycleCopy.actionDone);
+    } catch (err) {
+      const code = err instanceof Error ? err.message : "unknown";
+      if (code === "payment_exceeds_balance") {
+        toast.error(paymentCopy.exceedsBalance);
+      } else {
+        toast.error(paymentCopy.paymentFailed);
+      }
+    } finally {
+      setPaymentBusy(false);
+    }
+  };
+
+  const runDeleteInvoicePayment = async () => {
+    if (paymentDeleteBusy || !confirmDeletePaymentId) return;
+    if (!detail || detail.mode !== "invoices") return;
+    const inv = detail.data.invoice;
+    const paymentId = confirmDeletePaymentId;
+    setPaymentDeleteBusy(true);
+    try {
+      const json = await fetchDocument(
+        `/api/web/sales/invoices/${encodeURIComponent(inv.id)}/payments/${encodeURIComponent(paymentId)}`,
+        { method: "DELETE" },
+      );
+      const parsed = salesInvoiceDetailResponseSchema.safeParse(json);
+      if (!parsed.success) throw new Error("invalid_payload");
+      setDetail({ mode: "invoices", data: parsed.data });
+      toast.success(lifecycleCopy.actionDone);
+    } catch (err) {
+      const code = err instanceof Error ? err.message : "unknown";
+      toast.error(paymentDeleteErrorText(code));
+    } finally {
+      setPaymentDeleteBusy(false);
+      setConfirmDeletePaymentId(null);
+    }
+  };
+
+  const recordInvoiceReminder = async () => {
+    if (reminderBusy) return;
+    if (!detail || detail.mode !== "invoices") return;
+    const inv = detail.data.invoice;
+
+    if (!Number.isInteger(reminderLevel) || reminderLevel < 1 || reminderLevel > 10) {
+      toast.error(reminderCopy.validationLevel);
+      return;
+    }
+
+    const sentAtIso = dateInputToIsoNoon(reminderDateYmd);
+    if (!sentAtIso) {
+      toast.error(reminderCopy.validationSentAt);
+      return;
+    }
+
+    setReminderBusy(true);
+    try {
+      const json = await fetchDocument(
+        `/api/web/sales/invoices/${encodeURIComponent(inv.id)}/reminders`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            level: reminderLevel,
+            sentAt: sentAtIso,
+            note: reminderNote.trim() === "" ? null : reminderNote.trim(),
+          }),
+        },
+      );
+      const parsed = salesInvoiceDetailResponseSchema.safeParse(json);
+      if (!parsed.success) throw new Error("invalid_payload");
+      setDetail({ mode: "invoices", data: parsed.data });
+      const maxLevel = parsed.data.invoice.reminders.reduce(
+        (m, r) => Math.max(m, r.level),
+        0,
+      );
+      setReminderLevel(maxLevel > 0 ? Math.min(10, maxLevel + 1) : 1);
+      setReminderLevelTouched(false);
+      setReminderNote("");
+      setReminderDateYmd(todayYmd());
+      toast.success(lifecycleCopy.actionDone);
+    } catch (err) {
+      const code = err instanceof Error ? err.message : "unknown";
+      toast.error(reminderErrorText(code));
+    } finally {
+      setReminderBusy(false);
+    }
   };
 
   const runLifecycleAction = async (action: LifecycleAction) => {
@@ -236,6 +444,85 @@ export function SalesDetail({
             ? lifecycleCopy.confirmDescDeleteQuote
             : lifecycleCopy.confirmDescDeleteInvoice;
 
+  const invoiceForPrefill = detail?.mode === "invoices" ? detail.data.invoice : null;
+  const invId = invoiceForPrefill?.id ?? null;
+  const invCustomerId = invoiceForPrefill?.customerId ?? null;
+  const invDueAt = invoiceForPrefill?.dueAt ?? null;
+  const invReminderCount = invoiceForPrefill?.reminders.length ?? 0;
+  const invReminderMaxLevel =
+    invoiceForPrefill?.reminders.reduce((m, r) => Math.max(m, r.level), 0) ?? 0;
+  const customerReminderLevel1DaysAfterDue =
+    customerDetail?.reminderLevel1DaysAfterDue ?? null;
+  const customerReminderLevel2DaysAfterDue =
+    customerDetail?.reminderLevel2DaysAfterDue ?? null;
+  const customerReminderLevel3DaysAfterDue =
+    customerDetail?.reminderLevel3DaysAfterDue ?? null;
+
+  useEffect(() => {
+    if (!invCustomerId) {
+      setCustomerDetail(null);
+      return;
+    }
+    if (customerDetail?.id === invCustomerId) {
+      return;
+    }
+    setCustomerDetail(null);
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch(
+          `/api/web/customers/${encodeURIComponent(invCustomerId)}`,
+          { credentials: "include" },
+        );
+        const text = await res.text();
+        if (cancelled) return;
+        if (!res.ok) return;
+        const json = parseResponseJson(text);
+        if (json === null) return;
+        const parsed = customerDetailResponseSchema.safeParse(json);
+        if (!parsed.success) return;
+        setCustomerDetail(parsed.data.customer);
+      } catch {
+        // ignore (keep defaults null)
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [customerDetail?.id, invCustomerId]);
+
+  useEffect(() => {
+    if (mode !== "invoices") return;
+    setReminderLevelTouched(false);
+    setReminderNote("");
+    setReminderDateYmd(todayYmd());
+  }, [documentId, mode]);
+
+  useEffect(() => {
+    if (reminderLevelTouched) return;
+    if (!invId) return;
+    const nextLevel =
+      invReminderMaxLevel > 0
+        ? Math.min(10, invReminderMaxLevel + 1)
+        : suggestedReminderLevelFromOverdue({
+            dueAtIso: invDueAt,
+            reminderLevel1DaysAfterDue: customerReminderLevel1DaysAfterDue,
+            reminderLevel2DaysAfterDue: customerReminderLevel2DaysAfterDue,
+            reminderLevel3DaysAfterDue: customerReminderLevel3DaysAfterDue,
+          });
+    setReminderLevel(nextLevel);
+  }, [
+    customerDetail?.id,
+    customerReminderLevel1DaysAfterDue,
+    customerReminderLevel2DaysAfterDue,
+    customerReminderLevel3DaysAfterDue,
+    invId,
+    invDueAt,
+    invReminderCount,
+    invReminderMaxLevel,
+    reminderLevelTouched,
+  ]);
+
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -308,6 +595,12 @@ export function SalesDetail({
   useEffect(() => {
     setEditing(false);
   }, [documentId, mode]);
+
+  useEffect(() => {
+    setPaymentAmount("");
+    setPaymentNote("");
+    setPaymentDateYmd(todayYmd());
+  }, [documentId]);
 
   if (loading) {
     return (
@@ -538,6 +831,7 @@ export function SalesDetail({
           type="button"
           variant="outline"
           size="sm"
+          disabled={actionBusy || inv.payments.length > 0}
           onClick={() => setConfirmAction("cancel-invoice")}
         >
           {lifecycleCopy.cancelInvoice}
@@ -622,6 +916,224 @@ export function SalesDetail({
           </CardContent>
         </Card>
       )}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">{paymentCopy.heading}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <dl className="space-y-3">
+            <DetailLine
+              label={paymentCopy.paidTotal}
+              value={formatMinorCurrency(
+                inv.paidTotalCents,
+                inv.currency,
+                locale,
+              )}
+            />
+            <DetailLine
+              label={paymentCopy.balance}
+              value={formatMinorCurrency(inv.balanceCents, inv.currency, locale)}
+            />
+          </dl>
+          {inv.payments.length === 0 &&
+          inv.status === "paid" &&
+          inv.paidAt ? (
+            <p className="text-xs text-muted-foreground">
+              {paymentCopy.legacyPaidHint}
+            </p>
+          ) : null}
+          {inv.payments.length > 0 ? (
+            <ul className="space-y-2 border-t border-border pt-3">
+              {inv.payments.map((p) => (
+                <li key={p.id}>
+                  <div className="flex items-start gap-2">
+                    <div className="min-w-0 flex-1 text-sm">
+                      <span className="font-medium">
+                        {formatMinorCurrency(p.amountCents, inv.currency, locale)}
+                      </span>
+                      <span className="text-muted-foreground">
+                        {" "}
+                        · {formatDate(p.paidAt, locale)}
+                      </span>
+                      {p.note ? (
+                        <span className="mt-0.5 block text-xs text-muted-foreground">
+                          {p.note}
+                        </span>
+                      ) : null}
+                    </div>
+                    {inv.status !== "cancelled" ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        className="shrink-0 text-muted-foreground hover:text-destructive"
+                        aria-label={paymentCopy.deletePayment}
+                        disabled={paymentBusy || paymentDeleteBusy}
+                        onClick={() => setConfirmDeletePaymentId(p.id)}
+                      >
+                        <Trash2 />
+                      </Button>
+                    ) : null}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted-foreground">{paymentCopy.empty}</p>
+          )}
+          {!editing && inv.status !== "cancelled" && inv.balanceCents > 0 ? (
+            <div className="space-y-3 border-t border-border pt-3">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <Label htmlFor="sales-inv-pay-amount">{paymentCopy.amount}</Label>
+                  <Input
+                    id="sales-inv-pay-amount"
+                    inputMode="decimal"
+                    autoComplete="off"
+                    value={paymentAmount}
+                    onChange={(e) => setPaymentAmount(e.target.value)}
+                    disabled={paymentBusy}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="sales-inv-pay-date">{paymentCopy.paidAt}</Label>
+                  <Input
+                    id="sales-inv-pay-date"
+                    type="date"
+                    value={paymentDateYmd}
+                    onChange={(e) => setPaymentDateYmd(e.target.value)}
+                    disabled={paymentBusy}
+                  />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="sales-inv-pay-note">{paymentCopy.note}</Label>
+                <Input
+                  id="sales-inv-pay-note"
+                  value={paymentNote}
+                  placeholder={paymentCopy.notePlaceholder}
+                  autoComplete="off"
+                  onChange={(e) => setPaymentNote(e.target.value)}
+                  disabled={paymentBusy}
+                />
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => void recordInvoicePayment()}
+                disabled={paymentBusy}
+              >
+                {paymentBusy ? paymentCopy.submitting : paymentCopy.submit}
+              </Button>
+            </div>
+          ) : null}
+        </CardContent>
+      </Card>
+      <Card id="invoice-reminders">
+        <CardHeader>
+          <CardTitle className="text-base">{reminderCopy.heading}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {inv.reminders.length > 0 ? (
+            <ul className="space-y-2 border-t border-border pt-3">
+              {inv.reminders.map((r) => (
+                <li key={r.id}>
+                  <div className="flex items-start gap-2">
+                    <div className="min-w-0 flex-1 text-sm">
+                      <span className="font-medium">
+                        {reminderCopy.level} {r.level}
+                      </span>
+                      <span className="text-muted-foreground">
+                        {" "}
+                        · {formatDate(r.sentAt, locale)}
+                      </span>
+                      {r.note ? (
+                        <span className="mt-0.5 block text-xs text-muted-foreground">
+                          {r.note}
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <Button variant="outline" size="xs" asChild>
+                        <Link
+                          href={`/web/sales/invoices/${encodeURIComponent(inv.id)}/reminders/${encodeURIComponent(r.id)}/print`}
+                        >
+                          {locale === "en" ? "Print" : "Druck"}
+                        </Link>
+                      </Button>
+                      <Button variant="outline" size="xs" asChild>
+                        <a
+                          href={`/api/web/sales/invoices/${encodeURIComponent(inv.id)}/reminders/${encodeURIComponent(r.id)}/pdf`}
+                        >
+                          {printCopy.downloadPdf}
+                        </a>
+                      </Button>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted-foreground">{reminderCopy.empty}</p>
+          )}
+          {!editing &&
+          inv.status !== "cancelled" &&
+          inv.status !== "draft" &&
+          inv.balanceCents > 0 ? (
+            <div className="space-y-3 border-t border-border pt-3">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <Label htmlFor="sales-inv-rem-level">{reminderCopy.level}</Label>
+                  <Input
+                    id="sales-inv-rem-level"
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    max={10}
+                    step={1}
+                    value={String(reminderLevel)}
+                    onChange={(e) => {
+                      const n = e.target.valueAsNumber;
+                      setReminderLevel(Number.isFinite(n) ? n : 1);
+                      setReminderLevelTouched(true);
+                    }}
+                    disabled={reminderBusy}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="sales-inv-rem-date">{reminderCopy.sentAt}</Label>
+                  <Input
+                    id="sales-inv-rem-date"
+                    type="date"
+                    value={reminderDateYmd}
+                    onChange={(e) => setReminderDateYmd(e.target.value)}
+                    disabled={reminderBusy}
+                  />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="sales-inv-rem-note">{reminderCopy.note}</Label>
+                <Input
+                  id="sales-inv-rem-note"
+                  value={reminderNote}
+                  placeholder={reminderCopy.notePlaceholder}
+                  autoComplete="off"
+                  onChange={(e) => setReminderNote(e.target.value)}
+                  disabled={reminderBusy}
+                />
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => void recordInvoiceReminder()}
+                disabled={reminderBusy}
+              >
+                {reminderBusy ? reminderCopy.submitting : reminderCopy.submit}
+              </Button>
+            </div>
+          ) : null}
+        </CardContent>
+      </Card>
       <SalesLinesSection
         locale={locale}
         mode="invoices"
@@ -635,6 +1147,42 @@ export function SalesDetail({
           )
         }
       />
+      <AlertDialog
+        open={confirmDeletePaymentId !== null}
+        onOpenChange={(open) => {
+          if (!open && !paymentDeleteBusy) setConfirmDeletePaymentId(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {paymentCopy.confirmDeletePaymentTitle}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {paymentCopy.confirmDeletePaymentDesc}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={paymentDeleteBusy}>
+              {lifecycleCopy.confirmCancel}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={paymentDeleteBusy || confirmDeletePaymentId === null}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(event) => {
+                event.preventDefault();
+                void runDeleteInvoicePayment();
+              }}
+            >
+              {paymentDeleteBusy
+                ? locale === "en"
+                  ? "Working…"
+                  : "Bitte warten …"
+                : paymentCopy.deletePayment}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <AlertDialog
         open={confirmAction !== null}
         onOpenChange={(open) => {

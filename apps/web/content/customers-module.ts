@@ -94,6 +94,12 @@ type CustomersCopy = {
     vatId: string;
     taxNumber: string;
     notes: string;
+    paymentTermsDays: string;
+    cashDiscountPercent: string;
+    cashDiscountDays: string;
+    reminderLevel1DaysAfterDue: string;
+    reminderLevel2DaysAfterDue: string;
+    reminderLevel3DaysAfterDue: string;
     archive: string;
     unarchive: string;
     addressesHeading: string;
@@ -254,6 +260,12 @@ const de: CustomersCopy = {
     vatId: "USt-IdNr.",
     taxNumber: "Steuernummer",
     notes: "Notizen",
+    paymentTermsDays: "Zahlungsziel (Tage)",
+    cashDiscountPercent: "Skonto (%)",
+    cashDiscountDays: "Skonto (Tage)",
+    reminderLevel1DaysAfterDue: "Mahnung Stufe 1 (Tage nach Faelligkeit)",
+    reminderLevel2DaysAfterDue: "Mahnung Stufe 2 (Tage nach Faelligkeit)",
+    reminderLevel3DaysAfterDue: "Mahnung Stufe 3 (Tage nach Faelligkeit)",
     archive: "Archivieren",
     unarchive: "Wiederherstellen",
     addressesHeading: "Adressen",
@@ -422,6 +434,12 @@ const en: CustomersCopy = {
     vatId: "VAT ID",
     taxNumber: "Tax number",
     notes: "Notes",
+    paymentTermsDays: "Payment terms (days)",
+    cashDiscountPercent: "Cash discount (%)",
+    cashDiscountDays: "Cash discount (days)",
+    reminderLevel1DaysAfterDue: "Reminder level 1 (days after due)",
+    reminderLevel2DaysAfterDue: "Reminder level 2 (days after due)",
+    reminderLevel3DaysAfterDue: "Reminder level 3 (days after due)",
     archive: "Archive",
     unarchive: "Restore",
     addressesHeading: "Addresses",
