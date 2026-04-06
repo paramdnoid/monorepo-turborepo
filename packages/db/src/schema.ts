@@ -1054,6 +1054,70 @@ export const salesInvoicePayments = pgTable(
 );
 
 /**
+ * Persistierte CAMT-Importe je Mandant (dedupliziert über Datei-Hash).
+ * Roh-XML wird nicht gespeichert; nur Metadaten + Zeilen-Snapshot.
+ */
+export const salesCamtImportBatches = pgTable(
+  "sales_camt_import_batches",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => organizations.tenantId, { onDelete: "cascade" }),
+    filename: text("filename"),
+    fileSha256: text("file_sha256").notNull(),
+    parseWarnings: jsonb("parse_warnings").$type<string[]>(),
+    entryCount: integer("entry_count").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    tenantHashUnique: unique("sales_camt_import_batches_tenant_hash_unique").on(
+      t.tenantId,
+      t.fileSha256,
+    ),
+    tenantCreatedIdx: index("sales_camt_import_batches_tenant_created_idx").on(
+      t.tenantId,
+      t.createdAt,
+    ),
+  }),
+);
+
+/**
+ * Zeilen-Snapshot eines CAMT-Imports zur späteren Vorschau/Zuordnung.
+ */
+export const salesCamtImportLines = pgTable(
+  "sales_camt_import_lines",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    batchId: uuid("batch_id")
+      .notNull()
+      .references(() => salesCamtImportBatches.id, { onDelete: "cascade" }),
+    lineIndex: integer("line_index").notNull(),
+    cdtDbtInd: text("cdt_dbt_ind").notNull(),
+    amountCents: integer("amount_cents").notNull(),
+    currency: text("currency").notNull(),
+    bookingDate: date("booking_date"),
+    paidAt: timestamp("paid_at", { withTimezone: true }),
+    remittanceInfo: text("remittance_info").notNull(),
+    debtorName: text("debtor_name").notNull(),
+    skipped: boolean("skipped").notNull().default(false),
+    skipReason: text("skip_reason"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    batchLineUnique: unique("sales_camt_import_lines_batch_line_unique").on(
+      t.batchId,
+      t.lineIndex,
+    ),
+    batchIdx: index("sales_camt_import_lines_batch_idx").on(t.batchId),
+  }),
+);
+
+/**
  * Mahn-Historie zu einer Rechnung (manuell; später ggf. E-Mail).
  */
 export const salesInvoiceReminders = pgTable(

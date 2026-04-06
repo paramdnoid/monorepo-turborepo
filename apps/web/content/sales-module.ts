@@ -86,6 +86,32 @@ type SalesMessages = {
     camtImportColConfidence: string;
     camtImportSkipped: string;
     camtImportOpenInvoice: string;
+    camtImportPrefillBatch: string;
+    camtImportColSelect: string;
+    camtImportSelectAllMatched: string;
+    camtImportClearCamtSelection: string;
+    camtImportPrefillBatchSelected: string;
+    camtImportHistoryTitle: string;
+    camtImportHistoryLoading: string;
+    camtImportHistoryEmpty: string;
+    camtImportHistoryOpen: string;
+    camtImportHistoryRows: string;
+    camtImportHistoryUnknownFile: string;
+    camtImportHistoryError: string;
+    batchPaymentTitle: string;
+    batchPaymentHint: string;
+    batchPaymentDate: string;
+    batchPaymentNote: string;
+    batchPaymentAmount: string;
+    batchPaymentRun: string;
+    batchPaymentBusy: string;
+    batchPaymentClear: string;
+    batchPaymentSuccess: string;
+    batchPaymentFailed: string;
+    batchPaymentNoSelection: string;
+    batchPaymentInvalidAmount: string;
+    batchPaymentExceedsBalance: string;
+    batchPaymentSelect: string;
   };
   invoicePayments: {
     heading: string;
@@ -280,6 +306,34 @@ const de: SalesMessages = {
     camtImportColConfidence: "Treffer",
     camtImportSkipped: "Uebersprungen",
     camtImportOpenInvoice: "Rechnung oeffnen",
+    camtImportPrefillBatch: "In Sammelzahlung übernehmen",
+    camtImportColSelect: "Auswahl",
+    camtImportSelectAllMatched: "Alle Treffer auswählen",
+    camtImportClearCamtSelection: "Auswahl aufheben",
+    camtImportPrefillBatchSelected: "Ausgewählte in Sammelzahlung übernehmen",
+    camtImportHistoryTitle: "Letzte CAMT-Imports",
+    camtImportHistoryLoading: "Import-Historie wird geladen …",
+    camtImportHistoryEmpty: "Noch keine CAMT-Imports vorhanden.",
+    camtImportHistoryOpen: "Ansehen",
+    camtImportHistoryRows: "Zeilen",
+    camtImportHistoryUnknownFile: "CAMT-XML",
+    camtImportHistoryError: "Import-Historie konnte nicht geladen werden.",
+    batchPaymentTitle: "Sammelzahlung buchen",
+    batchPaymentHint:
+      "Mehrere OP-Rechnungen markieren und Teilbetraege in einer Buchung erfassen.",
+    batchPaymentDate: "Buchungsdatum",
+    batchPaymentNote: "Notiz (optional)",
+    batchPaymentAmount: "Betrag",
+    batchPaymentRun: "Sammelzahlung buchen",
+    batchPaymentBusy: "Wird gebucht …",
+    batchPaymentClear: "Auswahl leeren",
+    batchPaymentSuccess: "Sammelzahlung wurde gebucht.",
+    batchPaymentFailed: "Sammelzahlung konnte nicht gebucht werden.",
+    batchPaymentNoSelection: "Bitte mindestens eine Rechnung markieren.",
+    batchPaymentInvalidAmount: "Bitte gueltige Betraege eingeben.",
+    batchPaymentExceedsBalance:
+      "Mindestens ein Betrag uebersteigt den offenen Saldo.",
+    batchPaymentSelect: "Auswahl",
   },
   print: {
     backToDocument: "Zurueck zum Beleg",
@@ -524,6 +578,34 @@ const en: SalesMessages = {
     camtImportColConfidence: "Match",
     camtImportSkipped: "Skipped",
     camtImportOpenInvoice: "Open invoice",
+    camtImportPrefillBatch: "Prefill batch payment",
+    camtImportColSelect: "Select",
+    camtImportSelectAllMatched: "Select all matches",
+    camtImportClearCamtSelection: "Clear selection",
+    camtImportPrefillBatchSelected: "Apply selected to batch payment",
+    camtImportHistoryTitle: "Recent CAMT imports",
+    camtImportHistoryLoading: "Loading import history…",
+    camtImportHistoryEmpty: "No CAMT imports yet.",
+    camtImportHistoryOpen: "View",
+    camtImportHistoryRows: "rows",
+    camtImportHistoryUnknownFile: "CAMT XML",
+    camtImportHistoryError: "Could not load import history.",
+    batchPaymentTitle: "Record batch payment",
+    batchPaymentHint:
+      "Select multiple open invoices and book partial amounts in one action.",
+    batchPaymentDate: "Booking date",
+    batchPaymentNote: "Note (optional)",
+    batchPaymentAmount: "Amount",
+    batchPaymentRun: "Book batch payment",
+    batchPaymentBusy: "Booking…",
+    batchPaymentClear: "Clear selection",
+    batchPaymentSuccess: "Batch payment has been booked.",
+    batchPaymentFailed: "Could not book batch payment.",
+    batchPaymentNoSelection: "Please select at least one invoice.",
+    batchPaymentInvalidAmount: "Please enter valid amounts.",
+    batchPaymentExceedsBalance:
+      "At least one amount exceeds the open balance.",
+    batchPaymentSelect: "Select",
   },
   print: {
     backToDocument: "Back to document",

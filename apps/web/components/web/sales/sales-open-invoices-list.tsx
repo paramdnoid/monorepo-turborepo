@@ -4,12 +4,14 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
   SALES_INVOICE_STATUS_OPTIONS,
+  salesBatchInvoicePaymentsResponseSchema,
   salesOpenInvoicesListResponseSchema,
   type SalesInvoiceStatus,
   type SalesOpenInvoicesSortBy,
 } from "@repo/api-contracts";
 import { Alert, AlertDescription, AlertTitle } from "@repo/ui/alert";
 import { Button } from "@repo/ui/button";
+import { Checkbox } from "@repo/ui/checkbox";
 import { Input } from "@repo/ui/input";
 import {
   Table,
@@ -25,7 +27,18 @@ import {
   getSalesTableCopy,
 } from "@/content/sales-module";
 import type { Locale } from "@/lib/i18n/locale";
-import { formatMinorCurrency } from "@/lib/money-format";
+import {
+  dateInputToIsoNoon,
+  formatMinorCurrency,
+  parseMajorToMinorUnits,
+} from "@/lib/money-format";
+import {
+  aggregatePrefillItemsByInvoice,
+  isSalesBatchPrefillBulkPayload,
+  SALES_BATCH_PREFILL_EVENT,
+  type SalesBatchPrefillEventDetail,
+  type SalesBatchPrefillEventPayload,
+} from "@/lib/sales-batch-prefill";
 
 const PAGE_SIZE = 25;
 
@@ -56,11 +69,29 @@ function invoiceStatusLabel(locale: Locale, status: string): string {
 
 type SortField = SalesOpenInvoicesSortBy;
 
+type BatchAllocationDraft = {
+  documentNumber: string;
+  currency: string;
+  balanceCents: number;
+  amountInput: string;
+};
+
 function formatDateShort(iso: string | null, locale: Locale): string {
   if (!iso) return "—";
   const d = new Date(iso);
   const tag = locale === "en" ? "en-GB" : "de-DE";
   return new Intl.DateTimeFormat(tag, { dateStyle: "medium" }).format(d);
+}
+
+function todayYmd(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function minorToEditString(cents: number, locale: Locale): string {
+  return (cents / 100).toLocaleString(locale === "en" ? "en-US" : "de-DE", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
 
 export function SalesOpenInvoicesList({
@@ -93,6 +124,14 @@ export function SalesOpenInvoicesList({
       balanceCents: number;
     }[]
   >([]);
+  const [selectedAllocations, setSelectedAllocations] = useState<
+    Record<string, BatchAllocationDraft>
+  >({});
+  const [batchDateYmd, setBatchDateYmd] = useState(todayYmd());
+  const [batchNote, setBatchNote] = useState("");
+  const [batchBusy, setBatchBusy] = useState(false);
+  const [batchMessage, setBatchMessage] = useState<string | null>(null);
+  const [batchError, setBatchError] = useState<string | null>(null);
 
   const loadRows = useCallback(async () => {
     const params = new URLSearchParams();
@@ -151,6 +190,99 @@ export function SalesOpenInvoicesList({
     void loadRows();
   }, [loadRows]);
 
+  useEffect(() => {
+    setSelectedAllocations((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const row of rows) {
+        const existing = next[row.id];
+        if (!existing) continue;
+        if (
+          existing.documentNumber !== row.documentNumber ||
+          existing.currency !== row.currency ||
+          existing.balanceCents !== row.balanceCents
+        ) {
+          next[row.id] = {
+            ...existing,
+            documentNumber: row.documentNumber,
+            currency: row.currency,
+            balanceCents: row.balanceCents,
+          };
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [rows]);
+
+  useEffect(() => {
+    const onPrefill = (event: Event) => {
+      const raw = (event as CustomEvent<SalesBatchPrefillEventPayload>).detail;
+      if (!raw) return;
+      setBatchError(null);
+      setBatchMessage(null);
+      setPage(0);
+
+      const items: SalesBatchPrefillEventDetail[] = isSalesBatchPrefillBulkPayload(
+        raw,
+      )
+        ? raw.items
+        : [raw];
+      if (items.length === 0) return;
+
+      const isBulk = isSalesBatchPrefillBulkPayload(raw);
+      if (isBulk) {
+        setQueryInput("");
+        setQuery("");
+      } else {
+        const single = items[0];
+        if (single) {
+          setQueryInput(single.documentNumber);
+          setQuery(single.documentNumber);
+        }
+      }
+
+      const aggregated = aggregatePrefillItemsByInvoice(items);
+
+      setSelectedAllocations((prev) => {
+        const next = { ...prev };
+        for (const agg of aggregated) {
+          next[agg.invoiceId] = {
+            documentNumber: agg.documentNumber,
+            currency: agg.currency,
+            balanceCents: agg.balanceCents,
+            amountInput: minorToEditString(agg.amountCents, locale),
+          };
+        }
+        return next;
+      });
+
+      const bookingDates = aggregated
+        .map((a) => a.bookingDate)
+        .filter((d): d is string => Boolean(d));
+      if (bookingDates.length > 0) {
+        setBatchDateYmd(bookingDates.sort().at(-1)!);
+      }
+
+      const uniqueRemittance = [
+        ...new Set(aggregated.flatMap((a) => a.remittanceParts)),
+      ];
+      if (uniqueRemittance.length > 0) {
+        setBatchNote((prev) =>
+          prev.trim().length > 0 ? prev : `CAMT: ${uniqueRemittance.join(" · ")}`,
+        );
+      }
+    };
+
+    window.addEventListener(SALES_BATCH_PREFILL_EVENT, onPrefill as EventListener);
+    return () => {
+      window.removeEventListener(
+        SALES_BATCH_PREFILL_EVENT,
+        onPrefill as EventListener,
+      );
+    };
+  }, [locale]);
+
   const applySearch = () => {
     setPage(0);
     setQuery(queryInput);
@@ -174,6 +306,125 @@ export function SalesOpenInvoicesList({
 
   const sortGlyph = (field: SortField) =>
     sortBy === field ? (sortDir === "asc" ? "↑" : "↓") : "↕";
+
+  const selectedEntries = Object.entries(selectedAllocations).map(
+    ([invoiceId, draft]) => ({
+      invoiceId,
+      ...draft,
+    }),
+  );
+
+  const toggleRowSelection = (row: (typeof rows)[number], checked: boolean) => {
+    setBatchError(null);
+    setBatchMessage(null);
+    setSelectedAllocations((prev) => {
+      if (!checked) {
+        const next = { ...prev };
+        delete next[row.id];
+        return next;
+      }
+      return {
+        ...prev,
+        [row.id]: {
+          documentNumber: row.documentNumber,
+          currency: row.currency,
+          balanceCents: row.balanceCents,
+          amountInput:
+            prev[row.id]?.amountInput ?? minorToEditString(row.balanceCents, locale),
+        },
+      };
+    });
+  };
+
+  const clearBatchSelection = () => {
+    setSelectedAllocations({});
+    setBatchError(null);
+    setBatchMessage(null);
+  };
+
+  const runBatchPayment = async () => {
+    if (batchBusy) return;
+    if (selectedEntries.length === 0) {
+      setBatchError(oc.batchPaymentNoSelection);
+      setBatchMessage(null);
+      return;
+    }
+    const paidAtIso = dateInputToIsoNoon(batchDateYmd);
+    if (!paidAtIso) {
+      setBatchError(oc.batchPaymentFailed);
+      setBatchMessage(null);
+      return;
+    }
+    const allocations: { invoiceId: string; amountCents: number }[] = [];
+    for (const entry of selectedEntries) {
+      const raw = entry.amountInput;
+      const cents = parseMajorToMinorUnits(raw, locale);
+      if (cents === null || cents < 1) {
+        setBatchError(oc.batchPaymentInvalidAmount);
+        setBatchMessage(null);
+        return;
+      }
+      if (cents > entry.balanceCents) {
+        setBatchError(oc.batchPaymentExceedsBalance);
+        setBatchMessage(null);
+        return;
+      }
+      allocations.push({ invoiceId: entry.invoiceId, amountCents: cents });
+    }
+
+    setBatchBusy(true);
+    setBatchError(null);
+    setBatchMessage(null);
+    try {
+      const res = await fetch("/api/web/sales/invoices/payments/batch", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          paidAt: paidAtIso,
+          note: batchNote.trim() === "" ? null : batchNote.trim(),
+          allocations,
+        }),
+      });
+      const text = await res.text();
+      let json: unknown = null;
+      try {
+        json = JSON.parse(text);
+      } catch {
+        json = null;
+      }
+      if (!res.ok) {
+        const code =
+          json &&
+          typeof json === "object" &&
+          "error" in json &&
+          typeof (json as { error: unknown }).error === "string"
+            ? (json as { error: string }).error
+            : "unknown";
+        if (code === "payment_exceeds_balance") {
+          setBatchError(oc.batchPaymentExceedsBalance);
+        } else {
+          setBatchError(`${oc.batchPaymentFailed} (${code})`);
+        }
+        return;
+      }
+      const parsed = salesBatchInvoicePaymentsResponseSchema.safeParse(json);
+      if (!parsed.success) {
+        setBatchError(oc.batchPaymentFailed);
+        return;
+      }
+
+      setBatchMessage(oc.batchPaymentSuccess);
+      setSelectedAllocations({});
+      setBatchNote("");
+      setBatchDateYmd(todayYmd());
+      await loadRows();
+    } catch {
+      setBatchError(oc.batchPaymentFailed);
+    } finally {
+      setBatchBusy(false);
+    }
+  };
 
   const maxPage = Math.max(0, Math.ceil(total / PAGE_SIZE) - 1);
   const csvParams = new URLSearchParams({
@@ -208,10 +459,112 @@ export function SalesOpenInvoicesList({
       </div>
       <p className="text-xs text-muted-foreground">{oc.exportMaxHint}</p>
 
+      <div className="space-y-3 rounded-md border border-border p-3">
+        <div className="space-y-1">
+          <p className="text-sm font-medium">{oc.batchPaymentTitle}</p>
+          <p className="text-xs text-muted-foreground">{oc.batchPaymentHint}</p>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground">
+              {oc.batchPaymentDate}
+            </label>
+            <Input
+              type="date"
+              value={batchDateYmd}
+              onChange={(e) => setBatchDateYmd(e.target.value)}
+              disabled={batchBusy}
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground">
+              {oc.batchPaymentNote}
+            </label>
+            <Input
+              value={batchNote}
+              onChange={(e) => setBatchNote(e.target.value)}
+              disabled={batchBusy}
+              placeholder={oc.batchPaymentNote}
+            />
+          </div>
+        </div>
+        {selectedEntries.length > 0 ? (
+          <div className="space-y-2">
+            {selectedEntries.map((entry) => (
+              <div
+                key={`batch-${entry.invoiceId}`}
+                className="grid grid-cols-[1fr,auto] items-center gap-2"
+              >
+                <p className="min-w-0 truncate text-xs text-muted-foreground">
+                  {entry.documentNumber} ·{" "}
+                  {formatMinorCurrency(entry.balanceCents, entry.currency, locale)}
+                </p>
+                <Input
+                  value={entry.amountInput}
+                  onChange={(e) =>
+                    setSelectedAllocations((prev) => {
+                      const current = prev[entry.invoiceId];
+                      if (!current) return prev;
+                      return {
+                        ...prev,
+                        [entry.invoiceId]: {
+                          ...current,
+                          amountInput: e.target.value,
+                        },
+                      };
+                    })
+                  }
+                  disabled={batchBusy}
+                  className="w-32"
+                  aria-label={`${oc.batchPaymentAmount} ${entry.documentNumber}`}
+                />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">{oc.batchPaymentNoSelection}</p>
+        )}
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => {
+              void runBatchPayment();
+            }}
+            disabled={batchBusy || selectedEntries.length === 0}
+          >
+            {batchBusy ? oc.batchPaymentBusy : oc.batchPaymentRun}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={clearBatchSelection}
+            disabled={batchBusy || selectedEntries.length === 0}
+          >
+            {oc.batchPaymentClear}
+          </Button>
+        </div>
+      </div>
+
       {error ? (
         <Alert variant="destructive">
           <AlertTitle>{copy.loadError}</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      ) : null}
+
+      {batchError ? (
+        <Alert variant="destructive">
+          <AlertTitle>{oc.batchPaymentFailed}</AlertTitle>
+          <AlertDescription>{batchError}</AlertDescription>
+        </Alert>
+      ) : null}
+
+      {batchMessage ? (
+        <Alert>
+          <AlertTitle>{oc.batchPaymentSuccess}</AlertTitle>
+          <AlertDescription>{batchMessage}</AlertDescription>
         </Alert>
       ) : null}
 
@@ -227,6 +580,9 @@ export function SalesOpenInvoicesList({
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-[1%] whitespace-nowrap">
+                    {oc.batchPaymentSelect}
+                  </TableHead>
                   <TableHead className="w-[1%] whitespace-nowrap">
                     <button
                       type="button"
@@ -283,6 +639,15 @@ export function SalesOpenInvoicesList({
               <TableBody>
                 {rows.map((r) => (
                   <TableRow key={r.id}>
+                    <TableCell className="w-[1%] whitespace-nowrap">
+                      <Checkbox
+                        checked={selectedAllocations[r.id] !== undefined}
+                        onCheckedChange={(checked) => {
+                          toggleRowSelection(r, checked === true);
+                        }}
+                        aria-label={`${oc.batchPaymentSelect} ${r.documentNumber}`}
+                      />
+                    </TableCell>
                     <TableCell className="font-medium">
                       <Link
                         className="text-primary underline-offset-4 hover:underline"

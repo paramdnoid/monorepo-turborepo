@@ -5,9 +5,9 @@
 
 ## Änderungsstand (vollständig abgeglichen)
 
-- E-06 auf **v5-Basis** aktualisiert: v4 (Templates/Gebühr) plus **E-Mail-Spike** und **CAMT-Zuordnungs-Spike** dokumentiert; **CAMT-Dateiimport-MVP** (Vorschau/Zuordnungsvorschläge, keine Auto-Buchung) ergänzt.
+- E-06 auf **v5-Basis** aktualisiert: v4 (Templates/Gebühr) plus **E-Mail-Spike**, **CAMT-Zuordnungs-Spike**, **persistierter/idempotenter CAMT-Dateiimport** (Historie), **Sammelzahlungen/Mehrfachzuordnung** (`POST …/payments/batch` + OP-UI) und **gesammelte Übernahme** mehrerer CAMT-Zeilen in die Sammelzahlung (Auswahl + Prefill).
 - E-07 bis E-13 mit klaren Reifegraden (`teilweise umgesetzt` / `teilweise vorbereitet` / `offen`) an den Code-Stand angepasst.
-- Nächste Schritte auf echte Restlücken fokussiert: E-02 v3 (Hub-Aggregation/KPIs), E-06 Produktivierung (Mail/Sammelzahlung), E-07/E-08, E-09 (XRechnung/ZUGFeRD + DATEV-Vertiefung).
+- Nächste Schritte auf echte Restlücken fokussiert: E-02 v3 (Hub-Aggregation/KPIs), E-06 **Mail-Produktivierung** (Queue/Retry/Audit), E-07/E-08, E-09 (XRechnung/ZUGFeRD + DATEV-Vertiefung).
 
 **Legende**
 
@@ -37,7 +37,7 @@
 | **E-03** | **in Arbeit** | Zahlungs-/Mahn-Defaults in Basis umgesetzt |
 | **E-04** | **in Arbeit** | Projektbezug + Zeitraum-Filter geliefert, Planungslogik offen |
 | **E-05** | **in Arbeit** | Zeiterfassung-Basis geliefert, Soll/Ist offen |
-| **E-06** | **in Arbeit** | v1–v5 Basis + **CAMT-Dateiimport-MVP** (Vorschau); Sammelzahlungen/produktiver Mailflow offen |
+| **E-06** | **in Arbeit** | v1–v5 + **CAMT-Import** (persistiert, Historie) + **Sammelzahlung** + **CAMT-Mehrfach-Prefill**; produktiver Mailflow offen |
 | **E-07** | **teilweise umgesetzt** | Belegbasis da, Tiefe (Steuer/Rabatt/Teilrechnung) offen |
 | **E-08** | **teilweise umgesetzt** | Audit-Vorstufe da, Finalisierung/Snapshot offen |
 | **E-09** | **teilweise umgesetzt** | DATEV-Basis da, XRechnung/ZUGFeRD offen |
@@ -148,11 +148,11 @@
 
 **Ziel:** Über „paidAt“ hinaus: Teilzahlungen, Mahnlauf, OP-Liste, Zahlungszuordnung.
 
-**Status:** in Arbeit — **v1 + v2 + v3 + v4 + v5-Basis umgesetzt** (2026-04-06): wie zuvor, plus `sales_reminder_templates` (Stufe 1–10, `de`/`en`, optional Gebühr); API `GET`/`PUT /v1/sales/reminder-templates`, `GET …/resolved`; Reminder-PDF und Web-Druck nutzen aufgelösten Text/Gebühr inkl. Platzhalter (z. B. Belegnr./Betrag/Fälligkeit); Mandanten-Admins bearbeiten unter **Einstellungen**. **E-Mail-Spike** (Dry-Run + optional SMTP-Send aus Rechnungs-Mahnung) und **CAMT-Zuordnungs-Spike** (`POST /v1/sales/invoices/camt-match` + UI „Match und Zahlung buchen“). Neu: **CAMT-Dateiimport-MVP** — `POST /v1/sales/invoices/camt-import` (Multipart/XML), Vorschau mit Zuordnungskandidaten auf der OP-Seite; **keine** automatische Zahlungsbuchung aus dem Import. **Offen:** Sammelzahlungen/Mehrfachzuordnung, robuster Produktiv-Mailflow, ggf. persistierter/idempotenter Bankimport.
+**Status:** in Arbeit — **v1 + v2 + v3 + v4 + v5-Basis umgesetzt** (2026-04-06): wie zuvor, plus `sales_reminder_templates` (Stufe 1–10, `de`/`en`, optional Gebühr); API `GET`/`PUT /v1/sales/reminder-templates`, `GET …/resolved`; Reminder-PDF und Web-Druck nutzen aufgelösten Text/Gebühr inkl. Platzhalter (z. B. Belegnr./Betrag/Fälligkeit); Mandanten-Admins bearbeiten unter **Einstellungen**. **E-Mail-Spike** (Dry-Run + optional SMTP-Send aus Rechnungs-Mahnung) und **CAMT-Zuordnungs-Spike** (`POST /v1/sales/invoices/camt-match` + UI „Match und Zahlung buchen“). **Persistierter/idempotenter CAMT-Dateiimport** — `POST /v1/sales/invoices/camt-import` dedupliziert über Datei-Hash, Tabellen `sales_camt_import_batches`/`lines`, Historie (`GET /v1/sales/invoices/camt-imports`, `GET /v1/sales/invoices/camt-imports/:id`) mit erneutem Matching; weiterhin **keine** automatische Zahlungsbuchung aus dem Import. **Sammelzahlungen:** `POST /v1/sales/invoices/payments/batch` + OP-UI (Mehrfachauswahl, Beträge); **CAMT → Sammelzahlung** zeilenweise oder **mehrere Zeilen gesammelt** (Checkboxen, „Alle Treffer“, Prefill inkl. Summe pro Rechnung bei Duplikaten). **Offen:** robuster Produktiv-Mailflow (Queue/Retry/Audit).
 
 **Lieferumfang (Indikativ)**
 
-- ~~Teilzahlungen / Salden; OP-Liste; CSV; Löschen Zahlungszeile.~~ → **v1/v2 erledigt.** **CAMT-Matching-Spike** (Score/Confidence, Top-Kandidat + Buchung im Rechnungsdetail) und **CAMT-Dateiimport-MVP** (XML-Upload, Vorschau/Kandidaten, ohne Auto-Buchung) sind geliefert; offen: Mehrfachzuordnung/Sammelzahlung, optional PATCH statt Löschen+Neu.
+- ~~Teilzahlungen / Salden; OP-Liste; CSV; Löschen Zahlungszeile.~~ → **v1/v2 erledigt.** **CAMT-Matching-Spike** (Score/Confidence, Top-Kandidat + Buchung im Rechnungsdetail) und **CAMT-Dateiimport** (XML-Upload, Vorschau/Kandidaten, Persistenz/Idempotenz, Historie, ohne Auto-Buchung) sind geliefert. ~~Mehrfachzuordnung/Sammelzahlung~~ → **geliefert** (`…/payments/batch` + UI). Optional später: PATCH statt Löschen+Neu bei Zahlungszeilen.
 - ~~Mahnwesen MVP (Historie + PDF/Druck + Prefill)~~ → **v3 erledigt.** ~~Mahntext-Templates/Gebühren (pro Mandant, mehrsprachig)~~ → **v4 erledigt.** **E-Mail-Spike** (Preview + optional SMTP-Send) ist geliefert; offen: produktiver Versandprozess mit Queue/Retry/Tracking.
 - Verknüpfung mit Kunden-Defaults (**E-03**).
 
@@ -160,7 +160,7 @@
 
 **Bezug Analyse:** Abschnitte 3, 5, 6 (Punkte 7–8).
 
-**Als Nächstes (v6+):** Sammelzahlungen/Mehrfachzuordnung; Mail-Produktivierung (Queue/Retry/Audit); optional CAMT-Import vertiefen (Persistenz, Idempotenz).
+**Als Nächstes (v6+):** Mail-Produktivierung (Queue/Retry/Audit); optional CAMT-Workflows (z. B. Status „gebucht“ nur nach manueller Bestätigung bleibt Policy).
 
 ---
 
@@ -321,7 +321,7 @@ Pro Epic: Problem, Messgröße, Nicht-Ziele, Spikes (Schema / API / UI), MVP vs.
 | Priorität | Thema | Wo |
 |-----------|--------|-----|
 | **E-02** | **v2 geliefert** (7-Tage-Termine, `#invoice-reminders`, Mahnungs-Zusammenfassung im Hub); nächster Schnitt: Mini-Pipeline/KPI-Kacheln oder optionales `GET /projects/:id/hub` (weniger Roundtrips) | Projekt-360° |
-| **E-06** | **v5 + CAMT-Dateiimport-MVP** geliefert; nächster Schnitt: Sammelzahlungen, produktiver Mailflow | Rechnungswesen |
+| **E-06** | **v5 + CAMT (persistiert) + Sammelzahlung + CAMT-Mehrfach-Prefill** geliefert; nächster Schnitt: produktiver Mailflow | Rechnungswesen |
 | **E-07** | Belegtiefe ausbauen (Steuer, Rabatte/Skonto, Teilrechnungsketten, Gutschrift), auf bestehender Sales-Basis | Belege |
 | **E-08** | GoBD-Sperren/Finalisieren + Snapshot-Konzept auf vorhandene Audit-Bausteine setzen | Compliance |
 | **E-09** | DATEV fachlich vertiefen und XRechnung/ZUGFeRD starten | Export |
@@ -329,7 +329,7 @@ Pro Epic: Problem, Messgröße, Nicht-Ziele, Spikes (Schema / API / UI), MVP vs.
 
 ### Empfohlene Implementierungsreihenfolge (kurz)
 
-1. **E-06 Produktivierung:** Sammelzahlungen/Mehrfachzuordnung sowie Mail-Queue/Retry/Audit priorisieren; CAMT-Import bei Bedarf vertiefen (Persistenz/Idempotenz).
+1. **E-06 Produktivierung:** Mail-Queue/Retry/Audit priorisieren (Sammelzahlung, CAMT-Persistenz und CAMT-Mehrfach-Prefill sind geliefert).
 2. **E-02 v3 (optional):** Hub-Aggregation (`GET /projects/:id/hub`) oder KPI/Mini-Pipeline; weniger parallele Client-Requests.
 3. **E-07/E-08:** Belegtiefe und GoBD-Sperren koordiniert nachziehen (nicht parallel zu großen Sales-Refactors).
 4. **E-09:** DATEV-Ausbau + XRechnung/ZUGFeRD als eigener Export-Track.

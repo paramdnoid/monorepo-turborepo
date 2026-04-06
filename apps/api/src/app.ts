@@ -60,6 +60,9 @@ import {
   createSalesInvoiceCancelPostHandler,
   createSalesCamtMatchPostHandler,
   createSalesCamtImportPostHandler,
+  createSalesCamtImportDetailHandler,
+  createSalesCamtImportsListHandler,
+  createSalesInvoiceBatchPaymentsPostHandler,
   createSalesInvoicePaymentPostHandler,
   createSalesInvoicePaymentDeleteHandler,
   createSalesInvoiceReminderPostHandler,
@@ -206,6 +209,10 @@ export function createApp(options?: CreateAppOptions) {
   const salesOpenInvoicesExport = createSalesOpenInvoicesExportGetHandler(getDb);
   const salesCamtMatchPost = createSalesCamtMatchPostHandler(getDb);
   const salesCamtImportPost = createSalesCamtImportPostHandler(getDb);
+  const salesCamtImportsList = createSalesCamtImportsListHandler(getDb);
+  const salesCamtImportDetail = createSalesCamtImportDetailHandler(getDb);
+  const salesInvoiceBatchPaymentsPost =
+    createSalesInvoiceBatchPaymentsPostHandler(getDb);
   const salesInvoicePost = createSalesInvoicePostHandler(getDb);
   const salesInvoiceLinePost = createSalesInvoiceLinePostHandler(getDb);
   const salesInvoiceLinesReorder = createSalesInvoiceLinesReorderHandler(getDb);
@@ -520,6 +527,17 @@ export function createApp(options?: CreateAppOptions) {
   v1.get("/sales/invoices/open-items", orgMiddleware, salesOpenInvoicesList);
   v1.post("/sales/invoices/camt-match", orgMiddleware, salesCamtMatchPost);
   v1.post("/sales/invoices/camt-import", orgMiddleware, salesCamtImportPost);
+  v1.get("/sales/invoices/camt-imports", orgMiddleware, salesCamtImportsList);
+  v1.get(
+    "/sales/invoices/camt-imports/:id",
+    orgMiddleware,
+    salesCamtImportDetail,
+  );
+  v1.post(
+    "/sales/invoices/payments/batch",
+    orgMiddleware,
+    salesInvoiceBatchPaymentsPost,
+  );
   v1.get(
     "/sales/reminder-templates/resolved",
     orgMiddleware,

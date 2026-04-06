@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 
 import {
   and,
@@ -7,6 +8,7 @@ import {
   desc,
   eq,
   getTableColumns,
+  inArray,
   ilike,
   max,
   ne,
@@ -31,8 +33,12 @@ import {
   salesQuotesListQuerySchema,
   salesQuotesSortBySchema,
   salesPatchInvoiceLineSchema,
+  salesCreateBatchInvoicePaymentsSchema,
+  salesBatchInvoicePaymentsResponseSchema,
   salesCreateInvoicePaymentSchema,
   salesCamtMatchRequestSchema,
+  salesCamtImportBatchDetailResponseSchema,
+  salesCamtImportBatchesListResponseSchema,
   salesCamtImportResponseSchema,
   salesCreateInvoiceReminderSchema,
   salesPatchInvoiceSchema,
@@ -49,6 +55,8 @@ import {
   projects,
   salesLifecycleEvents,
   salesInvoiceLines,
+  salesCamtImportBatches,
+  salesCamtImportLines,
   salesInvoicePayments,
   salesInvoiceReminders,
   salesInvoices,
@@ -81,6 +89,7 @@ import {
 } from "../auth/permissions.js";
 import type { AuthContext } from "../auth/verify-token.js";
 import {
+  type CamtParsedStatementLine,
   parseCamtBankToCustomerXml,
   rankOpenInvoicesForCamt,
 } from "../sales-camt.js";
@@ -1214,28 +1223,7 @@ export function createSalesCamtMatchPostHandler(getDb: () => Db | undefined) {
       return c.json({ error: "invalid_paid_at" }, 400);
     }
 
-    const tenantId = auth.tenantId;
-    const payAgg = buildSalesOpenInvoicesPayAggSubquery(db, tenantId);
-    const balanceExpr = sqlInvoiceBalanceCents(payAgg);
-    const rows = await db
-      .select({
-        id: salesInvoices.id,
-        documentNumber: salesInvoices.documentNumber,
-        customerLabel: salesInvoices.customerLabel,
-        currency: salesInvoices.currency,
-        dueAt: salesInvoices.dueAt,
-        balanceCents: sql<number>`(${balanceExpr})::int`.mapWith(Number),
-      })
-      .from(salesInvoices)
-      .leftJoin(payAgg, eq(salesInvoices.id, payAgg.invoiceId))
-      .where(
-        and(
-          eq(salesInvoices.tenantId, tenantId),
-          ne(salesInvoices.status, "cancelled"),
-          sql`${balanceExpr} > 0`,
-        ),
-      )
-      .limit(250);
+    const rows = await fetchOpenInvoicesForCamt(db, auth.tenantId);
 
     const remittanceInfo = parsed.data.remittanceInfo ?? "";
     const debtorName = parsed.data.debtorName ?? "";
@@ -1250,6 +1238,147 @@ export function createSalesCamtMatchPostHandler(getDb: () => Db | undefined) {
 }
 
 const MAX_CAMT_UPLOAD_BYTES = 2_000_000;
+const CAMT_IMPORTS_LIST_LIMIT_DEFAULT = 20;
+const CAMT_IMPORTS_LIST_LIMIT_MAX = 100;
+
+function sha256Hex(text: string): string {
+  return createHash("sha256").update(text, "utf8").digest("hex");
+}
+
+function parseCamtCandidateLimit(rawLimit: string | undefined): number {
+  const limitN = rawLimit ? Number(rawLimit) : 5;
+  if (!Number.isInteger(limitN)) return 5;
+  if (limitN < 1 || limitN > 20) return 5;
+  return limitN;
+}
+
+function parseCamtImportsListLimit(rawLimit: string | undefined): number {
+  const limitN = rawLimit ? Number(rawLimit) : CAMT_IMPORTS_LIST_LIMIT_DEFAULT;
+  if (!Number.isInteger(limitN)) return CAMT_IMPORTS_LIST_LIMIT_DEFAULT;
+  if (limitN < 1 || limitN > CAMT_IMPORTS_LIST_LIMIT_MAX) {
+    return CAMT_IMPORTS_LIST_LIMIT_DEFAULT;
+  }
+  return limitN;
+}
+
+function normalizeCamtCdtDbtInd(v: string): "CRDT" | "DBIT" | "UNKNOWN" {
+  if (v === "CRDT" || v === "DBIT" || v === "UNKNOWN") return v;
+  return "UNKNOWN";
+}
+
+type CamtImportLineSkipReason = "not_credit" | "no_amount";
+
+function mapCamtImportRowsWithMatches(
+  lines: CamtParsedStatementLine[],
+  openRows: {
+    id: string;
+    documentNumber: string;
+    customerLabel: string;
+    currency: string;
+    dueAt: Date | null;
+    balanceCents: number;
+  }[],
+  candidateLimit: number,
+) {
+  return lines.map((line) => {
+    if (line.cdtDbtInd !== "CRDT" || line.amountCents < 1) {
+      const skipReason: CamtImportLineSkipReason =
+        line.cdtDbtInd !== "CRDT" ? "not_credit" : "no_amount";
+      return {
+        lineIndex: line.lineIndex,
+        cdtDbtInd: line.cdtDbtInd,
+        amountCents: line.amountCents,
+        currency: line.currency,
+        bookingDate: line.bookingDate,
+        paidAtIso: line.paidAtIso,
+        remittanceInfo: line.remittanceInfo,
+        debtorName: line.debtorName,
+        skipped: true as const,
+        skipReason,
+        matches: [],
+        suggestedInvoiceId: null,
+      };
+    }
+
+    const ranked = rankOpenInvoicesForCamt(openRows, {
+      amountCents: line.amountCents,
+      remittanceInfo: line.remittanceInfo,
+      debtorName: line.debtorName,
+      candidateLimit,
+    });
+
+    return {
+      lineIndex: line.lineIndex,
+      cdtDbtInd: line.cdtDbtInd,
+      amountCents: line.amountCents,
+      currency: line.currency,
+      bookingDate: line.bookingDate,
+      paidAtIso: line.paidAtIso,
+      remittanceInfo: line.remittanceInfo,
+      debtorName: line.debtorName,
+      skipped: false as const,
+      matches: ranked.matches,
+      suggestedInvoiceId: ranked.suggestedInvoiceId,
+    };
+  });
+}
+
+function mapStoredCamtLinesToParsedLines(
+  rows: Array<typeof salesCamtImportLines.$inferSelect>,
+): CamtParsedStatementLine[] {
+  return rows.map((line) => ({
+    lineIndex: line.lineIndex,
+    cdtDbtInd: normalizeCamtCdtDbtInd(line.cdtDbtInd),
+    amountCents: line.amountCents,
+    currency: line.currency,
+    bookingDate: line.bookingDate,
+    paidAtIso: line.paidAt ? line.paidAt.toISOString() : null,
+    remittanceInfo: line.remittanceInfo,
+    debtorName: line.debtorName,
+  }));
+}
+
+async function fetchOpenInvoicesForCamt(db: Db, tenantId: string) {
+  const payAgg = buildSalesOpenInvoicesPayAggSubquery(db, tenantId);
+  const balanceExpr = sqlInvoiceBalanceCents(payAgg);
+  const rows = await db
+    .select({
+      id: salesInvoices.id,
+      documentNumber: salesInvoices.documentNumber,
+      customerLabel: salesInvoices.customerLabel,
+      currency: salesInvoices.currency,
+      dueAt: salesInvoices.dueAt,
+      balanceCents: sql<number>`(${balanceExpr})::int`.mapWith(Number),
+    })
+    .from(salesInvoices)
+    .leftJoin(payAgg, eq(salesInvoices.id, payAgg.invoiceId))
+    .where(
+      and(
+        eq(salesInvoices.tenantId, tenantId),
+        ne(salesInvoices.status, "cancelled"),
+        sql`${balanceExpr} > 0`,
+      ),
+    )
+    .limit(250);
+  return rows.map((r) => ({
+    id: r.id,
+    documentNumber: r.documentNumber,
+    customerLabel: r.customerLabel,
+    currency: r.currency,
+    dueAt: r.dueAt,
+    balanceCents: r.balanceCents,
+  }));
+}
+
+function mapCamtImportBatchSummaryRow(r: typeof salesCamtImportBatches.$inferSelect) {
+  return {
+    id: r.id,
+    filename: r.filename ?? null,
+    fileSha256: r.fileSha256,
+    entryCount: r.entryCount,
+    createdAt: r.createdAt.toISOString(),
+  };
+}
 
 export function createSalesCamtImportPostHandler(getDb: () => Db | undefined) {
   return async (c: Context) => {
@@ -1261,6 +1390,7 @@ export function createSalesCamtImportPostHandler(getDb: () => Db | undefined) {
 
     const contentType = c.req.header("content-type") ?? "";
     let xml: string;
+    let filename: string | null = null;
     if (contentType.includes("multipart/form-data")) {
       let body: Record<string, unknown>;
       try {
@@ -1272,9 +1402,12 @@ export function createSalesCamtImportPostHandler(getDb: () => Db | undefined) {
       if (!file || typeof file === "string") {
         return c.json({ error: "missing_file" }, 400);
       }
-      const blob = file as Blob;
+      const blob = file as Blob & { name?: unknown };
       if (blob.size > MAX_CAMT_UPLOAD_BYTES) {
         return c.json({ error: "file_too_large" }, 413);
+      }
+      if (typeof blob.name === "string" && blob.name.trim()) {
+        filename = blob.name.trim();
       }
       xml = await blob.text();
     } else if (
@@ -1290,93 +1423,213 @@ export function createSalesCamtImportPostHandler(getDb: () => Db | undefined) {
       return c.json({ error: "unsupported_content_type" }, 415);
     }
 
-    const rawLimit = c.req.query("candidateLimit");
-    const limitN = rawLimit ? Number(rawLimit) : 5;
-    const candidateLimit =
-      Number.isInteger(limitN) && limitN >= 1 && limitN <= 20 ? limitN : 5;
-
-    const { warnings: parseWarnings, lines: parsedLines } =
-      parseCamtBankToCustomerXml(xml);
-
+    const candidateLimit = parseCamtCandidateLimit(c.req.query("candidateLimit"));
+    const fileSha256 = sha256Hex(xml);
     const tenantId = auth.tenantId;
-    const payAgg = buildSalesOpenInvoicesPayAggSubquery(db, tenantId);
-    const balanceExpr = sqlInvoiceBalanceCents(payAgg);
-    const rows = await db
-      .select({
-        id: salesInvoices.id,
-        documentNumber: salesInvoices.documentNumber,
-        customerLabel: salesInvoices.customerLabel,
-        currency: salesInvoices.currency,
-        dueAt: salesInvoices.dueAt,
-        balanceCents: sql<number>`(${balanceExpr})::int`.mapWith(Number),
-      })
-      .from(salesInvoices)
-      .leftJoin(payAgg, eq(salesInvoices.id, payAgg.invoiceId))
+    const [existingBatch] = await db
+      .select()
+      .from(salesCamtImportBatches)
       .where(
         and(
-          eq(salesInvoices.tenantId, tenantId),
-          ne(salesInvoices.status, "cancelled"),
-          sql`${balanceExpr} > 0`,
+          eq(salesCamtImportBatches.tenantId, tenantId),
+          eq(salesCamtImportBatches.fileSha256, fileSha256),
         ),
       )
-      .limit(250);
+      .limit(1);
 
-    const openRows = rows.map((r) => ({
-      id: r.id,
-      documentNumber: r.documentNumber,
-      customerLabel: r.customerLabel,
-      currency: r.currency,
-      dueAt: r.dueAt,
-      balanceCents: r.balanceCents,
-    }));
+    let batchId: string | null = existingBatch?.id ?? null;
 
-    const entries = parsedLines.map((line) => {
-      if (line.cdtDbtInd !== "CRDT" || line.amountCents < 1) {
-        return {
-          lineIndex: line.lineIndex,
-          cdtDbtInd: line.cdtDbtInd,
-          amountCents: line.amountCents,
-          currency: line.currency,
-          bookingDate: line.bookingDate,
-          paidAtIso: line.paidAtIso,
-          remittanceInfo: line.remittanceInfo,
-          debtorName: line.debtorName,
-          skipped: true as const,
-          skipReason:
-            line.cdtDbtInd !== "CRDT" ? ("not_credit" as const) : ("no_amount" as const),
-          matches: [],
-          suggestedInvoiceId: null,
-        };
-      }
+    if (!batchId) {
+      const parsed = parseCamtBankToCustomerXml(xml);
+      const now = new Date();
+      await db.transaction(async (tx) => {
+        const [inserted] = await tx
+          .insert(salesCamtImportBatches)
+          .values({
+            tenantId,
+            filename,
+            fileSha256,
+            parseWarnings: parsed.warnings.length > 0 ? parsed.warnings : null,
+            entryCount: parsed.lines.length,
+            createdAt: now,
+          })
+          .onConflictDoNothing({
+            target: [
+              salesCamtImportBatches.tenantId,
+              salesCamtImportBatches.fileSha256,
+            ],
+          })
+          .returning({ id: salesCamtImportBatches.id });
+        const currentBatchId = inserted?.id;
+        if (!currentBatchId) {
+          const [row] = await tx
+            .select({ id: salesCamtImportBatches.id })
+            .from(salesCamtImportBatches)
+            .where(
+              and(
+                eq(salesCamtImportBatches.tenantId, tenantId),
+                eq(salesCamtImportBatches.fileSha256, fileSha256),
+              ),
+            )
+            .limit(1);
+          batchId = row?.id ?? null;
+          return;
+        }
 
-      const ranked = rankOpenInvoicesForCamt(openRows, {
-        amountCents: line.amountCents,
-        remittanceInfo: line.remittanceInfo,
-        debtorName: line.debtorName,
-        candidateLimit,
+        batchId = currentBatchId;
+
+        if (parsed.lines.length === 0) return;
+        await tx.insert(salesCamtImportLines).values(
+          parsed.lines.map((line) => {
+            const skipped = line.cdtDbtInd !== "CRDT" || line.amountCents < 1;
+            const skipReason =
+              line.cdtDbtInd !== "CRDT"
+                ? "not_credit"
+                : line.amountCents < 1
+                  ? "no_amount"
+                  : null;
+            return {
+              batchId: currentBatchId,
+              lineIndex: line.lineIndex,
+              cdtDbtInd: line.cdtDbtInd,
+              amountCents: line.amountCents,
+              currency: line.currency,
+              bookingDate: line.bookingDate,
+              paidAt: line.paidAtIso ? new Date(line.paidAtIso) : null,
+              remittanceInfo: line.remittanceInfo,
+              debtorName: line.debtorName,
+              skipped,
+              skipReason,
+              createdAt: now,
+            };
+          }),
+        );
       });
+    }
 
-      return {
-        lineIndex: line.lineIndex,
-        cdtDbtInd: line.cdtDbtInd,
-        amountCents: line.amountCents,
-        currency: line.currency,
-        bookingDate: line.bookingDate,
-        paidAtIso: line.paidAtIso,
-        remittanceInfo: line.remittanceInfo,
-        debtorName: line.debtorName,
-        skipped: false as const,
-        matches: ranked.matches,
-        suggestedInvoiceId: ranked.suggestedInvoiceId,
-      };
-    });
+    if (!batchId) {
+      return c.json({ error: "camt_import_persist_failed" }, 500);
+    }
+
+    const [batchRow] = await db
+      .select()
+      .from(salesCamtImportBatches)
+      .where(
+        and(
+          eq(salesCamtImportBatches.id, batchId),
+          eq(salesCamtImportBatches.tenantId, tenantId),
+        ),
+      )
+      .limit(1);
+    if (!batchRow) {
+      return c.json({ error: "not_found" }, 404);
+    }
+
+    const storedLines = await db
+      .select()
+      .from(salesCamtImportLines)
+      .where(eq(salesCamtImportLines.batchId, batchId))
+      .orderBy(asc(salesCamtImportLines.lineIndex));
+    const parsedLines = mapStoredCamtLinesToParsedLines(storedLines);
+    const parseWarnings = Array.isArray(batchRow.parseWarnings)
+      ? batchRow.parseWarnings.filter((w): w is string => typeof w === "string")
+      : [];
+
+    const openRows = await fetchOpenInvoicesForCamt(db, tenantId);
+    const entries = mapCamtImportRowsWithMatches(
+      parsedLines,
+      openRows,
+      candidateLimit,
+    );
 
     const payload = {
-      parseWarnings: parseWarnings,
+      parseWarnings,
       candidateLimit,
       entries,
     };
     const safe = salesCamtImportResponseSchema.safeParse(payload);
+    if (!safe.success) {
+      return c.json({ error: "response_serialization" }, 500);
+    }
+    return c.json(safe.data);
+  };
+}
+
+export function createSalesCamtImportsListHandler(getDb: () => Db | undefined) {
+  return async (c: Context) => {
+    const auth = c.get("auth");
+    if (!auth) return c.json({ error: "missing_auth" }, 500);
+    if (!canEditSalesDocuments(auth)) return c.json({ error: "forbidden" }, 403);
+    const db = getDb();
+    if (!db) return c.json({ error: "database_unavailable" }, 503);
+
+    const limit = parseCamtImportsListLimit(c.req.query("limit"));
+    const rows = await db
+      .select()
+      .from(salesCamtImportBatches)
+      .where(eq(salesCamtImportBatches.tenantId, auth.tenantId))
+      .orderBy(desc(salesCamtImportBatches.createdAt))
+      .limit(limit);
+    const payload = {
+      batches: rows.map(mapCamtImportBatchSummaryRow),
+    };
+    const safe = salesCamtImportBatchesListResponseSchema.safeParse(payload);
+    if (!safe.success) {
+      return c.json({ error: "response_serialization" }, 500);
+    }
+    return c.json(safe.data);
+  };
+}
+
+export function createSalesCamtImportDetailHandler(getDb: () => Db | undefined) {
+  return async (c: Context) => {
+    const auth = c.get("auth");
+    if (!auth) return c.json({ error: "missing_auth" }, 500);
+    if (!canEditSalesDocuments(auth)) return c.json({ error: "forbidden" }, 403);
+    const db = getDb();
+    if (!db) return c.json({ error: "database_unavailable" }, 503);
+
+    const idParse = z.string().uuid().safeParse(c.req.param("id"));
+    if (!idParse.success) return c.json({ error: "invalid_id" }, 400);
+    const batchId = idParse.data;
+    const candidateLimit = parseCamtCandidateLimit(c.req.query("candidateLimit"));
+
+    const [batch] = await db
+      .select()
+      .from(salesCamtImportBatches)
+      .where(
+        and(
+          eq(salesCamtImportBatches.id, batchId),
+          eq(salesCamtImportBatches.tenantId, auth.tenantId),
+        ),
+      )
+      .limit(1);
+    if (!batch) return c.json({ error: "not_found" }, 404);
+
+    const lineRows = await db
+      .select()
+      .from(salesCamtImportLines)
+      .where(eq(salesCamtImportLines.batchId, batchId))
+      .orderBy(asc(salesCamtImportLines.lineIndex));
+
+    const parsedLines = mapStoredCamtLinesToParsedLines(lineRows);
+    const openRows = await fetchOpenInvoicesForCamt(db, auth.tenantId);
+    const entries = mapCamtImportRowsWithMatches(
+      parsedLines,
+      openRows,
+      candidateLimit,
+    );
+
+    const parseWarnings = Array.isArray(batch.parseWarnings)
+      ? batch.parseWarnings.filter((w): w is string => typeof w === "string")
+      : [];
+    const payload = {
+      batch: mapCamtImportBatchSummaryRow(batch),
+      parseWarnings,
+      candidateLimit,
+      entries,
+    };
+    const safe = salesCamtImportBatchDetailResponseSchema.safeParse(payload);
     if (!safe.success) {
       return c.json({ error: "response_serialization" }, 500);
     }
@@ -2227,6 +2480,125 @@ export function createSalesInvoicePaymentPostHandler(getDb: () => Db | undefined
     const payload = await buildInvoiceDetailPayload(db, auth.tenantId, id);
     if (!payload) return c.json({ error: "not_found" }, 404);
     return c.json(payload);
+  };
+}
+
+export function createSalesInvoiceBatchPaymentsPostHandler(
+  getDb: () => Db | undefined,
+) {
+  return async (c: Context) => {
+    const auth = c.get("auth");
+    if (!auth) return c.json({ error: "missing_auth" }, 500);
+    if (!canEditSalesDocuments(auth)) return c.json({ error: "forbidden" }, 403);
+
+    let body: unknown;
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ error: "invalid_json" }, 400);
+    }
+    const parsed = salesCreateBatchInvoicePaymentsSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ error: "validation_error" }, 400);
+    }
+
+    const paidAt = new Date(parsed.data.paidAt);
+    if (Number.isNaN(paidAt.getTime())) {
+      return c.json({ error: "invalid_paid_at" }, 400);
+    }
+
+    const invoiceIds = parsed.data.allocations.map((a) => a.invoiceId);
+    if (new Set(invoiceIds).size !== invoiceIds.length) {
+      return c.json({ error: "duplicate_invoice_id" }, 400);
+    }
+
+    const db = getDb();
+    if (!db) return c.json({ error: "database_unavailable" }, 503);
+
+    const invoiceRows = await db
+      .select({
+        id: salesInvoices.id,
+        totalCents: salesInvoices.totalCents,
+        status: salesInvoices.status,
+      })
+      .from(salesInvoices)
+      .where(
+        and(
+          eq(salesInvoices.tenantId, auth.tenantId),
+          inArray(salesInvoices.id, invoiceIds),
+        ),
+      );
+    if (invoiceRows.length !== invoiceIds.length) {
+      return c.json({ error: "not_found" }, 404);
+    }
+
+    if (invoiceRows.some((r) => r.status === "cancelled")) {
+      return c.json({ error: "invalid_state" }, 409);
+    }
+
+    const [payAggRows, invoiceRowsById] = [
+      await db
+        .select({
+          invoiceId: salesInvoicePayments.invoiceId,
+          t: sum(salesInvoicePayments.amountCents),
+        })
+        .from(salesInvoicePayments)
+        .where(
+          and(
+            eq(salesInvoicePayments.tenantId, auth.tenantId),
+            inArray(salesInvoicePayments.invoiceId, invoiceIds),
+          ),
+        )
+        .groupBy(salesInvoicePayments.invoiceId),
+      new Map(invoiceRows.map((r) => [r.id, r])),
+    ];
+    const paidSumByInvoiceId = new Map(
+      payAggRows.map((r) => [r.invoiceId, sumFromAggregate(r.t)]),
+    );
+
+    for (const allocation of parsed.data.allocations) {
+      const inv = invoiceRowsById.get(allocation.invoiceId);
+      if (!inv) return c.json({ error: "not_found" }, 404);
+      const prevSum = paidSumByInvoiceId.get(allocation.invoiceId) ?? 0;
+      if (prevSum + allocation.amountCents > inv.totalCents) {
+        return c.json({ error: "payment_exceeds_balance" }, 409);
+      }
+    }
+
+    const defaultNote = parsed.data.note ?? null;
+    const created = await db.transaction(async (tx) =>
+      tx
+        .insert(salesInvoicePayments)
+        .values(
+          parsed.data.allocations.map((allocation) => ({
+            tenantId: auth.tenantId,
+            invoiceId: allocation.invoiceId,
+            amountCents: allocation.amountCents,
+            paidAt,
+            note: allocation.note ?? defaultNote,
+          })),
+        )
+        .returning({
+          paymentId: salesInvoicePayments.id,
+          invoiceId: salesInvoicePayments.invoiceId,
+          amountCents: salesInvoicePayments.amountCents,
+        }),
+    );
+
+    for (const invoiceId of invoiceIds) {
+      await syncInvoicePaymentState(db, invoiceId);
+    }
+
+    const payload = {
+      created,
+      invoiceIds,
+      totalAmountCents: created.reduce((acc, row) => acc + row.amountCents, 0),
+    };
+    const safe = salesBatchInvoicePaymentsResponseSchema.safeParse(payload);
+    if (!safe.success) {
+      return c.json({ error: "response_serialization" }, 500);
+    }
+    return c.json(safe.data);
   };
 }
 

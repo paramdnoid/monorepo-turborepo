@@ -225,6 +225,13 @@
       "when": 1775440507799,
       "tag": "0031_sales_reminder_templates",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1775443977779,
+      "tag": "0032_magical_warhawk",
+      "breakpoints": true
     }
   ]
 }

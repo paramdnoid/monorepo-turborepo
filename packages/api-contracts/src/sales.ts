@@ -331,6 +331,48 @@ export type SalesCreateInvoicePaymentInput = z.infer<
   typeof salesCreateInvoicePaymentSchema
 >;
 
+/** Body für POST /v1/sales/invoices/payments/batch */
+export const salesBatchInvoicePaymentItemSchema = z.object({
+  invoiceId: z.string().uuid(),
+  amountCents: z.number().int().min(1).max(1_000_000_000_000),
+  note: z.string().trim().max(2000).nullable().optional(),
+});
+
+export type SalesBatchInvoicePaymentItem = z.infer<
+  typeof salesBatchInvoicePaymentItemSchema
+>;
+
+export const salesCreateBatchInvoicePaymentsSchema = z.object({
+  /** ISO-8601 (z. B. aus date input via Mittag UTC). */
+  paidAt: z.string().trim().min(1),
+  note: z.string().trim().max(2000).nullable().optional(),
+  allocations: z.array(salesBatchInvoicePaymentItemSchema).min(1).max(100),
+});
+
+export type SalesCreateBatchInvoicePaymentsInput = z.infer<
+  typeof salesCreateBatchInvoicePaymentsSchema
+>;
+
+export const salesBatchInvoicePaymentCreatedSchema = z.object({
+  paymentId: z.string().uuid(),
+  invoiceId: z.string().uuid(),
+  amountCents: z.number().int().positive(),
+});
+
+export type SalesBatchInvoicePaymentCreated = z.infer<
+  typeof salesBatchInvoicePaymentCreatedSchema
+>;
+
+export const salesBatchInvoicePaymentsResponseSchema = z.object({
+  created: z.array(salesBatchInvoicePaymentCreatedSchema),
+  invoiceIds: z.array(z.string().uuid()),
+  totalAmountCents: z.number().int().positive(),
+});
+
+export type SalesBatchInvoicePaymentsResponse = z.infer<
+  typeof salesBatchInvoicePaymentsResponseSchema
+>;
+
 /** CAMT-/Kontoauszug-Zeile als Input für Zuordnungsvorschläge auf OP-Rechnungen. */
 export const salesCamtMatchRequestSchema = z.object({
   amountCents: z.number().int().min(1).max(1_000_000_000_000),
@@ -398,6 +440,37 @@ export const salesCamtImportResponseSchema = z.object({
 });
 
 export type SalesCamtImportResponse = z.infer<typeof salesCamtImportResponseSchema>;
+
+export const salesCamtImportBatchSummarySchema = z.object({
+  id: z.string().uuid(),
+  filename: z.string().nullable(),
+  fileSha256: z.string(),
+  entryCount: z.number().int().nonnegative(),
+  createdAt: z.string(),
+});
+
+export type SalesCamtImportBatchSummary = z.infer<
+  typeof salesCamtImportBatchSummarySchema
+>;
+
+export const salesCamtImportBatchesListResponseSchema = z.object({
+  batches: z.array(salesCamtImportBatchSummarySchema),
+});
+
+export type SalesCamtImportBatchesListResponse = z.infer<
+  typeof salesCamtImportBatchesListResponseSchema
+>;
+
+export const salesCamtImportBatchDetailResponseSchema = z.object({
+  batch: salesCamtImportBatchSummarySchema,
+  parseWarnings: z.array(z.string()),
+  candidateLimit: z.number().int().min(1).max(20),
+  entries: z.array(salesCamtImportEntrySchema),
+});
+
+export type SalesCamtImportBatchDetailResponse = z.infer<
+  typeof salesCamtImportBatchDetailResponseSchema
+>;
 
 /** Body für POST /v1/sales/invoices/:id/reminders */
 export const salesCreateInvoiceReminderSchema = z.object({

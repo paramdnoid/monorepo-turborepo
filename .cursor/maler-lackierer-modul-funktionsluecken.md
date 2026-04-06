@@ -5,7 +5,7 @@
 
 ## Änderungsstand (vollständig abgeglichen)
 
-- Forderungsmanagement auf tatsächlichen Umfang gehoben (E-06 v5-Basis + CAMT-Dateiimport-MVP auf der OP-Seite).
+- Forderungsmanagement auf tatsächlichen Umfang gehoben (E-06 v5-Basis + **persistierter** CAMT-Dateiimport + **Sammelzahlungen** + **Mehrfach-CAMT-Zeilen → Sammelzahlung** auf der OP-Seite).
 - DATEV von „nur Schnittstelle“ auf „Basis produktiv vorhanden“ präzisiert (Settings + Buchungs-CSV; fachliche Tiefe offen).
 - Zeiterfassung/Scheduling/Audit als „teilweise umgesetzt“ differenziert, statt pauschal offen.
 
@@ -17,7 +17,7 @@
 
 - E-01-Basis: Projekt-Kunden-/Baustellenbezug (mit Legacy-Fallback) ist geliefert.
 - E-02-Basis: Projekt-Hub mit Belegen/Dateien/GAEB/7-Tage-Termine/Zeiterfassung/OP ist geliefert.
-- E-06-v5-Basis: Mahntext-Templates + optionale Gebühr + PDF/Druck + Einstellungs-UI sowie E-Mail-/CAMT-Spike; ergänzend **CAMT-XML-Upload** zur Vorschau (Zuordnungsvorschläge, keine Auto-Buchung).
+- E-06-v5-Basis: Mahntext-Templates + optionale Gebühr + PDF/Druck + Einstellungs-UI sowie E-Mail-/CAMT-Spike; **CAMT-XML-Upload** mit Vorschau, **Persistenz/Idempotenz** (Hash) und **Import-Historie**; **keine** automatische Zahlungsbuchung aus CAMT; **Sammelzahlung** mehrerer OP-Rechnungen in einem Buchungslauf (`POST …/payments/batch`) inkl. UI; **Übernahme mehrerer CAMT-Zeilen** in die Sammelwahl (Auswahl + Prefill, Summe pro Rechnung bei mehrfachen Treffern).
 - DATEV-Basis: Settings + Ausgangs-Buchungs-CSV sind geliefert (Vertiefung bleibt Backlog).
 
 ---
@@ -72,7 +72,7 @@
 ### Fehlende / zu vertiefende Funktionalitäten
 
 1. **Pipeline Auftragsbearbeitung:** Conversion-Rate Angebot → Auftrag, gewichtete Pipeline, erwarteter Umsatz nach Phase.
-2. **Liquidität & Forderungen:** Teilzahlungen/Saldo **pro Rechnung** sind erfasst; mandantenweite **OP-Liste** inkl. CSV unter `/web/sales/invoices/open` umgesetzt (optional `projectId`-Filter fuer Projektkontext); **Mahnwesen (manuell)** inkl. Historie + PDF/Druck ist umgesetzt; **Mahntexte und optionale Mahngebuehr** pro Mandant (Stufe 1–10, `de`/`en`) unter Einstellungen, genutzt in PDF/Druck inkl. Platzhalter-Auflösung (z. B. Belegnr./Betrag/Fälligkeit). Zudem sind **E-Mail-Spike** (Dry-Run + optional SMTP-Send), **CAMT-Matching-Spike** (Top-Kandidat + Buchung im Rechnungsdetail) und **CAMT-Dateiimport-MVP** (XML-Upload, Vorschau/Kandidaten auf der OP-Seite, keine Auto-Buchung) umgesetzt. Projekt-Hub zeigt eine projektbezogene OP-Karte. Weiterhin offen: Forecast (Zinslauf, Skonto), Sammelzahlungen/Mehrfachzuordnung.
+2. **Liquidität & Forderungen:** Teilzahlungen/Saldo **pro Rechnung** sind erfasst; mandantenweite **OP-Liste** inkl. CSV unter `/web/sales/invoices/open` umgesetzt (optional `projectId`-Filter fuer Projektkontext); **Mahnwesen (manuell)** inkl. Historie + PDF/Druck ist umgesetzt; **Mahntexte und optionale Mahngebuehr** pro Mandant (Stufe 1–10, `de`/`en`) unter Einstellungen, genutzt in PDF/Druck inkl. Platzhalter-Auflösung (z. B. Belegnr./Betrag/Fälligkeit). Zudem sind **E-Mail-Spike** (Dry-Run + optional SMTP-Send), **CAMT-Matching-Spike** (Top-Kandidat + Buchung im Rechnungsdetail), **CAMT-Dateiimport** (XML-Upload, Vorschau, Persistenz/Idempotenz, Historie) und **Sammelzahlungen/Mehrfachzuordnung** (Batch-API + OP-UI; mehrere CAMT-Zeilen → Sammelzahlung) umgesetzt. Projekt-Hub zeigt eine projektbezogene OP-Karte. Weiterhin offen: Forecast (Zinslauf, Skonto), produktiver Mailversand (Queue/Retry).
 3. **Projekt-/Baustellen-KPIs:** Budget vs. Ist (wenn Kosten/Zeiten ergänzt werden), Deckungsbeitrag.
 4. **Team-Auslastung:** Kapazität vs. geplante Stunden (benötigt Verknüpfung Planung ↔ Projekt und ggf. Zeiterfassung).
 5. **Material & Bestellungen:** (falls eingeführt) kritische Liefertermine, Nachbestellungen — aktuell kein Modul im Screenshot, fachlich aber relevant.
@@ -131,7 +131,7 @@
 5. **Lieferscheine / Leistungsnachweise** als eigener Belegtyp (Material und/oder Stunden/Leistung) — oft **Voraussetzung** für spätere Rechnung und Streitbeilegung.
 6. **Auftragsbestätigung** (vom angenommenen Angebot) als eigener Schritt inkl. Bedingungen.
 7. **Mahnwesen:** manuelle Mahnstufen + Historie + PDF/Druck sind umgesetzt; **Templates + optionale Gebuehr** (PDF/Druck, Einstellungen) umgesetzt; Platzhalter im Text sind umgesetzt; **E-Mail-Spike** im Rechnungsdetail ist umgesetzt. Offen: produktiver Versandprozess (Queue/Retry/Audit), automatische Eskalation.
-8. **Zahlungsabgleich:** **Teilzahlungen und Saldo pro Rechnung** sind umgesetzt (API + UI); **einzelne Zahlungszeilen löschen** (Korrektur) umgesetzt; **CAMT-Zuordnungs-Spike** (Kandidaten-Ranking + Top-Match-Buchung) und **CAMT-Dateiimport-MVP** (Vorschau aus CAMT-XML auf der OP-Seite, keine Massen-Buchung) sind umgesetzt. Weiterhin offen: **Sammelzahlungen**, Zuordnung einer Bankzahlung zu **mehreren** Rechnungen, Ausgleich gegen Kundenkonto, ggf. persistierter Bankimport.
+8. **Zahlungsabgleich:** **Teilzahlungen und Saldo pro Rechnung** sind umgesetzt (API + UI); **einzelne Zahlungszeilen löschen** (Korrektur) umgesetzt; **CAMT-Zuordnungs-Spike** (Kandidaten-Ranking + Top-Match-Buchung), **CAMT-Dateiimport** (Vorschau, Persistenz/Idempotenz, Historie; keine Massen-Auto-Buchung) und **Sammelzahlungen** (eine Buchung, mehrere Rechnungen/Teilbeträge) sind umgesetzt. Weiterhin offen: Ausgleich gegen **Kundenkonto** (außerhalb der OP-Sammelzahlung), produktiver Bankimport **ohne** manuelle OP-Zuordnung (z. B. HBCI/PSD2), falls gewünscht.
 9. **Elektronische Rechnung:** **XRechnung / ZUGFeRD** (Deutschland/EU-Trend) — Architektur früh mitdenken.
 10. **GoBD / Unveränderbarkeit:** revisionssichere Ablage, Revisionen von Belegen, Löschverbote nach Finalisierung.
 11. **DATEV-Export:** im System angebunden (Settings + Buchungs-CSV fuer Ausgangsrechnungen) — fachliche Vollständigkeit Buchungsstapel (z. B. Zahlungsbuchungen/erweiterte Mapping-Faelle) bleibt offen.
@@ -217,7 +217,7 @@ Für **Auftragsbearbeitung + Rechnungswesen** Maler/Lackierer typischerweise:
 1. **Stammdaten konsolidieren:** Projekt ↔ Kunde ↔ Baustelle.  
 2. **Scheduling mit Projekt/Baustelle verknüpfen.**  
 3. **Zeiterfassung** mit Projektbezug.  
-4. **Mahn- und Zahlungsabgleich** bei Rechnungen — Teilzahlungen/Saldo **v1**, OP-Liste/CSV und Korrektur Zahlungszeile **v2**, Mahnung/Historie + PDF/Druck **v3**, Mahntext-Templates/Gebuehr **v4**, E-Mail-/CAMT-Spike **v5-Basis** und **CAMT-Dateiimport-Vorschau (MVP)** erledigt; **Sammelzahlungen** und produktiver Mailversand **offen**.  
+4. **Mahn- und Zahlungsabgleich** bei Rechnungen — Teilzahlungen/Saldo **v1**, OP-Liste/CSV und Korrektur Zahlungszeile **v2**, Mahnung/Historie + PDF/Druck **v3**, Mahntext-Templates/Gebuehr **v4**, E-Mail-/CAMT-Spike **v5-Basis**, **CAMT-Dateiimport** (inkl. Persistenz/Historie) und **Sammelzahlungen** (inkl. CAMT-Mehrfach-Prefill) erledigt; produktiver Mailversand **offen**.  
 5. **Steuer/Belegtiefe** nach Zielmarkt (DE).  
 6. **XRechnung / ZUGFeRD starten** und **DATEV** qualitativ vertiefen.  
 7. **Material/Purchase** anbinden, sobald Kataloge im Produkt genutzt werden.
