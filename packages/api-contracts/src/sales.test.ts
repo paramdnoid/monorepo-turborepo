@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  salesCamtImportResponseSchema,
+  salesCamtMatchResponseSchema,
   salesCreateInvoiceFromQuoteSchema,
   salesInvoiceDetailResponseSchema,
   salesInvoicesListQuerySchema,
@@ -127,6 +129,49 @@ test("salesOpenInvoicesListResponseSchema parses list payload", () => {
       canExport: true,
       canBatch: true,
     },
+  });
+  assert.equal(parsed.success, true);
+});
+
+test("salesCamtImportResponseSchema parses import preview", () => {
+  const parsed = salesCamtImportResponseSchema.safeParse({
+    parseWarnings: [],
+    candidateLimit: 5,
+    entries: [
+      {
+        lineIndex: 0,
+        cdtDbtInd: "CRDT",
+        amountCents: 5000,
+        currency: "EUR",
+        bookingDate: "2026-04-01",
+        paidAtIso: "2026-04-01T12:00:00.000Z",
+        remittanceInfo: "INV-1",
+        debtorName: "Acme",
+        skipped: false,
+        matches: [],
+        suggestedInvoiceId: null,
+      },
+    ],
+  });
+  assert.equal(parsed.success, true);
+});
+
+test("salesCamtMatchResponseSchema parses ranked candidates", () => {
+  const parsed = salesCamtMatchResponseSchema.safeParse({
+    matches: [
+      {
+        invoiceId: "123e4567-e89b-12d3-a456-426614174000",
+        documentNumber: "RE-2026-15",
+        customerLabel: "Muster GmbH",
+        currency: "EUR",
+        balanceCents: 5000,
+        dueAt: "2026-02-01T12:00:00.000Z",
+        score: 140,
+        confidence: "high",
+        reasons: ["document_number_match", "exact_balance_match"],
+      },
+    ],
+    suggestedInvoiceId: "123e4567-e89b-12d3-a456-426614174000",
   });
   assert.equal(parsed.success, true);
 });

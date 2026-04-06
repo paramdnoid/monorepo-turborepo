@@ -215,6 +215,7 @@ export function WebSalesReminderTemplatesCard() {
         <CardDescription>{copy.cardDescription}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        <p className="text-xs text-muted-foreground">{copy.placeholdersHint}</p>
         <div
           className="flex flex-wrap gap-2"
           role="group"
@@ -261,7 +262,7 @@ export function WebSalesReminderTemplatesCard() {
                   }}
                   rows={4}
                   placeholder={copy.bodyHint}
-                  className="min-h-[5rem] resize-y"
+                  className="min-h-20 resize-y"
                 />
                 <Field className="gap-1.5">
                   <FieldLabel htmlFor={`reminder-fee-${r.level}`}>

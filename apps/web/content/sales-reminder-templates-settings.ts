@@ -3,6 +3,7 @@ import type { Locale } from "@/lib/i18n/locale";
 export type SalesReminderTemplatesSettingsCopy = {
   cardTitle: string;
   cardDescription: string;
+  placeholdersHint: string;
   localeDe: string;
   localeEn: string;
   levelLabel: (n: number) => string;
@@ -21,6 +22,8 @@ const de: SalesReminderTemplatesSettingsCopy = {
   cardTitle: "Mahntexte & Mahngebuehr",
   cardDescription:
     "Fließtext pro Mahnstufe (1–10) und Sprache. Leeres Feld: Standardformulierung. Optionale Mahngebuehr erscheint in PDF und Druckansicht.",
+  placeholdersHint:
+    "Platzhalter: {{invoiceNumber}}, {{customerName}}, {{dueDate}}, {{openBalance}}, {{total}}, {{reminderLevel}}, {{reminderDate}}",
   localeDe: "Deutsch",
   localeEn: "Englisch",
   levelLabel: (n) => `Stufe ${n}`,
@@ -39,6 +42,8 @@ const en: SalesReminderTemplatesSettingsCopy = {
   cardTitle: "Reminder wording & fee",
   cardDescription:
     "Intro text per reminder level (1–10) and language. Empty field: default copy. Optional reminder fee appears in PDF and print.",
+  placeholdersHint:
+    "Placeholders: {{invoiceNumber}}, {{customerName}}, {{dueDate}}, {{openBalance}}, {{total}}, {{reminderLevel}}, {{reminderDate}}",
   localeDe: "German",
   localeEn: "English",
   levelLabel: (n) => `Level ${n}`,

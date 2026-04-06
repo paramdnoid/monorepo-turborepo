@@ -123,6 +123,47 @@ export function salesDefaultReminderIntro(lang: SalesPdfLang): string {
   return labels[lang].reminderIntro;
 }
 
+export type SalesReminderTemplateInterpolationInput = {
+  invoiceDocumentNumber: string;
+  customerLabel: string;
+  dueAt: string | null;
+  issuedAt: string | null;
+  totalCents: number;
+  balanceCents: number;
+  currency: string;
+  reminderLevel: number;
+  reminderSentAt: string;
+};
+
+/**
+ * Ersetzt bekannte Platzhalter im Mahn-Fließtext.
+ * Unbekannte Platzhalter bleiben unverändert, damit Tippfehler sichtbar bleiben.
+ */
+export function interpolateSalesReminderTemplateText(params: {
+  templateText: string;
+  lang: SalesPdfLang;
+  values: SalesReminderTemplateInterpolationInput;
+}): string {
+  const { templateText, lang, values } = params;
+  const entries: Record<string, string> = {
+    invoiceNumber: values.invoiceDocumentNumber,
+    documentNumber: values.invoiceDocumentNumber,
+    customerName: values.customerLabel,
+    customerLabel: values.customerLabel,
+    dueDate: formatPdfDate(values.dueAt, lang),
+    issuedDate: formatPdfDate(values.issuedAt, lang),
+    reminderDate: formatPdfDate(values.reminderSentAt, lang),
+    reminderLevel: String(values.reminderLevel),
+    openBalance: formatMoney(values.balanceCents, values.currency, lang),
+    total: formatMoney(values.totalCents, values.currency, lang),
+    currency: values.currency,
+  };
+  return templateText.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (full, keyRaw) => {
+    const key = String(keyRaw);
+    return entries[key] ?? full;
+  });
+}
+
 export type SalesLetterhead = {
   orgName: string;
   senderAddress: string | null;

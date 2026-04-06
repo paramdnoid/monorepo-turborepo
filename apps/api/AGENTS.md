@@ -79,7 +79,7 @@ pnpm --filter api run check:auth-env         # Issuer/JWKS prüfen (nach AUTH_* 
 ## Lokaler End-to-End-Ablauf (Postgres + Seed + Smoke)
 
 1. Postgres starten, z. B. `docker compose -f docker-compose.postgres.yml up -d` (siehe Repo-Root).
-2. Repo-Root: `cp .env.example .env.local` (falls noch nicht vorhanden) und `DATABASE_URL` prüfen.
+2. Repo-Root: `cp .env.example .env.local` (falls noch nicht vorhanden) — **`DATABASE_URL`** ist in `.env.example` für lokale Compose-Postgres vorbefüllt; Smoke ersetzt sie nur, wenn die Variable fehlt/leer ist.
 3. `./scripts/local-api-smoke.sh` — führt Migration und **`pnpm --filter api run smoke:http`** aus (Mock-JWT + echte DB, Mandant wird im Smoke angelegt; kein Keycloak).
 4. **Echtes Keycloak-Token + provisionierte Org:** siehe **[`KEYCLOAK-E2E-RUNBOOK.md`](./KEYCLOAK-E2E-RUNBOOK.md)** (`e2e:keycloak`, curl, Weg A/B für `organizations`).
 

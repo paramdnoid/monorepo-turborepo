@@ -331,6 +331,74 @@ export type SalesCreateInvoicePaymentInput = z.infer<
   typeof salesCreateInvoicePaymentSchema
 >;
 
+/** CAMT-/Kontoauszug-Zeile als Input für Zuordnungsvorschläge auf OP-Rechnungen. */
+export const salesCamtMatchRequestSchema = z.object({
+  amountCents: z.number().int().min(1).max(1_000_000_000_000),
+  /** ISO-8601 (Buchungsdatum). */
+  paidAt: z.string().trim().min(1),
+  remittanceInfo: z.string().trim().max(4000).optional(),
+  debtorName: z.string().trim().max(400).optional(),
+  candidateLimit: z.number().int().min(1).max(20).optional(),
+});
+
+export type SalesCamtMatchRequest = z.infer<typeof salesCamtMatchRequestSchema>;
+
+export const salesCamtMatchConfidenceSchema = z.enum(["high", "medium", "low"]);
+
+export type SalesCamtMatchConfidence = z.infer<
+  typeof salesCamtMatchConfidenceSchema
+>;
+
+export const salesCamtMatchCandidateSchema = z.object({
+  invoiceId: z.string().uuid(),
+  documentNumber: z.string(),
+  customerLabel: z.string(),
+  currency: z.string(),
+  balanceCents: z.number().int(),
+  dueAt: z.string().nullable(),
+  score: z.number().int(),
+  confidence: salesCamtMatchConfidenceSchema,
+  reasons: z.array(z.string()),
+});
+
+export type SalesCamtMatchCandidate = z.infer<
+  typeof salesCamtMatchCandidateSchema
+>;
+
+export const salesCamtMatchResponseSchema = z.object({
+  matches: z.array(salesCamtMatchCandidateSchema),
+  suggestedInvoiceId: z.string().uuid().nullable(),
+});
+
+export type SalesCamtMatchResponse = z.infer<typeof salesCamtMatchResponseSchema>;
+
+export const salesCamtCdtDbtIndSchema = z.enum(["CRDT", "DBIT", "UNKNOWN"]);
+
+export const salesCamtImportEntrySchema = z.object({
+  lineIndex: z.number().int().nonnegative(),
+  cdtDbtInd: salesCamtCdtDbtIndSchema,
+  amountCents: z.number().int(),
+  currency: z.string(),
+  bookingDate: z.string().nullable(),
+  paidAtIso: z.string().nullable(),
+  remittanceInfo: z.string(),
+  debtorName: z.string(),
+  skipped: z.boolean(),
+  skipReason: z.enum(["not_credit", "no_amount"]).optional(),
+  matches: z.array(salesCamtMatchCandidateSchema),
+  suggestedInvoiceId: z.string().uuid().nullable(),
+});
+
+export type SalesCamtImportEntry = z.infer<typeof salesCamtImportEntrySchema>;
+
+export const salesCamtImportResponseSchema = z.object({
+  parseWarnings: z.array(z.string()),
+  candidateLimit: z.number().int().min(1).max(20),
+  entries: z.array(salesCamtImportEntrySchema),
+});
+
+export type SalesCamtImportResponse = z.infer<typeof salesCamtImportResponseSchema>;
+
 /** Body für POST /v1/sales/invoices/:id/reminders */
 export const salesCreateInvoiceReminderSchema = z.object({
   level: z.number().int().min(1).max(10),
@@ -359,3 +427,27 @@ export const salesInvoiceDetailSchema = salesInvoiceListItemSchema.extend({
 export const salesInvoiceDetailResponseSchema = z.object({
   invoice: salesInvoiceDetailSchema,
 });
+
+/** Technischer Spike: manuelles Testen von Reminder-E-Mail ohne Auto-Lauf. */
+export const salesReminderEmailSpikeRequestSchema = z.object({
+  to: z.string().trim().email(),
+  locale: z.enum(["de", "en"]).optional(),
+  dryRun: z.boolean().optional(),
+});
+
+export type SalesReminderEmailSpikeRequest = z.infer<
+  typeof salesReminderEmailSpikeRequestSchema
+>;
+
+export const salesReminderEmailSpikeResponseSchema = z.object({
+  to: z.string().email(),
+  subject: z.string(),
+  bodyText: z.string(),
+  smtpConfigured: z.boolean(),
+  dryRun: z.boolean(),
+  delivered: z.boolean(),
+});
+
+export type SalesReminderEmailSpikeResponse = z.infer<
+  typeof salesReminderEmailSpikeResponseSchema
+>;

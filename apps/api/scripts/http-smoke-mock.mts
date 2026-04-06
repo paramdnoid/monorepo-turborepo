@@ -5,13 +5,17 @@
  * `organizations` an (gleiche Logik wie `provisionOrganizationIfAbsent`), damit kein
  * separates `db:seed` nötig ist.
  *
- *   DATABASE_URL in Repo-Root `.env.local` (siehe `/.env.example`)
+ *   Optional: `DATABASE_URL` in Repo-Root `.env` / `.env.local` (siehe `/.env.example`).
+ *   Fehlt sie, nutzt der Smoke die lokale Standard-URL aus `docker-compose.postgres.yml`
+ *   (`postgresql://postgres:postgres@127.0.0.1:5432/zunftgewerk`).
+ *
  *   pnpm --filter api run smoke:http
  *
  * Deckt u. a. ab: `/v1/sync` (Idempotency-Key pro Lauf per `randomUUID()`),
  * Sales, Kunden, **Scheduling mit `projectId`** (inkl. gefilterter Liste + ICS),
  * **Work-Time** (`/v1/work-time/entries`: Liste, Create, gefilterte Liste, Delete),
- * DATEV-Settings und Buchungs-CSV, **Sales-Mahntext-Templates** (`GET`/`PUT /v1/sales/reminder-templates`, `GET …/resolved`).
+ * DATEV-Settings und Buchungs-CSV, **Sales-Mahntext-Templates** (`GET`/`PUT /v1/sales/reminder-templates`, `GET …/resolved`),
+ * **CAMT-Import-Vorschau** (`POST /v1/sales/invoices/camt-import`, multipart `file`).
  */
 import { randomUUID } from "node:crypto";
 import { config } from "dotenv";
@@ -32,6 +36,21 @@ const repoRoot = resolve(__dirname, "../../..");
 config({ path: join(repoRoot, ".env") });
 config({ path: join(repoRoot, ".env.local"), override: true });
 
+/** Gleiche Credentials/DB wie `docker-compose.postgres.yml` (Kommentar dort). */
+const DEFAULT_SMOKE_DATABASE_URL =
+  "postgresql://postgres:postgres@127.0.0.1:5432/zunftgewerk";
+
+function resolveSmokeDatabaseUrl(): string {
+  const fromEnv = process.env.DATABASE_URL?.trim();
+  if (fromEnv) return fromEnv;
+  console.warn(
+    "Smoke: DATABASE_URL nicht gesetzt — verwende lokale Standard-URL (docker-compose.postgres.yml).",
+  );
+  return DEFAULT_SMOKE_DATABASE_URL;
+}
+
+process.env.DATABASE_URL = resolveSmokeDatabaseUrl();
+
 const tenantId = process.env.SEED_TENANT_ID?.trim() || "local-dev-tenant";
 const orgName = process.env.SEED_ORG_NAME?.trim() || "Local Dev GmbH";
 const tradeSlug = process.env.SEED_TRADE_SLUG?.trim() || "maler";
@@ -41,7 +60,9 @@ const { getOptionalDb } = await import("../src/db.js");
 
 const db = getOptionalDb();
 if (!db) {
-  console.error("DATABASE_URL fehlt (Smoke braucht echte DB).");
+  console.error(
+    "Smoke: Datenbank-Client konnte nicht initialisiert werden (DATABASE_URL unerwartet leer).",
+  );
   process.exit(1);
 }
 
@@ -138,6 +159,112 @@ const quotesListText = await quotesListRes.text();
 console.log("GET /v1/sales/quotes", quotesListRes.status, quotesListText);
 
 if (!quotesListRes.ok) {
+  process.exit(1);
+}
+
+function escapeXmlText(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function buildSmokeCamtXml(amountEur: string, remittanceDocumentNumber: string): string {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.053.001.02">
+  <BkToCstmrStmt>
+    <Stmt>
+      <Ntry>
+        <Amt Ccy="EUR">${amountEur}</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <BookgDt><Dt>2026-04-06</Dt></BookgDt>
+        <NtryDtls>
+          <TxDtls>
+            <RmtInf>
+              <Ustrd>${escapeXmlText(remittanceDocumentNumber)}</Ustrd>
+            </RmtInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+    </Stmt>
+  </BkToCstmrStmt>
+</Document>`;
+}
+
+const openItemsRes = await app.request("http://localhost/v1/sales/invoices/open-items", {
+  headers: { Authorization: "Bearer mock" },
+});
+const openItemsText = await openItemsRes.text();
+console.log(
+  "GET /v1/sales/invoices/open-items",
+  openItemsRes.status,
+  openItemsText.slice(0, 200),
+);
+if (!openItemsRes.ok) {
+  process.exit(1);
+}
+type OpenItemsJson = {
+  invoices?: { id: string; documentNumber: string; balanceCents: number }[];
+};
+let openItemsPayload: OpenItemsJson;
+try {
+  openItemsPayload = JSON.parse(openItemsText) as OpenItemsJson;
+} catch {
+  console.error("Smoke: GET /v1/sales/invoices/open-items response is not JSON");
+  process.exit(1);
+}
+const firstOpen = openItemsPayload.invoices?.find((i) => i.balanceCents > 0);
+const camtAmountEur = firstOpen
+  ? (firstOpen.balanceCents / 100).toFixed(2)
+  : "99.99";
+const camtRemittance = firstOpen?.documentNumber ?? "RE-SMOKE-0001";
+const camtXml = buildSmokeCamtXml(camtAmountEur, camtRemittance);
+const camtForm = new FormData();
+camtForm.append(
+  "file",
+  new File([camtXml], "smoke.camt.xml", { type: "application/xml" }),
+);
+const camtImportRes = await app.request(
+  "http://localhost/v1/sales/invoices/camt-import?candidateLimit=3",
+  {
+    method: "POST",
+    headers: { Authorization: "Bearer mock" },
+    body: camtForm,
+  },
+);
+const camtImportText = await camtImportRes.text();
+console.log(
+  "POST /v1/sales/invoices/camt-import",
+  camtImportRes.status,
+  camtImportText.slice(0, 240),
+);
+if (!camtImportRes.ok) {
+  process.exit(1);
+}
+try {
+  const camtJson = JSON.parse(camtImportText) as {
+    candidateLimit: number;
+    entries: {
+      skipped: boolean;
+      suggestedInvoiceId: string | null;
+      matches: { invoiceId: string }[];
+    }[];
+  };
+  if (camtJson.candidateLimit !== 3 || !Array.isArray(camtJson.entries)) {
+    console.error("Smoke: camt-import response shape unexpected");
+    process.exit(1);
+  }
+  const creditEntry = camtJson.entries.find((e) => !e.skipped);
+  if (firstOpen && creditEntry) {
+    const topId =
+      creditEntry.suggestedInvoiceId ?? creditEntry.matches[0]?.invoiceId;
+    if (topId !== firstOpen.id) {
+      console.error("Smoke: camt-import top candidate mismatch", {
+        expected: firstOpen.id,
+        topId,
+      });
+      process.exit(1);
+    }
+  }
+} catch (e) {
+  console.error("Smoke: camt-import JSON invalid", e);
   process.exit(1);
 }
 

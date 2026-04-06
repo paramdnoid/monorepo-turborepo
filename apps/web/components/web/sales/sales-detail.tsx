@@ -5,8 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
 import {
+  salesCamtMatchResponseSchema,
   customerDetailResponseSchema,
   salesInvoiceDetailResponseSchema,
+  salesReminderEmailSpikeResponseSchema,
   salesQuoteDetailResponseSchema,
 } from "@repo/api-contracts";
 import type { z } from "zod";
@@ -170,6 +172,7 @@ export function SalesDetail({
   const [paymentDateYmd, setPaymentDateYmd] = useState(todayYmd);
   const [paymentNote, setPaymentNote] = useState("");
   const [paymentBusy, setPaymentBusy] = useState(false);
+  const [paymentCamtBusy, setPaymentCamtBusy] = useState(false);
   const [confirmDeletePaymentId, setConfirmDeletePaymentId] = useState<
     string | null
   >(null);
@@ -179,6 +182,9 @@ export function SalesDetail({
   const [reminderNote, setReminderNote] = useState("");
   const [reminderBusy, setReminderBusy] = useState(false);
   const [reminderLevelTouched, setReminderLevelTouched] = useState(false);
+  const [reminderEmailBusyId, setReminderEmailBusyId] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     if (mode !== "invoices") return;
@@ -286,6 +292,89 @@ export function SalesDetail({
     }
   };
 
+  const runCamtAssignPayment = async () => {
+    if (paymentCamtBusy) return;
+    if (!detail || detail.mode !== "invoices") return;
+    const inv = detail.data.invoice;
+
+    const amountRaw = window.prompt(paymentCopy.camtPromptAmount, "");
+    if (!amountRaw || amountRaw.trim() === "") return;
+    const cents = parseMajorToMinorUnits(amountRaw, locale);
+    if (cents === null || cents < 1) {
+      toast.error(formCopy.validationAmount);
+      return;
+    }
+
+    const dateRaw = window.prompt(paymentCopy.camtPromptDate, todayYmd());
+    if (!dateRaw || dateRaw.trim() === "") return;
+    const paidAtIso = dateInputToIsoNoon(dateRaw.trim());
+    if (!paidAtIso) {
+      toast.error(paymentCopy.paymentFailed);
+      return;
+    }
+
+    const remittanceInfo =
+      window.prompt(paymentCopy.camtPromptRemittance, "")?.trim() ?? "";
+
+    setPaymentCamtBusy(true);
+    try {
+      const matchRes = await fetch(`/api/web/sales/invoices/camt-match`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amountCents: cents,
+          paidAt: paidAtIso,
+          remittanceInfo: remittanceInfo || undefined,
+          candidateLimit: 3,
+        }),
+      });
+      const matchText = await matchRes.text();
+      const matchJson = parseResponseJson(matchText);
+      if (!matchRes.ok) throw new Error("match_failed");
+      const matchParsed = salesCamtMatchResponseSchema.safeParse(matchJson);
+      if (!matchParsed.success) throw new Error("invalid_payload");
+      const suggestion = matchParsed.data.matches[0];
+      if (!suggestion || !matchParsed.data.suggestedInvoiceId) {
+        toast.error(paymentCopy.camtNoMatch);
+        return;
+      }
+      if (suggestion.invoiceId !== inv.id) {
+        toast.error(`${paymentCopy.camtTopMatchOther} ${suggestion.documentNumber}`);
+        return;
+      }
+      const ok = window.confirm(
+        `${paymentCopy.camtConfirmBook}\n\n${suggestion.documentNumber} · ${suggestion.customerLabel}`,
+      );
+      if (!ok) return;
+
+      const noteValue =
+        remittanceInfo.length > 0
+          ? `CAMT: ${remittanceInfo}`
+          : `CAMT-Match (${suggestion.documentNumber})`;
+      const json = await fetchDocument(
+        `/api/web/sales/invoices/${encodeURIComponent(inv.id)}/payments`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            amountCents: cents,
+            paidAt: paidAtIso,
+            note: noteValue,
+          }),
+        },
+      );
+      const parsed = salesInvoiceDetailResponseSchema.safeParse(json);
+      if (!parsed.success) throw new Error("invalid_payload");
+      setDetail({ mode: "invoices", data: parsed.data });
+      toast.success(paymentCopy.camtBooked);
+    } catch {
+      toast.error(paymentCopy.camtFailed);
+    } finally {
+      setPaymentCamtBusy(false);
+    }
+  };
+
   const runDeleteInvoicePayment = async () => {
     if (paymentDeleteBusy || !confirmDeletePaymentId) return;
     if (!detail || detail.mode !== "invoices") return;
@@ -357,6 +446,106 @@ export function SalesDetail({
       toast.error(reminderErrorText(code));
     } finally {
       setReminderBusy(false);
+    }
+  };
+
+  const runReminderEmailSpike = async (reminderId: string) => {
+    if (!detail || detail.mode !== "invoices") return;
+    if (reminderEmailBusyId) return;
+
+    const to = window.prompt(
+      locale === "en"
+        ? "Recipient email address for reminder spike:"
+        : "Empfaenger-E-Mail fuer den Mahn-Spike:",
+      "",
+    );
+    if (!to || to.trim() === "") return;
+
+    const inv = detail.data.invoice;
+    setReminderEmailBusyId(reminderId);
+    try {
+      const dryRunRes = await fetch(
+        `/api/web/sales/invoices/${encodeURIComponent(inv.id)}/reminders/${encodeURIComponent(reminderId)}/email-spike`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            to: to.trim(),
+            locale: locale === "en" ? "en" : "de",
+            dryRun: true,
+          }),
+        },
+      );
+      const dryRunText = await dryRunRes.text();
+      const dryRunJson = parseResponseJson(dryRunText);
+      if (!dryRunRes.ok) {
+        throw new Error("dry_run_failed");
+      }
+      const dryRunParsed = salesReminderEmailSpikeResponseSchema.safeParse(dryRunJson);
+      if (!dryRunParsed.success) {
+        throw new Error("invalid_payload");
+      }
+
+      const preview = dryRunParsed.data;
+      const wantsSend = window.confirm(
+        locale === "en"
+          ? `Preview created.\n\nSubject: ${preview.subject}\n\nSend this email now?`
+          : `Vorschau erstellt.\n\nBetreff: ${preview.subject}\n\nDiese E-Mail jetzt senden?`,
+      );
+
+      if (!wantsSend) {
+        toast.success(
+          locale === "en"
+            ? "Email preview generated (not sent)."
+            : "E-Mail-Vorschau erstellt (nicht gesendet).",
+        );
+        return;
+      }
+
+      const sendRes = await fetch(
+        `/api/web/sales/invoices/${encodeURIComponent(inv.id)}/reminders/${encodeURIComponent(reminderId)}/email-spike`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            to: to.trim(),
+            locale: locale === "en" ? "en" : "de",
+            dryRun: false,
+          }),
+        },
+      );
+      const sendText = await sendRes.text();
+      const sendJson = parseResponseJson(sendText);
+      if (!sendRes.ok) {
+        throw new Error("send_failed");
+      }
+      const sendParsed = salesReminderEmailSpikeResponseSchema.safeParse(sendJson);
+      if (!sendParsed.success) {
+        throw new Error("invalid_payload");
+      }
+      if (!sendParsed.data.delivered) {
+        toast.error(
+          locale === "en"
+            ? "SMTP not configured; email was not sent."
+            : "SMTP nicht konfiguriert; E-Mail wurde nicht gesendet.",
+        );
+        return;
+      }
+      toast.success(
+        locale === "en"
+          ? "Reminder email sent (spike)."
+          : "Mahn-E-Mail gesendet (Spike).",
+      );
+    } catch {
+      toast.error(
+        locale === "en"
+          ? "Email spike failed."
+          : "E-Mail-Spike fehlgeschlagen.",
+      );
+    } finally {
+      setReminderEmailBusyId(null);
     }
   };
 
@@ -1021,9 +1210,22 @@ export function SalesDetail({
                 type="button"
                 size="sm"
                 onClick={() => void recordInvoicePayment()}
-                disabled={paymentBusy}
+                disabled={paymentBusy || paymentCamtBusy}
               >
                 {paymentBusy ? paymentCopy.submitting : paymentCopy.submit}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => void runCamtAssignPayment()}
+                disabled={paymentBusy || paymentCamtBusy}
+              >
+                {paymentCamtBusy
+                  ? locale === "en"
+                    ? "Matching…"
+                    : "Zuordnung …"
+                  : paymentCopy.camtAssign}
               </Button>
             </div>
           ) : null}
@@ -1054,6 +1256,19 @@ export function SalesDetail({
                       ) : null}
                     </div>
                     <div className="flex shrink-0 items-center gap-1">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="xs"
+                        disabled={reminderEmailBusyId === r.id}
+                        onClick={() => void runReminderEmailSpike(r.id)}
+                      >
+                        {reminderEmailBusyId === r.id
+                          ? locale === "en"
+                            ? "Sending…"
+                            : "Sende …"
+                          : "E-Mail Spike"}
+                      </Button>
                       <Button variant="outline" size="xs" asChild>
                         <Link
                           href={`/web/sales/invoices/${encodeURIComponent(inv.id)}/reminders/${encodeURIComponent(r.id)}/print`}

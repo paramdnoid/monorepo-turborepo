@@ -25,6 +25,31 @@ type ReminderLike = {
   note: string | null;
 };
 
+function interpolateReminderText(template: string, params: {
+  invoice: InvoiceLike;
+  reminder: ReminderLike;
+  locale: Locale;
+}): string {
+  const { invoice, reminder, locale } = params;
+  const entries: Record<string, string> = {
+    invoiceNumber: invoice.documentNumber,
+    documentNumber: invoice.documentNumber,
+    customerName: invoice.customerLabel,
+    customerLabel: invoice.customerLabel,
+    dueDate: formatSalesDocumentDate(invoice.dueAt, locale),
+    issuedDate: formatSalesDocumentDate(invoice.issuedAt, locale),
+    reminderDate: formatSalesDocumentDate(reminder.sentAt, locale),
+    reminderLevel: String(reminder.level),
+    openBalance: formatMinorCurrency(invoice.balanceCents, invoice.currency, locale),
+    total: formatMinorCurrency(invoice.totalCents, invoice.currency, locale),
+    currency: invoice.currency,
+  };
+  return template.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (full, keyRaw) => {
+    const key = String(keyRaw);
+    return entries[key] ?? full;
+  });
+}
+
 function MetaRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="grid grid-cols-[10rem_1fr] gap-2 text-sm">
@@ -69,7 +94,8 @@ export function SalesInvoiceReminderPrint({
     locale === "en"
       ? "Please settle the open balance. If you have already paid, please disregard this message."
       : "Bitte begleichen Sie den offenen Betrag. Falls Sie bereits gezahlt haben, betrachten Sie dieses Schreiben bitte als gegenstandslos.";
-  const intro = introResolved ?? introDefault;
+  const introTemplate = introResolved ?? introDefault;
+  const intro = interpolateReminderText(introTemplate, { invoice, reminder, locale });
 
   const org = me.organization;
   const showSenderPlaceholder =

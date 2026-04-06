@@ -72,6 +72,20 @@ type SalesMessages = {
     paidTotal: string;
     balance: string;
     exportMaxHint: string;
+    camtImportTitle: string;
+    camtImportHint: string;
+    camtImportRun: string;
+    camtImportBusy: string;
+    camtImportError: string;
+    camtImportNoRows: string;
+    camtImportWarnings: string;
+    camtImportColAmount: string;
+    camtImportColDate: string;
+    camtImportColRemittance: string;
+    camtImportColSuggestion: string;
+    camtImportColConfidence: string;
+    camtImportSkipped: string;
+    camtImportOpenInvoice: string;
   };
   invoicePayments: {
     heading: string;
@@ -91,6 +105,15 @@ type SalesMessages = {
     confirmDeletePaymentTitle: string;
     confirmDeletePaymentDesc: string;
     paymentDeleteFailed: string;
+    camtAssign: string;
+    camtPromptAmount: string;
+    camtPromptDate: string;
+    camtPromptRemittance: string;
+    camtNoMatch: string;
+    camtTopMatchOther: string;
+    camtConfirmBook: string;
+    camtBooked: string;
+    camtFailed: string;
   };
   invoiceReminders: {
     heading: string;
@@ -242,6 +265,21 @@ const de: SalesMessages = {
     paidTotal: "Bezahlt",
     balance: "Saldo",
     exportMaxHint: "Export maximal 10.000 Zeilen.",
+    camtImportTitle: "CAMT-Import (Vorschau)",
+    camtImportHint:
+      "CAMT.052/053-XML hochladen: Zeilen werden gelesen und gegen offene Rechnungen gematcht — keine automatische Buchung.",
+    camtImportRun: "Auswerten",
+    camtImportBusy: "Wird ausgewertet …",
+    camtImportError: "CAMT-Import fehlgeschlagen.",
+    camtImportNoRows: "Keine Buchungszeilen im XML gefunden.",
+    camtImportWarnings: "Hinweise",
+    camtImportColAmount: "Betrag",
+    camtImportColDate: "Datum",
+    camtImportColRemittance: "Verwendungszweck",
+    camtImportColSuggestion: "Vorschlag",
+    camtImportColConfidence: "Treffer",
+    camtImportSkipped: "Uebersprungen",
+    camtImportOpenInvoice: "Rechnung oeffnen",
   },
   print: {
     backToDocument: "Zurueck zum Beleg",
@@ -301,6 +339,18 @@ const de: SalesMessages = {
     confirmDeletePaymentDesc:
       "Die Buchung wird gelöscht. Saldo und Status der Rechnung werden neu berechnet.",
     paymentDeleteFailed: "Zahlung konnte nicht entfernt werden.",
+    camtAssign: "CAMT zuordnen",
+    camtPromptAmount: "Betrag aus Kontoauszug (z. B. 120,50):",
+    camtPromptDate: "Buchungsdatum (YYYY-MM-DD):",
+    camtPromptRemittance:
+      "Verwendungszweck / Remittance Info (optional):",
+    camtNoMatch: "Keine passende OP-Rechnung gefunden.",
+    camtTopMatchOther:
+      "Top-Match ist eine andere Rechnung. Bitte dort zuordnen:",
+    camtConfirmBook:
+      "Top-Match ist diese Rechnung. Zahlung jetzt mit CAMT-Notiz buchen?",
+    camtBooked: "Zahlung via CAMT-Zuordnung gebucht.",
+    camtFailed: "CAMT-Zuordnung fehlgeschlagen.",
   },
   invoiceReminders: {
     heading: "Mahnungen",
@@ -459,6 +509,21 @@ const en: SalesMessages = {
     paidTotal: "Paid to date",
     balance: "Open balance",
     exportMaxHint: "Export limited to 10,000 rows.",
+    camtImportTitle: "CAMT import (preview)",
+    camtImportHint:
+      "Upload CAMT.052/053 XML: lines are parsed and matched to open invoices — no automatic booking.",
+    camtImportRun: "Analyze",
+    camtImportBusy: "Analyzing…",
+    camtImportError: "CAMT import failed.",
+    camtImportNoRows: "No statement lines found in the XML.",
+    camtImportWarnings: "Notes",
+    camtImportColAmount: "Amount",
+    camtImportColDate: "Date",
+    camtImportColRemittance: "Remittance",
+    camtImportColSuggestion: "Suggestion",
+    camtImportColConfidence: "Match",
+    camtImportSkipped: "Skipped",
+    camtImportOpenInvoice: "Open invoice",
   },
   print: {
     backToDocument: "Back to document",
@@ -518,6 +583,16 @@ const en: SalesMessages = {
     confirmDeletePaymentDesc:
       "The entry will be deleted. Invoice balance and status will be recalculated.",
     paymentDeleteFailed: "Could not remove payment.",
+    camtAssign: "Match CAMT",
+    camtPromptAmount: "Statement amount (e.g. 120.50):",
+    camtPromptDate: "Booking date (YYYY-MM-DD):",
+    camtPromptRemittance: "Remittance info (optional):",
+    camtNoMatch: "No matching open invoice found.",
+    camtTopMatchOther: "Top match points to another invoice:",
+    camtConfirmBook:
+      "Top match is this invoice. Book payment now with CAMT note?",
+    camtBooked: "Payment booked via CAMT match.",
+    camtFailed: "CAMT matching failed.",
   },
   invoiceReminders: {
     heading: "Reminders",

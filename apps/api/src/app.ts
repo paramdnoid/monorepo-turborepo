@@ -58,6 +58,8 @@ import {
   createSalesReminderTemplatesResolvedHandler,
   createSalesInvoiceFromQuotePostHandler,
   createSalesInvoiceCancelPostHandler,
+  createSalesCamtMatchPostHandler,
+  createSalesCamtImportPostHandler,
   createSalesInvoicePaymentPostHandler,
   createSalesInvoicePaymentDeleteHandler,
   createSalesInvoiceReminderPostHandler,
@@ -202,6 +204,8 @@ export function createApp(options?: CreateAppOptions) {
   const salesInvoicesList = createSalesInvoicesListHandler(getDb);
   const salesOpenInvoicesList = createSalesOpenInvoicesListHandler(getDb);
   const salesOpenInvoicesExport = createSalesOpenInvoicesExportGetHandler(getDb);
+  const salesCamtMatchPost = createSalesCamtMatchPostHandler(getDb);
+  const salesCamtImportPost = createSalesCamtImportPostHandler(getDb);
   const salesInvoicePost = createSalesInvoicePostHandler(getDb);
   const salesInvoiceLinePost = createSalesInvoiceLinePostHandler(getDb);
   const salesInvoiceLinesReorder = createSalesInvoiceLinesReorderHandler(getDb);
@@ -514,6 +518,8 @@ export function createApp(options?: CreateAppOptions) {
     salesOpenInvoicesExport,
   );
   v1.get("/sales/invoices/open-items", orgMiddleware, salesOpenInvoicesList);
+  v1.post("/sales/invoices/camt-match", orgMiddleware, salesCamtMatchPost);
+  v1.post("/sales/invoices/camt-import", orgMiddleware, salesCamtImportPost);
   v1.get(
     "/sales/reminder-templates/resolved",
     orgMiddleware,

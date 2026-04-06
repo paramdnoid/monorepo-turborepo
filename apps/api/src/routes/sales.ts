@@ -32,6 +32,8 @@ import {
   salesQuotesSortBySchema,
   salesPatchInvoiceLineSchema,
   salesCreateInvoicePaymentSchema,
+  salesCamtMatchRequestSchema,
+  salesCamtImportResponseSchema,
   salesCreateInvoiceReminderSchema,
   salesPatchInvoiceSchema,
   salesPatchQuoteLineSchema,
@@ -66,6 +68,7 @@ import {
   buildInvoicePdfBuffer,
   buildInvoiceReminderPdfBuffer,
   buildQuotePdfBuffer,
+  interpolateSalesReminderTemplateText,
   salesPdfFilename,
   salesReminderPdfFilename,
   salesDefaultReminderIntro,
@@ -77,6 +80,10 @@ import {
   canEditTeamPalette,
 } from "../auth/permissions.js";
 import type { AuthContext } from "../auth/verify-token.js";
+import {
+  parseCamtBankToCustomerXml,
+  rankOpenInvoicesForCamt,
+} from "../sales-camt.js";
 
 async function letterheadForPdf(org: {
   name: string;
@@ -1182,6 +1189,198 @@ export function createSalesOpenInvoicesExportGetHandler(
       "Cache-Control": "private, no-store",
       "Content-Disposition": `attachment; filename="${filename}"`,
     });
+  };
+}
+
+export function createSalesCamtMatchPostHandler(getDb: () => Db | undefined) {
+  return async (c: Context) => {
+    const auth = c.get("auth");
+    if (!auth) return c.json({ error: "missing_auth" }, 500);
+    if (!canEditSalesDocuments(auth)) return c.json({ error: "forbidden" }, 403);
+    const db = getDb();
+    if (!db) return c.json({ error: "database_unavailable" }, 503);
+
+    let body: unknown;
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ error: "invalid_json" }, 400);
+    }
+    const parsed = salesCamtMatchRequestSchema.safeParse(body);
+    if (!parsed.success) return c.json({ error: "validation_error" }, 400);
+
+    const paidAt = new Date(parsed.data.paidAt);
+    if (Number.isNaN(paidAt.getTime())) {
+      return c.json({ error: "invalid_paid_at" }, 400);
+    }
+
+    const tenantId = auth.tenantId;
+    const payAgg = buildSalesOpenInvoicesPayAggSubquery(db, tenantId);
+    const balanceExpr = sqlInvoiceBalanceCents(payAgg);
+    const rows = await db
+      .select({
+        id: salesInvoices.id,
+        documentNumber: salesInvoices.documentNumber,
+        customerLabel: salesInvoices.customerLabel,
+        currency: salesInvoices.currency,
+        dueAt: salesInvoices.dueAt,
+        balanceCents: sql<number>`(${balanceExpr})::int`.mapWith(Number),
+      })
+      .from(salesInvoices)
+      .leftJoin(payAgg, eq(salesInvoices.id, payAgg.invoiceId))
+      .where(
+        and(
+          eq(salesInvoices.tenantId, tenantId),
+          ne(salesInvoices.status, "cancelled"),
+          sql`${balanceExpr} > 0`,
+        ),
+      )
+      .limit(250);
+
+    const remittanceInfo = parsed.data.remittanceInfo ?? "";
+    const debtorName = parsed.data.debtorName ?? "";
+    const ranked = rankOpenInvoicesForCamt(rows, {
+      amountCents: parsed.data.amountCents,
+      remittanceInfo,
+      debtorName,
+      candidateLimit: parsed.data.candidateLimit ?? 5,
+    });
+    return c.json(ranked);
+  };
+}
+
+const MAX_CAMT_UPLOAD_BYTES = 2_000_000;
+
+export function createSalesCamtImportPostHandler(getDb: () => Db | undefined) {
+  return async (c: Context) => {
+    const auth = c.get("auth");
+    if (!auth) return c.json({ error: "missing_auth" }, 500);
+    if (!canEditSalesDocuments(auth)) return c.json({ error: "forbidden" }, 403);
+    const db = getDb();
+    if (!db) return c.json({ error: "database_unavailable" }, 503);
+
+    const contentType = c.req.header("content-type") ?? "";
+    let xml: string;
+    if (contentType.includes("multipart/form-data")) {
+      let body: Record<string, unknown>;
+      try {
+        body = (await c.req.parseBody()) as Record<string, unknown>;
+      } catch {
+        return c.json({ error: "invalid_multipart" }, 400);
+      }
+      const file = body.file;
+      if (!file || typeof file === "string") {
+        return c.json({ error: "missing_file" }, 400);
+      }
+      const blob = file as Blob;
+      if (blob.size > MAX_CAMT_UPLOAD_BYTES) {
+        return c.json({ error: "file_too_large" }, 413);
+      }
+      xml = await blob.text();
+    } else if (
+      contentType.includes("application/xml") ||
+      contentType.includes("text/xml")
+    ) {
+      const buf = await c.req.arrayBuffer();
+      if (buf.byteLength > MAX_CAMT_UPLOAD_BYTES) {
+        return c.json({ error: "file_too_large" }, 413);
+      }
+      xml = new TextDecoder("utf-8").decode(buf);
+    } else {
+      return c.json({ error: "unsupported_content_type" }, 415);
+    }
+
+    const rawLimit = c.req.query("candidateLimit");
+    const limitN = rawLimit ? Number(rawLimit) : 5;
+    const candidateLimit =
+      Number.isInteger(limitN) && limitN >= 1 && limitN <= 20 ? limitN : 5;
+
+    const { warnings: parseWarnings, lines: parsedLines } =
+      parseCamtBankToCustomerXml(xml);
+
+    const tenantId = auth.tenantId;
+    const payAgg = buildSalesOpenInvoicesPayAggSubquery(db, tenantId);
+    const balanceExpr = sqlInvoiceBalanceCents(payAgg);
+    const rows = await db
+      .select({
+        id: salesInvoices.id,
+        documentNumber: salesInvoices.documentNumber,
+        customerLabel: salesInvoices.customerLabel,
+        currency: salesInvoices.currency,
+        dueAt: salesInvoices.dueAt,
+        balanceCents: sql<number>`(${balanceExpr})::int`.mapWith(Number),
+      })
+      .from(salesInvoices)
+      .leftJoin(payAgg, eq(salesInvoices.id, payAgg.invoiceId))
+      .where(
+        and(
+          eq(salesInvoices.tenantId, tenantId),
+          ne(salesInvoices.status, "cancelled"),
+          sql`${balanceExpr} > 0`,
+        ),
+      )
+      .limit(250);
+
+    const openRows = rows.map((r) => ({
+      id: r.id,
+      documentNumber: r.documentNumber,
+      customerLabel: r.customerLabel,
+      currency: r.currency,
+      dueAt: r.dueAt,
+      balanceCents: r.balanceCents,
+    }));
+
+    const entries = parsedLines.map((line) => {
+      if (line.cdtDbtInd !== "CRDT" || line.amountCents < 1) {
+        return {
+          lineIndex: line.lineIndex,
+          cdtDbtInd: line.cdtDbtInd,
+          amountCents: line.amountCents,
+          currency: line.currency,
+          bookingDate: line.bookingDate,
+          paidAtIso: line.paidAtIso,
+          remittanceInfo: line.remittanceInfo,
+          debtorName: line.debtorName,
+          skipped: true as const,
+          skipReason:
+            line.cdtDbtInd !== "CRDT" ? ("not_credit" as const) : ("no_amount" as const),
+          matches: [],
+          suggestedInvoiceId: null,
+        };
+      }
+
+      const ranked = rankOpenInvoicesForCamt(openRows, {
+        amountCents: line.amountCents,
+        remittanceInfo: line.remittanceInfo,
+        debtorName: line.debtorName,
+        candidateLimit,
+      });
+
+      return {
+        lineIndex: line.lineIndex,
+        cdtDbtInd: line.cdtDbtInd,
+        amountCents: line.amountCents,
+        currency: line.currency,
+        bookingDate: line.bookingDate,
+        paidAtIso: line.paidAtIso,
+        remittanceInfo: line.remittanceInfo,
+        debtorName: line.debtorName,
+        skipped: false as const,
+        matches: ranked.matches,
+        suggestedInvoiceId: ranked.suggestedInvoiceId,
+      };
+    });
+
+    const payload = {
+      parseWarnings: parseWarnings,
+      candidateLimit,
+      entries,
+    };
+    const safe = salesCamtImportResponseSchema.safeParse(payload);
+    if (!safe.success) {
+      return c.json({ error: "response_serialization" }, 500);
+    }
+    return c.json(safe.data);
   };
 }
 
@@ -3016,12 +3215,27 @@ export function createSalesInvoiceReminderPdfHandler(getDb: () => Db | undefined
       lang,
       reminder.level,
     );
+    const introResolved = interpolateSalesReminderTemplateText({
+      templateText: introText,
+      lang,
+      values: {
+        invoiceDocumentNumber: payload.invoice.documentNumber,
+        customerLabel: payload.invoice.customerLabel,
+        dueAt: payload.invoice.dueAt,
+        issuedAt: payload.invoice.issuedAt,
+        totalCents: payload.invoice.totalCents,
+        balanceCents: payload.invoice.balanceCents,
+        currency: payload.invoice.currency,
+        reminderLevel: reminder.level,
+        reminderSentAt: reminder.sentAt,
+      },
+    });
     const buf = await buildInvoiceReminderPdfBuffer({
       letterhead,
       invoice: payload.invoice,
       reminder,
       lang,
-      introText,
+      introText: introResolved,
       feeCents,
     });
     const filename = salesReminderPdfFilename(

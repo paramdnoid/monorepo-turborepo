@@ -171,7 +171,7 @@ Some asset/config-only packages (`@repo/fonts`, `@repo/brand`, `@repo/tailwind-c
 
 ## Environment variables
 
-Never commit secrets. Use `.env.example` (committed) for placeholder names only; keep real values in `.env.local` or your host’s secret store (see root and app `.gitignore` for `.env*` patterns). Variables prefixed with `NEXT_PUBLIC_` are exposed to the browser — set them only when that is intentional.
+Never commit secrets. Use `.env.example` (committed) for variable names and **non-secret local defaults** (e.g. `DATABASE_URL` matching `docker-compose.postgres.yml`); keep real secrets and production values in `.env.local` or your host’s secret store (see root and app `.gitignore` for `.env*` patterns). Variables prefixed with `NEXT_PUBLIC_` are exposed to the browser — set them only when that is intentional.
 
 **Where apps load env (runtime):** the repo uses a **single root** for local files — **`web`** loads via `nextEnv.loadEnvConfig` pointed at the repo root ([`apps/web/next.config.js`](apps/web/next.config.js)); **`api`** loads **`/.env`** then **`/.env.local`** from the repo root ([`apps/api/src/server.ts`](apps/api/src/server.ts)); **`desktop`** (Vite) uses `envDir` = repo root ([`apps/desktop/vite.config.ts`](apps/desktop/vite.config.ts)). Details and copy-paste examples: root [`.env.example`](.env.example).
 

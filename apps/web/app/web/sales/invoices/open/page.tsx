@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { SalesCamtImportPanel } from "@/components/web/sales/sales-camt-import-panel";
 import { SalesOpenInvoicesList } from "@/components/web/sales/sales-open-invoices-list";
 import { getSalesTableCopy, getSalesHeaderMeta } from "@/content/sales-module";
 import { getServerLocale } from "@/lib/i18n/server-locale";
@@ -32,6 +33,7 @@ export default async function SalesOpenInvoicesPage({
           <Link href="/web/sales/invoices">{copy.backToList}</Link>
         </Button>
       </div>
+      <SalesCamtImportPanel locale={locale} />
       <SalesOpenInvoicesList locale={locale} projectId={projectId} />
     </div>
   );

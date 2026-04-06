@@ -5,9 +5,9 @@
 
 ## Änderungsstand (vollständig abgeglichen)
 
-- Alle Epic-Status auf den aktuellen Code-Stand harmonisiert (insb. E-06 v4 sowie E-07 bis E-13).
+- Alle Epic-Status auf den aktuellen Code-Stand harmonisiert (insb. E-06 v5-Basis sowie E-07 bis E-13).
 - Inkonsistenz in E-05 bereinigt: Projektbezug bei Zeiterfassung ist **optional** (wie Schema/API), nicht Pflicht.
-- E-06-V4-Iteration inkl. API-Smoke (`http-smoke-mock.mts`) als abgeschlossen dokumentiert; Rest-Backlog klar getrennt.
+- E-06-V4-Iteration inkl. API-Smoke (`http-smoke-mock.mts`) als abgeschlossen dokumentiert; v5-Basis (E-Mail-/CAMT-Spike) und **CAMT-Dateiimport-MVP** ergänzt; Rest-Backlog (Sammelzahlung, Mail-Produktivität) getrennt.
 
 Zweck: **parallele Frontend-/Backend-Planung** — pro Epic ein gemeinsames Verständnis aus Problemraum, Erfolgskriterien, technischen Risiken (Spikes) und **MVP vs. Phase 2**.
 
@@ -24,7 +24,7 @@ Zweck: **parallele Frontend-/Backend-Planung** — pro Epic ein gemeinsames Vers
 | **E-03** | in Arbeit | Kommerz-Defaults vertiefen (optional Kreditlimit) |
 | **E-04** | in Arbeit | Konflikte/Serien/Sollstunden |
 | **E-05** | in Arbeit | Soll/Ist + Auswertung |
-| **E-06** | in Arbeit | E-Mail/CAMT/Template-Platzhalter |
+| **E-06** | in Arbeit | Sammelzahlung + Mail-Produktivität; CAMT-Spikes + Dateiimport-MVP geliefert |
 | **E-07** | teilweise umgesetzt | Steuer-/Rabatt-/Teilrechnungslogik |
 | **E-08** | teilweise umgesetzt | Finalisierung + Snapshot + Sperren |
 | **E-09** | teilweise umgesetzt | XRechnung/ZUGFeRD + DATEV-Tiefe |
@@ -180,7 +180,7 @@ Zweck: **parallele Frontend-/Backend-Planung** — pro Epic ein gemeinsames Vers
 
 ## E-06 — Forderungsmanagement (Mahnung, Zahlung, OP)
 
-**Status:** in Arbeit — **v1 + v2 + v3 + v4 umgesetzt** (2026-04-06): wie v3, zusaetzlich **`sales_reminder_templates`** (Stufe 1–10, Locale `de`/`en`, optional `fee_cents`); `GET`/`PUT /v1/sales/reminder-templates`, `GET …/resolved`; Reminder-PDF und Browser-Druck verwenden aufgeloesten Fließtext und Gebuehr; Web **Einstellungen** (nur Mandanten-Admin) zum Pflegen. **Offen:** Platzhalter im Text; E-Mail-Versand-Spike; CAMT/Sammelzahlungen.
+**Status:** in Arbeit — **v1 + v2 + v3 + v4 + v5-Basis umgesetzt** (2026-04-06): wie v3, zusaetzlich **`sales_reminder_templates`** (Stufe 1–10, Locale `de`/`en`, optional `fee_cents`); `GET`/`PUT /v1/sales/reminder-templates`, `GET …/resolved`; Reminder-PDF und Browser-Druck verwenden aufgeloesten Fließtext und Gebuehr inkl. Platzhalter (z. B. `{{invoiceNumber}}`, `{{openBalance}}`); Web **Einstellungen** (nur Mandanten-Admin) zum Pflegen. **E-Mail-Spike** (Dry-Run + optional SMTP-Send im Rechnungsdetail) und **CAMT-Matching-Spike** (`POST /v1/sales/invoices/camt-match`, Top-Kandidat, Buchung auf aktueller Rechnung). **CAMT-Dateiimport-MVP:** `POST /v1/sales/invoices/camt-import` (Multipart/XML), Vorschau mit Kandidaten auf `/web/sales/invoices/open` — **ohne** automatische Buchung. **Offen:** Sammelzahlungen/Mehrfachzuordnung, produktiver Mailflow (Queue/Retry/Audit), ggf. persistierter Bankimport.
 
 ### Initiative Brief
 
@@ -194,15 +194,15 @@ Zweck: **parallele Frontend-/Backend-Planung** — pro Epic ein gemeinsames Vers
 
 | Bereich | Spike / Klärungsfrage |
 |---------|------------------------|
-| **Schema** | ~~Teilzahlungen~~ → **`sales_invoice_payments`**. ~~Mahn-Historie~~ → **`sales_invoice_reminders`**. ~~Mandanten-Mahntexte~~ → **`sales_reminder_templates`**. **Offen:** ggf. Zins-Hinweis getrennt von Gebuehr; CAMT-Import. |
-| **API** | Zahlung + Loeschen erledigt. Mahnung + PDF/Druck erledigt. ~~Mahntext `GET`/`PUT` + Resolved~~ erledigt. **Offen:** Idempotenz Zahlungsimport; optional PATCH Zahlungszeile; E-Mail-Versand. ~~OP-Liste / CSV~~ erledigt. |
-| **UI** | Rechnungsdetail, OP, Mahnungen erledigt. ~~Einstellungen: Mahntexte/Gebuehr (Admin)~~ erledigt. **Offen:** Dashboard-Kachel „Summe OP“ (optional). |
+| **Schema** | ~~Teilzahlungen~~ → **`sales_invoice_payments`**. ~~Mahn-Historie~~ → **`sales_invoice_reminders`**. ~~Mandanten-Mahntexte~~ → **`sales_reminder_templates`**. CAMT-Dateiimport-MVP bleibt ohne separates Import-Schema (reine Vorschau im Request). |
+| **API** | Zahlung + Loeschen erledigt. Mahnung + PDF/Druck erledigt. ~~Mahntext `GET`/`PUT` + Resolved~~ erledigt. **CAMT:** `POST …/camt-match`, `POST …/camt-import` (Vorschau). **Offen:** Idempotenter/persistierter Massenimport, Mehrfachzuordnung/Sammelzahlungen, produktiver Mailversand-Workflow. ~~OP-Liste / CSV~~ erledigt. |
+| **UI** | Rechnungsdetail, OP, Mahnungen erledigt. ~~Einstellungen: Mahntexte/Gebuehr (Admin)~~ erledigt. **E-Mail-Spike** und **CAMT-Zuordnung** im Rechnungsdetail; **CAMT-Import-Panel** auf der OP-Seite. **Offen:** Dashboard-Kachel „Summe OP“ (optional). |
 
 ### MVP vs. Phase 2
 
 | MVP | Phase 2 |
 |-----|---------|
-| ~~Teilzahlungen, Saldo-Anzeige~~ **(v1)**; ~~OP-Liste + CSV, Löschen Zahlungszeile~~ **(v2)**; ~~manuelle Mahnung + Historie + PDF/Druck~~ **(v3)**; ~~Mahntext-Templates + optionale Gebuehr, PDF/Druck, Admin-UI~~ **(v4)**. | E-Mail-Versand aus Produkt, automatische Eskalation nach Regeln, Zahlungsimport (CAMT), Sammelzahlungen — hoher Aufwand. |
+| ~~Teilzahlungen, Saldo-Anzeige~~ **(v1)**; ~~OP-Liste + CSV, Löschen Zahlungszeile~~ **(v2)**; ~~manuelle Mahnung + Historie + PDF/Druck~~ **(v3)**; ~~Mahntext-Templates + optionale Gebuehr, PDF/Druck, Admin-UI~~ **(v4)**; **E-Mail-/CAMT-Spike** **(v5-Basis)**; **CAMT-Dateiimport-Vorschau** **(v5.1-MVP)**. | Produktiver E-Mail-Versand (Queue/Retry/Audit), automatische Eskalation nach Regeln, Sammelzahlungen/Mehrfachzuordnung, ggf. CAMT-Import mit Persistenz/Idempotenz — hoher Aufwand. |
 
 ### Abgeschlossene Iteration — OP + CSV + Korrektur (v2)
 
@@ -228,12 +228,12 @@ Zweck: **parallele Frontend-/Backend-Planung** — pro Epic ein gemeinsames Vers
 | # | Ticket | Status |
 |---|--------|--------|
 | **V4-1** | **`sales_reminder_templates` + `GET`/`PUT /v1/sales/reminder-templates`** | umgesetzt |
-| **V4-2** | **Reminder-PDF + Druck** nutzen aufgelösten Text (`…/resolved`, serverseitig in PDF-Handler) | umgesetzt (Platzhalter im Freitext noch nicht) |
+| **V4-2** | **Reminder-PDF + Druck** nutzen aufgelösten Text (`…/resolved`, serverseitig in PDF-Handler) | umgesetzt inkl. Platzhalter-Auflösung |
 | **V4-3** | **Optionale `fee_cents`** je Stufe/Locale; Zeile im PDF/Druck | umgesetzt |
 | **V4-4** | **Web Einstellungen** (`WebSalesReminderTemplatesCard`, BFF) | umgesetzt (Rollen: wie sonstige Mandanteneinstellungen) |
-| **V4-5** | **API-Smoke** (`http-smoke-mock.mts`) | umgesetzt |
+| **V4-5** | **API-Smoke** (`http-smoke-mock.mts`; Mahntexte + **CAMT-Import**) | umgesetzt |
 
-**Noch offen (Backlog):** E-Mail-Spike; CAMT/Sammelzahlungen; Platzhalter im Template-Text.
+**Noch offen (Backlog):** Sammelzahlungen/Mehrfachzuordnung, produktiver E-Mail-Workflow; optional CAMT-Import-Vertiefung (Persistenz/Idempotenz).
 
 ---
 
