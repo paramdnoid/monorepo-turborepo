@@ -9,7 +9,7 @@
 
 - E-06 auf **v5-Basis** aktualisiert: v4 (Templates/Gebühr) plus **E-Mail-Spike**, **CAMT-Zuordnungs-Spike**, **persistierter/idempotenter CAMT-Dateiimport** (Historie), **Sammelzahlungen/Mehrfachzuordnung** (`POST …/payments/batch` + OP-UI) und **gesammelte Übernahme** mehrerer CAMT-Zeilen in die Sammelzahlung (Auswahl + Prefill).
 - E-07 bis E-13 mit klaren Reifegraden (`teilweise umgesetzt` / `teilweise vorbereitet` / `offen`) an den Code-Stand angepasst.
-- Nächste Schritte auf echte Restlücken fokussiert: E-02 v3 (**Hub-Endpoint geliefert**, KPI/Pipeline-Ausbau offen), E-06 optional **Cron-Mailworker** nach Outbox (2026-04-07), E-07/E-08, E-09 (XRechnung/ZUGFeRD-Standardtiefe + DATEV-Vertiefung).
+- Nächste Schritte auf echte Restlücken fokussiert: E-02 v3 (**Hub-Endpoint geliefert**, KPI/Pipeline + 30-Tage-Segmente/Trends + **KPI-UI-Polish** geliefert), E-06 optional **Cron-Mailworker** nach Outbox (2026-04-07), E-07/E-08, E-09 (XRechnung/ZUGFeRD-Standardtiefe + DATEV-Vertiefung).
 
 **Legende**
 
@@ -35,11 +35,11 @@
 | Epic | Reifegrad | Kurzstatus |
 |------|-----------|------------|
 | **E-01** | **umgesetzt** | Projekt mit Kunden-/Baustellenbezug produktiv |
-| **E-02** | **in Arbeit** | Hub v1/v2 produktiv, v3 (KPI/Aggregation) offen |
+| **E-02** | **in Arbeit** | Hub v1/v2 produktiv; v3 mit KPI-/Mini-Pipeline, Segmenten/Trends und **UI-Polish** (Hierarchie, Mobile) geliefert |
 | **E-03** | **in Arbeit** | Zahlungs-/Mahn-Defaults in Basis umgesetzt |
 | **E-04** | **in Arbeit** | Projektbezug + Zeitraum-Filter geliefert, Planungslogik offen |
 | **E-05** | **in Arbeit** | Zeiterfassung-Basis geliefert, Soll/Ist offen |
-| **E-06** | **in Arbeit** | v1–v5 + **CAMT-Import** (persistiert, Historie) + **Sammelzahlung** + **CAMT-Mehrfach-Prefill** + **Mahn-E-Mail-Outbox** (DB + API + BFF `email-queue`); Hintergrund-Mailworker/Cron optional |
+| **E-06** | **in Arbeit** | v1–v5 + **CAMT-Import** (persistiert, Historie) + **Sammelzahlung** + **CAMT-Mehrfach-Prefill** + **Mahn-E-Mail-Outbox** (DB + API + BFF `email-queue`) + **Retry-UI** + **One-shot-Cron-Worker** (`worker:reminder-emails:once`) |
 | **E-07** | **teilweise umgesetzt** | Belegbasis da, Tiefe (Steuer/Rabatt/Teilrechnung) offen |
 | **E-08** | **teilweise umgesetzt** | Audit-Vorstufe da, Finalisierung/Snapshot offen |
 | **E-09** | **teilweise umgesetzt** | DATEV-Basis da; XRechnung/ZUGFeRD-Endpunkte vorhanden, Standardkonformität/Tiefe offen |
@@ -73,7 +73,7 @@
 
 **Ziel:** Eine Projekt-Detailansicht bündelt Belege, Termine, Dokumente und später Zeiten/Material — Sicht auf die Pipeline „Angebot → Ausführung → Abrechnung“.
 
-**Status:** in Arbeit (seit 2026-04-06) — **v1 + v2 geliefert:** Projekt-Hub mit Belegen/Dateien/GAEB, Terminplanung (**nächste 7 Tage**, über `GET /v1/scheduling/assignments?dateFrom&dateTo`), Zeiterfassung (Monat bis heute inkl. letzte Buchungen), Forderungen/OP (Top offene Posten, projektgefilterte OP-Liste) sowie **Mahnungs-Kontext**: Links `…/invoices/:id#invoice-reminders`, Zusammenfassung Mahnungen + Druck/PDF der letzten Mahnung in der Hub-Karte.
+**Status:** in Arbeit (seit 2026-04-06) — **v1 + v2 geliefert:** Projekt-Hub mit Belegen/Dateien/GAEB, Terminplanung (**nächste 7 Tage**, über `GET /v1/scheduling/assignments?dateFrom&dateTo`), Zeiterfassung (Monat bis heute inkl. letzte Buchungen), Forderungen/OP (Top offene Posten, projektgefilterte OP-Liste) sowie **Mahnungs-Kontext**: Links `…/invoices/:id#invoice-reminders`, Zusammenfassung Mahnungen + Druck/PDF der letzten Mahnung in der Hub-Karte. **v3-Basis + Ausbau #2 + UI-Polish geliefert:** KPI-/Mini-Pipeline-Kacheln auf `GET /v1/projects/:id/hub` inkl. Statusstufen, Progress-/Conversion-Werte und 30-Tage-Segmente mit Trendvergleich; in der Hub-UI **KPI-Reihenfolge** (Liquidität → Volumina → Quoten → Betrieb → Pipeline → Segmente), klarere **visuelle Hierarchie** und **Mobile-UX** (u. a. Snap-Scroll für Kernzahlen und Segmentkarten).
 
 **Lieferumfang (Indikativ)**
 
@@ -150,19 +150,19 @@
 
 **Ziel:** Über „paidAt“ hinaus: Teilzahlungen, Mahnlauf, OP-Liste, Zahlungszuordnung.
 
-**Status:** in Arbeit — **v1 + v2 + v3 + v4 + v5-Basis umgesetzt** (2026-04-06): wie zuvor, plus `sales_reminder_templates` (Stufe 1–10, `de`/`en`, optional Gebühr); API `GET`/`PUT /v1/sales/reminder-templates`, `GET …/resolved`; Reminder-PDF und Web-Druck nutzen aufgelösten Text/Gebühr inkl. Platzhalter (z. B. Belegnr./Betrag/Fälligkeit); Mandanten-Admins bearbeiten unter **Einstellungen**. **E-Mail-Spike** (Dry-Run + optional SMTP-Send; Legacy-Route) und **produktiver Pfad** `sales_reminder_email_jobs` + `POST/GET …/email-jobs` + `PATCH …/reminder-email-jobs/:jobId` + BFF **`/email-queue`** (Outbox, Versand im Request, Status/Audit). **CAMT-Zuordnungs-Spike** (`POST /v1/sales/invoices/camt-match` + UI „Match und Zahlung buchen“). **Persistierter/idempotenter CAMT-Dateiimport** — `POST /v1/sales/invoices/camt-import` dedupliziert über Datei-Hash, Tabellen `sales_camt_import_batches`/`lines`, Historie (`GET /v1/sales/invoices/camt-imports`, `GET /v1/sales/invoices/camt-imports/:id`) mit erneutem Matching; weiterhin **keine** automatische Zahlungsbuchung aus dem Import. **Sammelzahlungen:** `POST /v1/sales/invoices/payments/batch` + OP-UI (Mehrfachauswahl, Beträge); **CAMT → Sammelzahlung** zeilenweise oder **mehrere Zeilen gesammelt** (Checkboxen, „Alle Treffer“, Prefill inkl. Summe pro Rechnung bei Duplikaten). **Offen:** dedizierter Hintergrund-Mailworker (Cron) ohne Nutzer-Session; UI für fehlgeschlagene Jobs erneut anstoßen.
+**Status:** in Arbeit — **v1 + v2 + v3 + v4 + v5-Basis umgesetzt** (2026-04-06): wie zuvor, plus `sales_reminder_templates` (Stufe 1–10, `de`/`en`, optional Gebühr); API `GET`/`PUT /v1/sales/reminder-templates`, `GET …/resolved`; Reminder-PDF und Web-Druck nutzen aufgelösten Text/Gebühr inkl. Platzhalter (z. B. Belegnr./Betrag/Fälligkeit); Mandanten-Admins bearbeiten unter **Einstellungen**. **E-Mail-Spike** (Dry-Run + optional SMTP-Send; Legacy-Route) und **produktiver Pfad** `sales_reminder_email_jobs` + `POST/GET …/email-jobs` + `PATCH …/reminder-email-jobs/:jobId` + BFF **`/email-queue`** (Outbox, Versand im Request, Status/Audit). **CAMT-Zuordnungs-Spike** (`POST /v1/sales/invoices/camt-match` + UI „Match und Zahlung buchen“). **Persistierter/idempotenter CAMT-Dateiimport** — `POST /v1/sales/invoices/camt-import` dedupliziert über Datei-Hash, Tabellen `sales_camt_import_batches`/`lines`, Historie (`GET /v1/sales/invoices/camt-imports`, `GET /v1/sales/invoices/camt-imports/:id`) mit erneutem Matching; weiterhin **keine** automatische Zahlungsbuchung aus dem Import. **Sammelzahlungen:** `POST /v1/sales/invoices/payments/batch` + OP-UI (Mehrfachauswahl, Beträge); **CAMT → Sammelzahlung** zeilenweise oder **mehrere Zeilen gesammelt** (Checkboxen, „Alle Treffer“, Prefill inkl. Summe pro Rechnung bei Duplikaten). **Neu:** One-shot-Hintergrundworker für Cron (`pnpm --filter api run worker:reminder-emails:once`) und Retry-Flow im Rechnungsdetail.
 
 **Lieferumfang (Indikativ)**
 
 - ~~Teilzahlungen / Salden; OP-Liste; CSV; Löschen Zahlungszeile.~~ → **v1/v2 erledigt.** **CAMT-Matching-Spike** (Score/Confidence, Top-Kandidat + Buchung im Rechnungsdetail) und **CAMT-Dateiimport** (XML-Upload, Vorschau/Kandidaten, Persistenz/Idempotenz, Historie, ohne Auto-Buchung) sind geliefert. ~~Mehrfachzuordnung/Sammelzahlung~~ → **geliefert** (`…/payments/batch` + UI). Optional später: PATCH statt Löschen+Neu bei Zahlungszeilen.
-- ~~Mahnwesen MVP (Historie + PDF/Druck + Prefill)~~ → **v3 erledigt.** ~~Mahntext-Templates/Gebühren (pro Mandant, mehrsprachig)~~ → **v4 erledigt.** **E-Mail-Spike** (Preview + optional SMTP-Send) ist geliefert; **Mahn-E-Mail-Outbox** (DB + API + BFF `email-queue`, Retry-Zähler, Lieferstatus) **v6-Basis (2026-04-07)**; optional: Cron-Worker nur für Async.
+- ~~Mahnwesen MVP (Historie + PDF/Druck + Prefill)~~ → **v3 erledigt.** ~~Mahntext-Templates/Gebühren (pro Mandant, mehrsprachig)~~ → **v4 erledigt.** **E-Mail-Spike** (Preview + optional SMTP-Send) ist geliefert; **Mahn-E-Mail-Outbox** (DB + API + BFF `email-queue`, Retry-Zähler, Lieferstatus) **v6-Basis (2026-04-07)**; **Retry-UI + Cron-Worker-Entrypoint** sind geliefert.
 - Verknüpfung mit Kunden-Defaults (**E-03**).
 
 **Abhängigkeiten:** Basis-Sales vorhanden; **E-03** für komfortable Mahn-Defaults.
 
 **Bezug Analyse:** Abschnitte 3, 5, 6 (Punkte 7–8).
 
-**Als Nächstes (v7+):** optional Cron-Mailworker + UI „erneut senden“ für `failed`; CAMT-Workflows (z. B. Status „gebucht“ nur nach manueller Bestätigung bleibt Policy).
+**Als Nächstes (v7+):** Monitoring/Alerting für Outbox-Lauf (z. B. Failed/Backlog-Schwellen), ggf. automatische Eskalationsregeln; CAMT-Workflows (z. B. Status „gebucht“ nur nach manueller Bestätigung bleibt Policy).
 
 ---
 
@@ -322,8 +322,8 @@ Pro Epic: Problem, Messgröße, Nicht-Ziele, Spikes (Schema / API / UI), MVP vs.
 
 | Priorität | Thema | Wo |
 |-----------|--------|-----|
-| **E-02** | **v2/v3-Basis geliefert** (7-Tage-Termine, `#invoice-reminders`, Mahnungs-Zusammenfassung im Hub, aggregierter `GET /v1/projects/:id/hub`); nächster Schnitt: Mini-Pipeline/KPI-Kacheln | Projekt-360° |
-| **E-06** | **v5 + CAMT + Sammelzahlung** geliefert; **Mahn-E-Mail-Outbox (v6)** geliefert; nächster Schnitt: optional Cron/Retry-UI | Rechnungswesen |
+| **E-02** | **v2/v3 inkl. UI-Polish geliefert** (wie zuvor: Hub-Aggregation, KPI-/Mini-Pipeline, Progress/Conversion, 30-Tage-Segmente/Trends; **Polish:** Sektionen, KPI-Reihenfolge, Mobile); nächster Schnitt: weitere projektbezogene KPIs / Material-Widgets (E-11) / Hub-Payload-Härtung nach Bedarf | Projekt-360° |
+| **E-06** | **v5 + CAMT + Sammelzahlung** geliefert; **Mahn-E-Mail-Outbox (v6)** + **Retry-UI + One-shot-Cron-Worker** geliefert; nächster Schnitt: Monitoring/Alerting | Rechnungswesen |
 | **E-07** | Belegtiefe ausbauen (Steuer, Rabatte/Skonto, Teilrechnungsketten, Gutschrift), auf bestehender Sales-Basis | Belege |
 | **E-08** | GoBD-Sperren/Finalisieren + Snapshot-Konzept auf vorhandene Audit-Bausteine setzen | Compliance |
 | **E-09** | DATEV fachlich vertiefen und XRechnung/ZUGFeRD starten | Export |
@@ -331,8 +331,8 @@ Pro Epic: Problem, Messgröße, Nicht-Ziele, Spikes (Schema / API / UI), MVP vs.
 
 ### Empfohlene Implementierungsreihenfolge (kurz)
 
-1. **E-06 Produktivierung:** Outbox + API + BFF `email-queue` geliefert; optional Cron/Worker für reine Async-Zustellung priorisieren (Sammelzahlung, CAMT-Persistenz und CAMT-Mehrfach-Prefill sind geliefert).
-2. **E-02 v3:** KPI/Mini-Pipeline und Segmentausbau auf bestehendem Hub-Aggregationsendpoint (`GET /v1/projects/:id/hub`).
+1. **E-02 v3 (Fortsetzung):** Basis, Segmentausbau und KPI-UI-Polish sind geliefert; optional weitere KPI-Feinsegmente, Material-Widgets oder weniger parallele Requests (Hub-Endpunkt).
+2. **E-06 Stabilisierung:** Outbox-Monitoring/Alerting und Betriebshärtung (Sammelzahlung, CAMT-Persistenz und CAMT-Mehrfach-Prefill sind geliefert).
 3. **E-07/E-08:** Belegtiefe und GoBD-Sperren koordiniert nachziehen (nicht parallel zu großen Sales-Refactors).
 4. **E-09:** DATEV-Ausbau + XRechnung/ZUGFeRD als eigener Export-Track.
 

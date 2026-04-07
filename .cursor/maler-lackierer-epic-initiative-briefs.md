@@ -22,7 +22,7 @@ Zweck: **parallele Frontend-/Backend-Planung** — pro Epic ein gemeinsames Vers
 | Epic | Reifegrad | Fokus im nächsten Implementierungszug |
 |------|-----------|----------------------------------------|
 | **E-01** | umgesetzt | Stabilisieren/Backfill operativ abschließen |
-| **E-02** | in Arbeit | Hub-v3: KPI/Pipeline-Ausbau auf vorhandenem Aggregations-Endpoint |
+| **E-02** | in Arbeit | Hub-v3: KPI-/Mini-Pipeline + 30-Tage-Segmente/Trends + **KPI-UI-Polish** (Hierarchie, Mobile) geliefert |
 | **E-03** | in Arbeit | Kommerz-Defaults vertiefen (optional Kreditlimit) |
 | **E-04** | in Arbeit | Konflikte/Serien/Sollstunden |
 | **E-05** | in Arbeit | Soll/Ist + Auswertung |
@@ -84,14 +84,14 @@ Zweck: **parallele Frontend-/Backend-Planung** — pro Epic ein gemeinsames Vers
 | Bereich | Spike / Klärungsfrage |
 |---------|------------------------|
 | **Schema** | Meist **read aggregations**: braucht es `project_id` auf weiteren Entitäten (GAEB, Assets) oder reicht Join über bestehende FKs? Performance: eine Hub-API vs. mehrere parallele Calls. |
-| **API** | `GET /v1/projects/:id/hub` ist vorhanden und liefert den aggregierten Payload. Nächster Schritt: Segment-/KPI-Ausbau, Caching-Strategie und konsistente Teilfehlerbehandlung. |
-| **UI** | Layout: lange Seite mit Karten/Sections; **7-Tage-Termine** und **Mahnungs-Anker/Details in der OP-Karte** geliefert. Offen: eingebettete Mini-Pipeline, KPI-Kacheln, optional weniger parallele Requests (Hub-Endpunkt). |
+| **API** | `GET /v1/projects/:id/hub` ist vorhanden und liefert den aggregierten Payload. **v3-Ausbau #2:** Pipeline-Progress/Conversion + 30-Tage-Segmente inkl. Trendvergleich (`last30Days` vs. `previous30Days`) im Hub-Payload geliefert. |
+| **UI** | Layout: lange Seite mit Karten/Sections; **7-Tage-Termine** und **Mahnungs-Anker/Details in der OP-Karte** geliefert. **v3-Ausbau #2 + Polish:** Pipeline mit Progress/Conversion je Stufe + Segment-/Trend-Kacheln; KPI-Karte mit Sektionen, Reihenfolge (Liquidität zuerst) und Mobile-Snap — **Polish geliefert**; optional weniger parallele Requests (Hub-Endpunkt) bleibt Backlog. |
 
 ### MVP vs. Phase 2
 
 | MVP | Phase 2 |
 |-----|---------|
-| ~~Hub-Seite mit Belegen/Stammdaten/Dateien/GAEB~~ **geliefert**, inkl. **Terminplanung 7 Tage**, Zeiterfassung (Monat bis heute + letzte Buchungen), Forderungen/OP inkl. **#invoice-reminders** und Mahnungs-Kurzaktionen; **`GET /v1/projects/:id/hub`** als aggregierter Endpunkt vorhanden. | Eingebettete **Mini-Pipeline** (Status aus Quotes/Invoices), weitere KPI-Kacheln, Material-Widgets (nach E-11), erweiterte Segmentierung/Resilienz im Hub-Payload. |
+| ~~Hub-Seite mit Belegen/Stammdaten/Dateien/GAEB~~ **geliefert**, inkl. **Terminplanung 7 Tage**, Zeiterfassung (Monat bis heute + letzte Buchungen), Forderungen/OP inkl. **#invoice-reminders** und Mahnungs-Kurzaktionen; **`GET /v1/projects/:id/hub`** als aggregierter Endpunkt vorhanden; **Mini-Pipeline/KPI + 30-Tage-Segmente/Trends + KPI-UI-Polish geliefert**. | Weitere KPI-Feinsegmente, Material-Widgets (nach E-11) und erweiterte Resilienz im Hub-Payload. |
 
 ---
 

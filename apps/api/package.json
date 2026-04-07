@@ -7,6 +7,7 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
+    "worker:reminder-emails:once": "tsx scripts/process-reminder-email-outbox.mts",
     "lint": "eslint . --max-warnings 0",
     "check-types": "tsc --noEmit",
     "test": "tsx --test \"src/**/*.test.ts\"",

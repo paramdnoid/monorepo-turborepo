@@ -16,7 +16,7 @@
 ## Nicht mehr als Lücke zu werten (Stand jetzt)
 
 - E-01-Basis: Projekt-Kunden-/Baustellenbezug (mit Legacy-Fallback) ist geliefert.
-- E-02-Basis: Projekt-Hub mit Belegen/Dateien/GAEB/7-Tage-Termine/Zeiterfassung/OP ist geliefert.
+- E-02-Basis: Projekt-Hub mit Belegen/Dateien/GAEB/7-Tage-Termine/Zeiterfassung/OP ist geliefert; **v3:** `GET /v1/projects/:id/hub` mit KPI-/Mini-Pipeline, 30-Tage-Segmenten/Trends und aufgeraeumter KPI-Karten-UI (Hierarchie, Mobile).
 - E-06-v5-Basis: Mahntext-Templates + optionale Gebühr + PDF/Druck + Einstellungs-UI sowie E-Mail-/CAMT-Spike; **CAMT-XML-Upload** mit Vorschau, **Persistenz/Idempotenz** (Hash) und **Import-Historie**; **keine** automatische Zahlungsbuchung aus CAMT; **Sammelzahlung** mehrerer OP-Rechnungen in einem Buchungslauf (`POST …/payments/batch`) inkl. UI; **Übernahme mehrerer CAMT-Zeilen** in die Sammelwahl (Auswahl + Prefill, Summe pro Rechnung bei mehrfachen Treffern).
 - DATEV-Basis: Settings + Ausgangs-Buchungs-CSV sind geliefert (Vertiefung bleibt Backlog).
 
@@ -49,7 +49,7 @@
 ### 2.2 Projekte ↔ Belege (Angebote/Rechnungen)
 
 - **Ist:** `salesQuotes` / `salesInvoices` haben `projectId` (optional); UI kann Projekte auswählen.
-- **Status:** in Arbeit (E-02) — Hub unter `/web/projects/[projectId]` liefert Stammdaten + projektbezogene Belege/Dateien/GAEB, **Terminplanung naechste 7 Tage**, Zeiterfassung (Monat bis heute + letzte Buchungen), Forderungen/OP (Top-OP, Mahnungs-Kurzinfo + Druck/PDF letzte Mahnung, Link `…#invoice-reminders`). Aggregierter API-Pfad (`GET /v1/projects/:id/hub`) ist vorhanden; Rest: Mini-Pipeline/KPIs und Material (E-11).
+- **Status:** in Arbeit (E-02) — Hub unter `/web/projects/[projectId]` liefert Stammdaten + projektbezogene Belege/Dateien/GAEB, **Terminplanung naechste 7 Tage**, Zeiterfassung (Monat bis heute + letzte Buchungen), Forderungen/OP (Top-OP, Mahnungs-Kurzinfo + Druck/PDF letzte Mahnung, Link `…#invoice-reminders`). Aggregierter API-Pfad (`GET /v1/projects/:id/hub`) liefert **KPI-/Mini-Pipeline**, 30-Tage-Segmente/Trends und eine **aufgeraeumte KPI-Karte** (Hierarchie, Mobile); Rest: weiterfuehrende projektbezogene KPIs/Material-Widgets (E-11) nach Roadmap.
 
 ### 2.3 Terminplanung ↔ Projekt / Auftrag / Baustelle
 
@@ -85,7 +85,7 @@
 ### Vorhanden (Kurz)
 
 - Lebenszyklus-Status, Projektnummer, Freitext-Kunde, Zeitraum, Archiv; Verknüpfung aus Belegen heraus.
-- Projekt-Hub (`/web/projects/[projectId]`) mit Belegen, Dateien, GAEB, Terminplanung (**7 Tage**), Zeiterfassungs-Karte und OP-Karte inkl. Mahnungs-Verknuepfung (projektbezogen).
+- Projekt-Hub (`/web/projects/[projectId]`) mit Belegen, Dateien, GAEB, Terminplanung (**7 Tage**), Zeiterfassungs-Karte und OP-Karte inkl. Mahnungs-Verknuepfung (projektbezogen); aggregierte **KPI-/Pipeline-/Segment-Ansicht** ueber `GET /v1/projects/:id/hub`.
 
 ### Fehlende Funktionalitäten
 
