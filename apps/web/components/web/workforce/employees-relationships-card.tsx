@@ -168,16 +168,16 @@ export function EmployeesRelationshipsCard({
       </CardHeader>
       <CardContent className="space-y-4">
         {canEdit ? (
-          <div className="grid gap-3 sm:max-w-xl">
+          <div className="grid gap-3">
             <div className="grid gap-2">
-              <Label>{t.relationshipKindLabel}</Label>
+              <Label htmlFor={`relationship-kind-${employeeId}`}>{t.relationshipKindLabel}</Label>
               <Select
                 value={kind}
                 onValueChange={(v) =>
                   setKind(v as "MUTUALLY_EXCLUSIVE" | "MENTOR_TRAINEE")
                 }
               >
-                <SelectTrigger className="w-full" aria-label={t.relationshipKindLabel}>
+                <SelectTrigger id={`relationship-kind-${employeeId}`} className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -187,9 +187,11 @@ export function EmployeesRelationshipsCard({
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label>{t.relationshipCounterpartLabel}</Label>
+              <Label htmlFor={`relationship-counterpart-${employeeId}`}>
+                {t.relationshipCounterpartLabel}
+              </Label>
               <Select value={targetId} onValueChange={setTargetId}>
-                <SelectTrigger className="w-full" aria-label={t.relationshipCounterpartLabel}>
+                <SelectTrigger id={`relationship-counterpart-${employeeId}`} className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

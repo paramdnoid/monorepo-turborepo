@@ -411,7 +411,7 @@ export function EmployeesListContent({ locale }: { locale: Locale }) {
         className="border-border/80 bg-muted/15 shadow-none"
         aria-busy={busy || batchBusy}
       >
-        <CardHeader className="flex flex-col gap-4">
+        <CardHeader className="flex flex-col gap-3">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div className="space-y-1">
               <CardTitle className="text-base">{t.listTitle}</CardTitle>
@@ -439,7 +439,7 @@ export function EmployeesListContent({ locale }: { locale: Locale }) {
             </div>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-            <div className="grid w-full min-w-0 gap-2 sm:max-w-xs sm:flex-1">
+            <div className="grid w-full min-w-0 gap-2 sm:flex-1">
               <Label htmlFor={`${filterId}-q`} className="sr-only">
                 {t.searchAriaLabel}
               </Label>
@@ -448,7 +448,6 @@ export function EmployeesListContent({ locale }: { locale: Locale }) {
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 placeholder={t.searchPlaceholder}
-                aria-label={t.searchAriaLabel}
                 autoComplete="off"
               />
             </div>

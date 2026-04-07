@@ -233,6 +233,7 @@ type EmployeesCopy = {
   profileImageAlt: string;
   filesProfileUploadAria: string;
   filesAttachmentUploadAria: string;
+  filesAttachmentKindLabel: string;
   filesProfileDelete: string;
   filesAttachmentsTitle: string;
   filesUploadError: string;
@@ -503,6 +504,7 @@ const de: EmployeesCopy = {
   profileImageAlt: "Profilbild",
   filesProfileUploadAria: "Profilbild-Datei waehlen",
   filesAttachmentUploadAria: "Anhang-Datei waehlen",
+  filesAttachmentKindLabel: "Typ",
   filesProfileDelete: "Profilbild loeschen",
   filesAttachmentsTitle: "Anhaenge",
   filesUploadError: "Upload fehlgeschlagen.",
@@ -772,6 +774,7 @@ const en: EmployeesCopy = {
   profileImageAlt: "Profile image",
   filesProfileUploadAria: "Choose profile image file",
   filesAttachmentUploadAria: "Choose attachment file",
+  filesAttachmentKindLabel: "Type",
   filesProfileDelete: "Remove profile image",
   filesAttachmentsTitle: "Attachments",
   filesUploadError: "Upload failed.",

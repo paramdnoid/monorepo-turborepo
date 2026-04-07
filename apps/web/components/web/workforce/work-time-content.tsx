@@ -372,156 +372,158 @@ export function WorkTimeContent({ locale }: { locale: Locale }) {
   );
 
   return (
-    <div className="space-y-6">
-      <Card className="border-border/80 bg-muted/15 shadow-none">
-        <CardHeader>
-          <CardTitle className="text-base">{labels.range}</CardTitle>
-          <CardDescription className="text-xs">
-            {locale === "en"
-              ? "Filter entries by work date."
-              : "Einträge nach Arbeitsdatum filtern."}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-wrap items-end gap-3">
-          <div className="grid gap-2">
-            <Label htmlFor="wt-from">{labels.from}</Label>
-            <Input
-              id="wt-from"
-              type="date"
-              value={from}
-              onChange={(ev) => setFrom(ev.target.value)}
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="wt-to">{labels.to}</Label>
-            <Input
-              id="wt-to"
-              type="date"
-              value={to}
-              onChange={(ev) => setTo(ev.target.value)}
-            />
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => void loadEntries()}
-            disabled={loadBusy}
-          >
-            {labels.reload}
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Card className="border-border/80 bg-muted/15 shadow-none">
-        <CardHeader>
-          <CardTitle className="text-base">{labels.add}</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-          <div className="grid gap-2">
-            <Label htmlFor="wt-emp">{labels.employee}</Label>
-            <Select value={draftEmployeeId} onValueChange={setDraftEmployeeId}>
-              <SelectTrigger id="wt-emp">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {employees.map((e) => (
-                  <SelectItem key={e.id} value={e.id}>
-                    {e.displayName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="wt-d">{labels.date}</Label>
-            <Input
-              id="wt-d"
-              type="date"
-              value={draftDate}
-              onChange={(ev) => setDraftDate(ev.target.value)}
-            />
-          </div>
-          <div className="grid gap-2 sm:col-span-2 lg:col-span-1">
-            <span className="text-sm font-medium leading-none">{labels.duration}</span>
-            <div className="flex flex-wrap gap-2">
-              <div className="grid gap-1">
-                <Label htmlFor="wt-h" className="text-xs font-normal">
-                  {labels.hours}
-                </Label>
-                <Input
-                  id="wt-h"
-                  type="number"
-                  min={0}
-                  max={24}
-                  value={draftDurationHours}
-                  onChange={(ev) => setDraftDurationHours(ev.target.value)}
-                  className="w-24"
-                />
-              </div>
-              <div className="grid gap-1">
-                <Label htmlFor="wt-m" className="text-xs font-normal">
-                  {labels.minutes}
-                </Label>
-                <Input
-                  id="wt-m"
-                  type="number"
-                  min={0}
-                  max={59}
-                  value={draftDurationMinutes}
-                  onChange={(ev) => setDraftDurationMinutes(ev.target.value)}
-                  className="w-24"
-                />
-              </div>
+    <div className="grid w-full min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,360px)] lg:items-start">
+      <div className="space-y-4 lg:col-start-2 lg:sticky lg:top-4">
+        <Card className="border-border/80 bg-muted/15 shadow-none">
+          <CardHeader>
+            <CardTitle className="text-base">{labels.range}</CardTitle>
+            <CardDescription className="text-xs">
+              {locale === "en"
+                ? "Filter entries by work date."
+                : "Einträge nach Arbeitsdatum filtern."}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-wrap items-end gap-3">
+            <div className="grid gap-2">
+              <Label htmlFor="wt-from">{labels.from}</Label>
+              <Input
+                id="wt-from"
+                type="date"
+                value={from}
+                onChange={(ev) => setFrom(ev.target.value)}
+              />
             </div>
-          </div>
-          <div className="grid gap-2 md:col-span-2">
-            <Label htmlFor="wt-proj">{labels.project}</Label>
-            <Select value={draftProjectId} onValueChange={setDraftProjectId}>
-              <SelectTrigger id="wt-proj">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={PROJECT_NONE}>{labels.noProject}</SelectItem>
-                {projects.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.title}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="grid gap-2 md:col-span-2">
-            <Label htmlFor="wt-notes">{labels.notes}</Label>
-            <Input
-              id="wt-notes"
-              value={draftNotes}
-              onChange={(ev) => setDraftNotes(ev.target.value)}
-            />
-          </div>
-          <div className="flex items-end md:col-span-2 lg:col-span-3">
+            <div className="grid gap-2">
+              <Label htmlFor="wt-to">{labels.to}</Label>
+              <Input
+                id="wt-to"
+                type="date"
+                value={to}
+                onChange={(ev) => setTo(ev.target.value)}
+              />
+            </div>
             <Button
               type="button"
-              onClick={() => void submitCreate()}
-              disabled={
-                saveBusy ||
-                !draftEmployeeId ||
-                !(() => {
-                  const h = Number(draftDurationHours);
-                  const m = Number(draftDurationMinutes);
-                  const dm = h * 60 + m;
-                  return Number.isFinite(dm) && dm >= 1 && dm <= 24 * 60;
-                })()
-              }
+              variant="outline"
+              onClick={() => void loadEntries()}
+              disabled={loadBusy}
             >
-              {saveBusy
-                ? locale === "en"
-                  ? "Saving…"
-                  : "Speichert…"
-                : labels.save}
+              {labels.reload}
             </Button>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/80 bg-muted/15 shadow-none">
+          <CardHeader>
+            <CardTitle className="text-base">{labels.add}</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-3 md:grid-cols-2">
+            <div className="grid gap-2 md:col-span-2">
+              <Label htmlFor="wt-emp">{labels.employee}</Label>
+              <Select value={draftEmployeeId} onValueChange={setDraftEmployeeId}>
+                <SelectTrigger id="wt-emp">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {employees.map((e) => (
+                    <SelectItem key={e.id} value={e.id}>
+                      {e.displayName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="wt-d">{labels.date}</Label>
+              <Input
+                id="wt-d"
+                type="date"
+                value={draftDate}
+                onChange={(ev) => setDraftDate(ev.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <span className="text-sm font-medium leading-none">{labels.duration}</span>
+              <div className="flex flex-wrap gap-2">
+                <div className="grid gap-1">
+                  <Label htmlFor="wt-h" className="text-xs font-normal">
+                    {labels.hours}
+                  </Label>
+                  <Input
+                    id="wt-h"
+                    type="number"
+                    min={0}
+                    max={24}
+                    value={draftDurationHours}
+                    onChange={(ev) => setDraftDurationHours(ev.target.value)}
+                    className="w-24"
+                  />
+                </div>
+                <div className="grid gap-1">
+                  <Label htmlFor="wt-m" className="text-xs font-normal">
+                    {labels.minutes}
+                  </Label>
+                  <Input
+                    id="wt-m"
+                    type="number"
+                    min={0}
+                    max={59}
+                    value={draftDurationMinutes}
+                    onChange={(ev) => setDraftDurationMinutes(ev.target.value)}
+                    className="w-24"
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="grid gap-2 md:col-span-2">
+              <Label htmlFor="wt-proj">{labels.project}</Label>
+              <Select value={draftProjectId} onValueChange={setDraftProjectId}>
+                <SelectTrigger id="wt-proj">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={PROJECT_NONE}>{labels.noProject}</SelectItem>
+                  {projects.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2 md:col-span-2">
+              <Label htmlFor="wt-notes">{labels.notes}</Label>
+              <Input
+                id="wt-notes"
+                value={draftNotes}
+                onChange={(ev) => setDraftNotes(ev.target.value)}
+              />
+            </div>
+            <div className="flex items-end md:col-span-2">
+              <Button
+                type="button"
+                onClick={() => void submitCreate()}
+                disabled={
+                  saveBusy ||
+                  !draftEmployeeId ||
+                  !(() => {
+                    const h = Number(draftDurationHours);
+                    const m = Number(draftDurationMinutes);
+                    const dm = h * 60 + m;
+                    return Number.isFinite(dm) && dm >= 1 && dm <= 24 * 60;
+                  })()
+                }
+              >
+                {saveBusy
+                  ? locale === "en"
+                    ? "Saving…"
+                    : "Speichert…"
+                  : labels.save}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       <Card className="border-border/80 bg-muted/15 shadow-none">
         <CardHeader>
@@ -544,8 +546,12 @@ export function WorkTimeContent({ locale }: { locale: Locale }) {
                   <TableHead>{labels.date}</TableHead>
                   <TableHead>{labels.employee}</TableHead>
                   <TableHead>{labels.duration}</TableHead>
-                  <TableHead>{labels.projectCol}</TableHead>
-                  <TableHead>{labels.notes}</TableHead>
+                  <TableHead className="hidden md:table-cell">
+                    {labels.projectCol}
+                  </TableHead>
+                  <TableHead className="hidden lg:table-cell">
+                    {labels.notes}
+                  </TableHead>
                   <TableHead className="text-right">{labels.actions}</TableHead>
                 </TableRow>
               </TableHeader>
@@ -559,12 +565,12 @@ export function WorkTimeContent({ locale }: { locale: Locale }) {
                     <TableCell>
                       {formatDuration(locale, row.durationMinutes)}
                     </TableCell>
-                    <TableCell className="max-w-48 truncate">
+                    <TableCell className="hidden md:table-cell max-w-48 truncate">
                       {row.projectId
                         ? (projectTitleById.get(row.projectId) ?? row.projectId)
                         : "—"}
                     </TableCell>
-                    <TableCell className="max-w-56 truncate text-muted-foreground">
+                    <TableCell className="hidden lg:table-cell max-w-56 truncate text-muted-foreground">
                       {row.notes ?? "—"}
                     </TableCell>
                     <TableCell className="text-right">

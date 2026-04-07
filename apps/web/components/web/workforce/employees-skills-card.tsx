@@ -134,7 +134,7 @@ export function EmployeesSkillsCard({
       </CardHeader>
       <CardContent className="space-y-4">
         {canEdit ? (
-          <div className="grid gap-2 sm:max-w-xl sm:grid-cols-[1fr_auto] sm:items-end">
+          <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
             <div className="grid gap-2">
               <Label htmlFor="employee-skill-new">{t.skillsCreateLabel}</Label>
               <Input

@@ -408,7 +408,7 @@ export function EmployeesCreateDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton
-        className="flex max-h-[min(92vh,40rem)] w-[calc(100%-2rem)] max-w-xl flex-col gap-0 overflow-hidden p-0 sm:max-w-xl"
+        className="flex max-h-[min(92vh,40rem)] w-[calc(100%-2rem)] max-w-2xl flex-col gap-0 overflow-hidden p-0 lg:max-w-3xl"
       >
         <form
           className="flex max-h-[min(92vh,40rem)] flex-col"
@@ -450,7 +450,7 @@ export function EmployeesCreateDialog({
                 >
                   {t.sectionMain}
                 </h2>
-                <div className="grid gap-4 sm:max-w-lg">
+                <div className="grid gap-3">
                   <div className="grid gap-2">
                     <Label htmlFor={nameFieldId}>{t.fieldDisplayName}</Label>
                     <Input

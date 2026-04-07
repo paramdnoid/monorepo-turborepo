@@ -47,6 +47,7 @@ import { Tabs, TabsList, TabsTrigger } from "@repo/ui/tabs";
 import { Textarea } from "@repo/ui/textarea";
 
 import { CustomerAddressGeocodeControls } from "@/components/web/customers/customer-address-geocode-controls";
+import { useWebShellHeaderActions } from "@/components/web/shell/web-shell-header-actions";
 import { EmployeesAbsencesCard } from "@/components/web/workforce/employees-absences-card";
 import { EmployeesActivityPanel } from "@/components/web/workforce/employees-activity-panel";
 import { EmployeesFilesCard } from "@/components/web/workforce/employees-files-card";
@@ -237,7 +238,7 @@ function formatGeocodedAt(iso: string | null, locale: Locale, noneLabel: string)
 
 function detailLoadingSkeleton(): ReactNode {
   return (
-    <div className="space-y-6" aria-hidden>
+    <div className="space-y-4" aria-hidden>
       <Skeleton className="h-8 w-40" />
       {[0, 1, 2].map((k) => (
         <Card key={k} className="border-border/80 bg-muted/15 shadow-none">
@@ -245,9 +246,9 @@ function detailLoadingSkeleton(): ReactNode {
             <Skeleton className="h-5 w-48" />
           </CardHeader>
           <CardContent className="space-y-3">
-            <Skeleton className="h-10 w-full max-w-xl" />
-            <Skeleton className="h-10 w-full max-w-xl" />
-            <Skeleton className="h-20 w-full max-w-xl" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-20 w-full" />
           </CardContent>
         </Card>
       ))}
@@ -267,6 +268,7 @@ export function EmployeesDetailContent({
   const searchParams = useSearchParams();
   const t = getEmployeesCopy(locale);
   const formId = useId();
+  const { setHeaderActions } = useWebShellHeaderActions();
   const weekdays = useMemo(() => weekdayOptions(locale), [locale]);
   const [activeTab, setActiveTab] = useState<EmployeeDetailTab>(() =>
     parseDetailTab(searchParams.get("tab")),
@@ -335,6 +337,45 @@ export function EmployeesDetailContent({
     const next = parseDetailTab(searchParams.get("tab"));
     setActiveTab((prev) => (prev === next ? prev : next));
   }, [searchParams]);
+
+  const showHeaderSave =
+    !loadBusy &&
+    !notFound &&
+    loadError === null &&
+    (activeTab === "main" || activeTab === "availability");
+
+  const headerActions = useMemo(() => {
+    return (
+      <>
+        <Button variant="ghost" size="sm" asChild>
+          <Link href="/web/employees/list">{t.backToList}</Link>
+        </Button>
+        {showHeaderSave ? (
+          <Button
+            type="submit"
+            form={formId}
+            size="sm"
+            disabled={saveBusy || !canEditEmployee}
+          >
+            {saveBusy ? t.saving : t.save}
+          </Button>
+        ) : null}
+      </>
+    );
+  }, [
+    canEditEmployee,
+    formId,
+    saveBusy,
+    showHeaderSave,
+    t.backToList,
+    t.save,
+    t.saving,
+  ]);
+
+  useEffect(() => {
+    setHeaderActions(headerActions);
+    return () => setHeaderActions(null);
+  }, [headerActions, setHeaderActions]);
 
   const handleTabChange = useCallback(
     (nextRaw: string) => {
@@ -695,9 +736,6 @@ export function EmployeesDetailContent({
     return (
       <div className="space-y-4">
         <p className="text-sm text-muted-foreground">{t.detailNotFound}</p>
-        <Button variant="outline" size="sm" asChild>
-          <Link href="/web/employees/list">{t.backToList}</Link>
-        </Button>
       </div>
     );
   }
@@ -754,19 +792,17 @@ export function EmployeesDetailContent({
         </AlertDialogContent>
       </AlertDialog>
 
-      <form id={formId} onSubmit={(ev) => void handleSave(ev)} className="space-y-6">
-        <div className="flex flex-wrap items-center gap-3">
-          <Button variant="ghost" size="sm" className="h-8 px-2" asChild>
-            <Link href="/web/employees/list">{t.backToList}</Link>
-          </Button>
-        </div>
-
+      <form id={formId} onSubmit={(ev) => void handleSave(ev)} className="space-y-4">
         {!canEditEmployee ? (
           <p className="text-xs text-muted-foreground">{t.permissionReadOnly}</p>
         ) : null}
 
         <Tabs value={activeTab} onValueChange={handleTabChange}>
-          <TabsList variant="line" aria-label={t.profileNavAriaLabel}>
+          <TabsList
+            variant="line"
+            aria-label={t.profileNavAriaLabel}
+            className="w-full justify-start overflow-x-auto"
+          >
             <TabsTrigger value="main">{t.sectionMain}</TabsTrigger>
             <TabsTrigger value="availability">{t.sectionAvailability}</TabsTrigger>
             <TabsTrigger value="vacation">{t.sectionVacation}</TabsTrigger>
@@ -776,13 +812,14 @@ export function EmployeesDetailContent({
         </Tabs>
 
         {activeTab === "main" ? (
-          <>
-            <fieldset disabled={!canEditEmployee} className="space-y-6">
+          <div className="grid w-full min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,360px)] lg:items-start">
+            <div className="space-y-4">
+              <fieldset disabled={!canEditEmployee} className="space-y-4">
               <Card className="border-border/80 bg-muted/15 shadow-none">
                 <CardHeader>
                   <CardTitle className="text-base">{t.sectionMain}</CardTitle>
                 </CardHeader>
-                <CardContent className="grid gap-4 sm:max-w-xl">
+                <CardContent className="grid gap-4">
                   <div className="grid gap-2">
                     <Label htmlFor={`${formId}-name`}>{t.fieldDisplayName}</Label>
                     <Input
@@ -940,7 +977,7 @@ export function EmployeesDetailContent({
                   <CardDescription className="text-xs">{t.privacyHint}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid gap-1 rounded-md border border-border/50 bg-muted/20 px-3 py-2 text-xs sm:max-w-xl">
+                  <div className="grid gap-1 rounded-md border border-border/50 bg-muted/20 px-3 py-2 text-xs">
                     <span className="font-medium text-muted-foreground">
                       {t.fieldGeocodedAt}
                     </span>
@@ -1078,50 +1115,53 @@ export function EmployeesDetailContent({
                   </div>
                 </CardContent>
               </Card>
-            </fieldset>
+              </fieldset>
 
-            <EmployeesSkillsCard
-              employeeId={employeeId}
-              locale={locale}
-              canEdit={canEditEmployee}
-            />
+              {canDeleteEmployee ? (
+                <Card className="border-destructive/20 bg-destructive/5 shadow-none">
+                <CardHeader>
+                  <CardTitle className="text-base">{t.deleteSectionTitle}</CardTitle>
+                  <CardDescription className="text-xs">{t.deleteSectionDescription}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {deleteError ? (
+                    <p className="text-sm text-destructive" role="alert">
+                      {deleteError}
+                    </p>
+                  ) : null}
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    disabled={deleteBusy}
+                    onClick={() => setDeleteDialogOpen(true)}
+                  >
+                    {deleteBusy ? t.deleting : t.deleteButton}
+                  </Button>
+                </CardContent>
+                </Card>
+              ) : null}
+            </div>
 
-            <EmployeesRelationshipsCard
-              employeeId={employeeId}
-              locale={locale}
-              canEdit={canEditEmployee}
-            />
+            <div className="space-y-4 lg:sticky lg:top-4">
+              <EmployeesSkillsCard
+                employeeId={employeeId}
+                locale={locale}
+                canEdit={canEditEmployee}
+              />
 
-            <EmployeesFilesCard
-              employeeId={employeeId}
-              locale={locale}
-              canEdit={canEditEmployee}
-            />
+              <EmployeesRelationshipsCard
+                employeeId={employeeId}
+                locale={locale}
+                canEdit={canEditEmployee}
+              />
 
-            {canDeleteEmployee ? (
-              <Card className="border-destructive/20 bg-destructive/5 shadow-none">
-              <CardHeader>
-                <CardTitle className="text-base">{t.deleteSectionTitle}</CardTitle>
-                <CardDescription className="text-xs">{t.deleteSectionDescription}</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {deleteError ? (
-                  <p className="text-sm text-destructive" role="alert">
-                    {deleteError}
-                  </p>
-                ) : null}
-                <Button
-                  type="button"
-                  variant="destructive"
-                  disabled={deleteBusy}
-                  onClick={() => setDeleteDialogOpen(true)}
-                >
-                  {deleteBusy ? t.deleting : t.deleteButton}
-                </Button>
-              </CardContent>
-              </Card>
-            ) : null}
-          </>
+              <EmployeesFilesCard
+                employeeId={employeeId}
+                locale={locale}
+                canEdit={canEditEmployee}
+              />
+            </div>
+          </div>
         ) : null}
 
         {activeTab === "availability" ? (
@@ -1154,14 +1194,14 @@ export function EmployeesDetailContent({
                       className="flex flex-col gap-3 rounded-lg border border-border/60 bg-muted/10 p-3 sm:flex-row sm:flex-wrap sm:items-end"
                     >
                       <div className="grid gap-2 sm:w-40">
-                        <Label>{t.weekdayLabel}</Label>
+                        <Label htmlFor={`${formId}-wd-${r.clientId}`}>{t.weekdayLabel}</Label>
                         <Select
                           value={String(r.weekday)}
                           onValueChange={(v) =>
                             patchSlot(r.clientId, { weekday: Number(v) })
                           }
                         >
-                          <SelectTrigger className="w-full" aria-label={t.weekdayLabel}>
+                          <SelectTrigger id={`${formId}-wd-${r.clientId}`} className="w-full">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -1375,14 +1415,6 @@ export function EmployeesDetailContent({
         ) : null}
         {activeTab === "activity" ? (
           <EmployeesActivityPanel locale={locale} employeeId={employeeId} />
-        ) : null}
-
-        {activeTab === "main" || activeTab === "availability" ? (
-          <div className="flex flex-wrap justify-end gap-2">
-            <Button type="submit" disabled={saveBusy || !canEditEmployee}>
-              {saveBusy ? t.saving : t.save}
-            </Button>
-          </div>
         ) : null}
       </form>
     </>

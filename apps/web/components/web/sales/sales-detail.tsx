@@ -1415,6 +1415,21 @@ export function SalesDetail({
   }
 
   const inv = detail.data.invoice;
+  const xWarnings = eInvoiceXReport?.warnings ?? [];
+  const zWarnings = eInvoiceZReport?.warnings ?? [];
+  const xHasSellerTaxWarning = xWarnings.some(
+    (w) => w.code === "seller_tax_id_missing",
+  );
+  const xHasBuyerReferenceWarning = xWarnings.some(
+    (w) => w.code === "buyer_reference_missing",
+  );
+  const zHasSellerTaxWarning = zWarnings.some(
+    (w) => w.code === "seller_tax_id_missing",
+  );
+
+  const customerFixHref = inv.customerId
+    ? `/web/customers/${encodeURIComponent(inv.customerId)}?edit=1`
+    : "/web/customers/list";
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap gap-2">
@@ -1599,6 +1614,37 @@ export function SalesDetail({
                           : `${eInvoiceXReport.errors.length} Fehler, ${eInvoiceXReport.warnings.length} Warnungen.`}
                       </AlertDescription>
                     </Alert>
+                    {xHasSellerTaxWarning || xHasBuyerReferenceWarning ? (
+                      <Alert>
+                        <AlertTitle>
+                          {locale === "en"
+                            ? "How to fix warnings"
+                            : "So behebst du die Warnungen"}
+                        </AlertTitle>
+                        <AlertDescription>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {xHasSellerTaxWarning ? (
+                              <Button variant="outline" size="sm" asChild>
+                                <Link href="/web/settings#org-vat">
+                                  {locale === "en"
+                                    ? "Add VAT ID / tax number (settings)"
+                                    : "USt-IdNr. / Steuernummer in Einstellungen hinterlegen"}
+                                </Link>
+                              </Button>
+                            ) : null}
+                            {xHasBuyerReferenceWarning && inv.customerId ? (
+                              <Button variant="outline" size="sm" asChild>
+                                <Link href={customerFixHref}>
+                                  {locale === "en"
+                                    ? "Set customer number (buyer reference)"
+                                    : "Kundennummer beim Kunden setzen"}
+                                </Link>
+                              </Button>
+                            ) : null}
+                          </div>
+                        </AlertDescription>
+                      </Alert>
+                    ) : null}
                     <div className="space-y-2">
                       <p className="text-xs font-medium text-muted-foreground">
                         {locale === "en" ? "Errors" : "Fehler"}
@@ -1640,6 +1686,26 @@ export function SalesDetail({
                           : `${eInvoiceZReport.errors.length} Fehler, ${eInvoiceZReport.warnings.length} Warnungen.`}
                       </AlertDescription>
                     </Alert>
+                    {zHasSellerTaxWarning ? (
+                      <Alert>
+                        <AlertTitle>
+                          {locale === "en"
+                            ? "How to fix warnings"
+                            : "So behebst du die Warnungen"}
+                        </AlertTitle>
+                        <AlertDescription>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            <Button variant="outline" size="sm" asChild>
+                              <Link href="/web/settings#org-vat">
+                                {locale === "en"
+                                  ? "Add VAT ID / tax number (settings)"
+                                  : "USt-IdNr. / Steuernummer in Einstellungen hinterlegen"}
+                              </Link>
+                            </Button>
+                          </div>
+                        </AlertDescription>
+                      </Alert>
+                    ) : null}
                     <div className="space-y-2">
                       <p className="text-xs font-medium text-muted-foreground">
                         {locale === "en" ? "Errors" : "Fehler"}

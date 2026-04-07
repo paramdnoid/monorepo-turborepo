@@ -511,9 +511,10 @@ export function SchedulingContent({
   );
 
   async function addAssignment() {
-    if (!selectedDate || !draftEmployeeId || !draftTitle.trim()) {
+    if (assignmentBusy || !selectedDate || !draftEmployeeId || !draftTitle.trim()) {
       return;
     }
+    setAssignmentBusy(true);
     setAssignmentError(null);
     try {
       const res = await fetch("/api/web/scheduling/assignments", {
@@ -573,6 +574,8 @@ export function SchedulingContent({
           ? "Could not create assignment."
           : "Einsatz konnte nicht erstellt werden.",
       );
+    } finally {
+      setAssignmentBusy(false);
     }
   }
 
@@ -725,9 +728,10 @@ export function SchedulingContent({
   }
 
   async function removeAssignment(id: string) {
-    if (!selectedDate) {
+    if (assignmentBusy || !selectedDate) {
       return;
     }
+    setAssignmentBusy(true);
     setAssignmentError(null);
     try {
       const res = await fetch(
@@ -755,11 +759,13 @@ export function SchedulingContent({
           ? "Could not remove assignment."
           : "Einsatz konnte nicht entfernt werden.",
       );
+    } finally {
+      setAssignmentBusy(false);
     }
   }
 
   return (
-    <div className="grid w-full min-w-0 gap-6 lg:grid-cols-[minmax(0,320px)_1fr] lg:items-start">
+    <div className="grid w-full min-w-0 gap-4 lg:grid-cols-[minmax(0,320px)_1fr] lg:items-start">
       <Card className="overflow-hidden border-border/80 bg-muted/15 shadow-none">
         <CardHeader className="border-b pb-4">
           <CardTitle className="text-base">
@@ -784,7 +790,7 @@ export function SchedulingContent({
                 "after:pointer-events-none after:absolute after:bottom-1 after:left-1/2 after:z-10 after:h-1.5 after:w-1.5 after:-translate-x-1/2 after:rounded-full after:bg-primary",
               ),
             }}
-            className="mx-auto w-full max-w-[min(100%,20rem)]"
+            className="w-full"
           />
         </CardContent>
       </Card>
@@ -821,7 +827,7 @@ export function SchedulingContent({
                     : null;
                 return (
                   <li key={item.employeeId}>
-                    <div className="flex flex-col gap-2 rounded-lg border bg-muted/20 p-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex flex-col gap-2 rounded-lg border border-border/60 bg-muted/10 p-3 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0 space-y-1">
                         <p className="text-sm font-medium leading-snug">
                           {item.displayName}
@@ -915,7 +921,7 @@ export function SchedulingContent({
             {assignmentError ? (
               <p className="text-sm text-destructive">{assignmentError}</p>
             ) : null}
-            <div className="grid gap-3 rounded-lg border bg-muted/10 p-3 md:grid-cols-2">
+            <div className="grid gap-3 rounded-lg border border-border/60 bg-muted/10 p-3 md:grid-cols-2">
               <div className="grid gap-2">
                 <Label htmlFor="sched-time">
                   {locale === "en" ? "Time" : "Uhrzeit"}
@@ -981,6 +987,11 @@ export function SchedulingContent({
                   id="sched-title"
                   value={draftTitle}
                   onChange={(ev) => setDraftTitle(ev.target.value)}
+                  onKeyDown={(ev) => {
+                    if (ev.key !== "Enter") return;
+                    ev.preventDefault();
+                    void addAssignment();
+                  }}
                 />
               </div>
               <div className="grid gap-2 md:col-span-2">
@@ -991,6 +1002,11 @@ export function SchedulingContent({
                   id="sched-place"
                   value={draftPlace}
                   onChange={(ev) => setDraftPlace(ev.target.value)}
+                  onKeyDown={(ev) => {
+                    if (ev.key !== "Enter") return;
+                    ev.preventDefault();
+                    void addAssignment();
+                  }}
                 />
               </div>
               <div className="grid gap-2 md:col-span-2">
@@ -1051,7 +1067,7 @@ export function SchedulingContent({
                   return (
                     <li
                       key={a.id}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/10 px-3 py-2"
+                      className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/60 bg-muted/10 px-3 py-2"
                     >
                       <div className="min-w-0 space-y-0.5">
                         <p className="text-sm font-medium">

@@ -49,6 +49,7 @@ import {
   WebAppProvider,
   type WebShellSession,
 } from "./web-app-context";
+import { WebShellHeaderActionsProvider } from "./web-shell-header-actions";
 import { WebUserMenu } from "./web-user-menu";
 
 type WebShellProps = {
@@ -139,6 +140,21 @@ export function WebShell({ webSession, children }: WebShellProps) {
   const { title, subtitle } = getHeaderMeta(pathname, webSession.locale);
   const currentModule = getWebModuleFromPath(pathname);
   const currentPermissions = webSession.permissions[currentModule];
+
+  const [headerActions, setHeaderActionsState] = useState<{
+    pathname: string;
+    node: React.ReactNode;
+  } | null>(null);
+
+  const setHeaderActions = useCallback(
+    (node: React.ReactNode | null) => {
+      setHeaderActionsState(node ? { pathname, node } : null);
+    },
+    [pathname],
+  );
+
+  const headerActionsNode =
+    headerActions?.pathname === pathname ? headerActions.node : null;
 
   const painterModules = useMemo(
     () => getPainterModulesOrdered(webSession.locale),
@@ -256,221 +272,230 @@ export function WebShell({ webSession, children }: WebShellProps) {
   if (salesPrintPreview) {
     return (
       <WebAppProvider value={appValue}>
-        <div className="min-h-svh min-w-0 p-6 print:bg-white print:p-0">
-          {children}
-        </div>
+        <WebShellHeaderActionsProvider setHeaderActions={setHeaderActions}>
+          <div className="min-h-svh min-w-0 p-6 print:bg-white print:p-0">
+            {children}
+          </div>
+        </WebShellHeaderActionsProvider>
       </WebAppProvider>
     );
   }
 
   return (
     <WebAppProvider value={appValue}>
-      <SidebarProvider className="min-w-0">
-        <Sidebar collapsible="icon" variant="inset">
-          <SidebarHeader className="border-sidebar-border">
-            <SidebarBrand tagline={webSession.brandTagline} />
-          </SidebarHeader>
-          <SidebarContent>
-            <SidebarGroup>
-              <SidebarGroupLabel>Navigation</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      asChild
-                      tooltip="Übersicht"
-                      isActive={overviewActive}
-                    >
-                      <Link href="/web">
-                        <LayoutGrid />
-                        <span>Übersicht</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  {webSession.permissions.projects.canView ? (
+      <WebShellHeaderActionsProvider setHeaderActions={setHeaderActions}>
+        <SidebarProvider className="min-w-0">
+          <Sidebar collapsible="icon" variant="inset">
+            <SidebarHeader className="border-sidebar-border">
+              <SidebarBrand tagline={webSession.brandTagline} />
+            </SidebarHeader>
+            <SidebarContent>
+              <SidebarGroup>
+                <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
                     <SidebarMenuItem>
                       <SidebarMenuButton
                         asChild
-                        tooltip={webSession.locale === "en" ? "Projects" : "Projekte"}
-                        isActive={pathname === "/web/projects" || pathname.startsWith("/web/projects/")}
+                        tooltip="Übersicht"
+                        isActive={overviewActive}
                       >
-                        <Link href="/web/projects">
-                          <FolderKanban />
-                          <span>{webSession.locale === "en" ? "Projects" : "Projekte"}</span>
+                        <Link href="/web">
+                          <LayoutGrid />
+                          <span>Übersicht</span>
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
-                  ) : null}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-
-            {webSession.permissions.customers.canView ? (
-              <SidebarGroup>
-                <SidebarGroupLabel>{customersSidebar.groupLabel}</SidebarGroupLabel>
-                <SidebarGroupContent>
-                  <SidebarMenu>
-                    {customersSidebar.items.map((item) => {
-                      const isActive =
-                        item.href === "/web/customers/list"
-                          ? isCustomersSidebarListActive(item.href, pathname)
-                          : pathname === item.href ||
-                            pathname.startsWith(`${item.href}/`);
-                      return (
-                        <SidebarMenuItem key={item.href}>
-                          <SidebarMenuButton
-                            asChild
-                            tooltip={item.tooltip}
-                            isActive={isActive}
-                          >
-                            <Link href={item.href}>
-                              <TradeFeatureIcon name={item.icon} variant="nav" />
-                              <span className="truncate">{item.label}</span>
-                            </Link>
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
-                      );
-                    })}
+                    {webSession.permissions.projects.canView ? (
+                      <SidebarMenuItem>
+                        <SidebarMenuButton
+                          asChild
+                          tooltip={webSession.locale === "en" ? "Projects" : "Projekte"}
+                          isActive={pathname === "/web/projects" || pathname.startsWith("/web/projects/")}
+                        >
+                          <Link href="/web/projects">
+                            <FolderKanban />
+                            <span>{webSession.locale === "en" ? "Projects" : "Projekte"}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ) : null}
                   </SidebarMenu>
                 </SidebarGroupContent>
               </SidebarGroup>
-            ) : null}
 
-            {webSession.permissions.sales.canView ? (
-              <SidebarGroup>
-                <SidebarGroupLabel>{salesSidebar.groupLabel}</SidebarGroupLabel>
-                <SidebarGroupContent>
-                  <SidebarMenu>
-                    {salesSidebar.items.map((item) => {
-                      const isActive =
-                        pathname === item.href ||
-                        pathname.startsWith(`${item.href}/`);
-                      return (
-                        <SidebarMenuItem key={item.href}>
-                          <SidebarMenuButton
-                            asChild
-                            tooltip={item.tooltip}
-                            isActive={isActive}
-                          >
-                            <Link href={item.href}>
-                              <TradeFeatureIcon name={item.icon} variant="nav" />
-                              <span className="truncate">{item.label}</span>
-                            </Link>
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
-                      );
-                    })}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </SidebarGroup>
-            ) : null}
-
-            {webSession.permissions.workforce.canView ? (
-              <SidebarGroup>
-                <SidebarGroupLabel>{workforceSidebar.groupLabel}</SidebarGroupLabel>
-                <SidebarGroupContent>
-                  <SidebarMenu>
-                    {workforceSidebar.items.map((item) => {
-                      const isActive =
-                        pathname === item.href ||
-                        pathname.startsWith(`${item.href}/`);
-                      return (
-                        <SidebarMenuItem key={item.href}>
-                          <SidebarMenuButton
-                            asChild
-                            tooltip={item.tooltip}
-                            isActive={isActive}
-                          >
-                            <Link href={item.href}>
-                              <TradeFeatureIcon name={item.icon} variant="nav" />
-                              <span className="truncate">{item.label}</span>
-                            </Link>
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
-                      );
-                    })}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </SidebarGroup>
-            ) : null}
-
-            {webSession.permissions.painter.canView ? (
-              <SidebarGroup>
-                <SidebarGroupLabel>
-                  {webSession.locale === "en"
-                    ? "Painter & decorator"
-                    : "Maler & Tapezierer"}
-                </SidebarGroupLabel>
-                <SidebarGroupContent>
-                  <SidebarMenu>
-                    {painterModules.map(({ segment, href, feature }) => {
-                      const isActive =
-                        pathname === href || pathname.startsWith(`${href}/`);
-                      return (
-                        <SidebarMenuItem key={segment}>
-                          <SidebarMenuButton
-                            asChild
-                            tooltip={feature.label}
-                            isActive={isActive}
-                          >
-                            <Link href={href}>
-                              <TradeFeatureIcon
-                                name={feature.icon}
-                                variant="nav"
-                              />
-                              <span className="truncate">{feature.label}</span>
-                            </Link>
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
-                      );
-                    })}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </SidebarGroup>
-            ) : null}
-          </SidebarContent>
-          <WebUserMenu
-            webSession={webSession}
-            onLogout={handleWebLogout}
-            logoutBusy={authBusy}
-          />
-          <SidebarRail />
-        </Sidebar>
-        <SidebarInset>
-          <header className="flex h-14 min-w-0 shrink-0 items-center gap-2 px-4">
-            <SidebarTrigger className="-ml-1 shrink-0" />
-            <Separator orientation="vertical" className="mr-2 h-4 shrink-0" />
-            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-              <h1 className="truncate text-sm font-medium leading-none">
-                {title}
-              </h1>
-              <p className="truncate text-xs text-muted-foreground">
-                {subtitle}
-              </p>
-              {!currentPermissions.canEdit ? (
-                <p className="truncate text-[11px] text-amber-700 dark:text-amber-400">
-                  {webSession.locale === "en"
-                    ? "Read-only mode for this module"
-                    : "Nur Lesemodus fuer dieses Modul"}
-                </p>
+              {webSession.permissions.customers.canView ? (
+                <SidebarGroup>
+                  <SidebarGroupLabel>{customersSidebar.groupLabel}</SidebarGroupLabel>
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      {customersSidebar.items.map((item) => {
+                        const isActive =
+                          item.href === "/web/customers/list"
+                            ? isCustomersSidebarListActive(item.href, pathname)
+                            : pathname === item.href ||
+                              pathname.startsWith(`${item.href}/`);
+                        return (
+                          <SidebarMenuItem key={item.href}>
+                            <SidebarMenuButton
+                              asChild
+                              tooltip={item.tooltip}
+                              isActive={isActive}
+                            >
+                              <Link href={item.href}>
+                                <TradeFeatureIcon name={item.icon} variant="nav" />
+                                <span className="truncate">{item.label}</span>
+                              </Link>
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                        );
+                      })}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                </SidebarGroup>
               ) : null}
-            </div>
-          </header>
-          <main
-            id="main-content"
-            tabIndex={-1}
-            className="flex min-h-0 min-w-0 flex-1 flex-col gap-6 overflow-auto p-6"
-          >
-            {deniedHint ? (
-              <Alert variant="destructive">
-                <AlertTitle>{deniedHint.title}</AlertTitle>
-                <AlertDescription>{deniedHint.description}</AlertDescription>
-              </Alert>
-            ) : null}
-            {children}
-          </main>
-        </SidebarInset>
-      </SidebarProvider>
+
+              {webSession.permissions.sales.canView ? (
+                <SidebarGroup>
+                  <SidebarGroupLabel>{salesSidebar.groupLabel}</SidebarGroupLabel>
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      {salesSidebar.items.map((item) => {
+                        const isActive =
+                          pathname === item.href ||
+                          pathname.startsWith(`${item.href}/`);
+                        return (
+                          <SidebarMenuItem key={item.href}>
+                            <SidebarMenuButton
+                              asChild
+                              tooltip={item.tooltip}
+                              isActive={isActive}
+                            >
+                              <Link href={item.href}>
+                                <TradeFeatureIcon name={item.icon} variant="nav" />
+                                <span className="truncate">{item.label}</span>
+                              </Link>
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                        );
+                      })}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                </SidebarGroup>
+              ) : null}
+
+              {webSession.permissions.workforce.canView ? (
+                <SidebarGroup>
+                  <SidebarGroupLabel>{workforceSidebar.groupLabel}</SidebarGroupLabel>
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      {workforceSidebar.items.map((item) => {
+                        const isActive =
+                          pathname === item.href ||
+                          pathname.startsWith(`${item.href}/`);
+                        return (
+                          <SidebarMenuItem key={item.href}>
+                            <SidebarMenuButton
+                              asChild
+                              tooltip={item.tooltip}
+                              isActive={isActive}
+                            >
+                              <Link href={item.href}>
+                                <TradeFeatureIcon name={item.icon} variant="nav" />
+                                <span className="truncate">{item.label}</span>
+                              </Link>
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                        );
+                      })}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                </SidebarGroup>
+              ) : null}
+
+              {webSession.permissions.painter.canView ? (
+                <SidebarGroup>
+                  <SidebarGroupLabel>
+                    {webSession.locale === "en"
+                      ? "Painter & decorator"
+                      : "Maler & Tapezierer"}
+                  </SidebarGroupLabel>
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      {painterModules.map(({ segment, href, feature }) => {
+                        const isActive =
+                          pathname === href || pathname.startsWith(`${href}/`);
+                        return (
+                          <SidebarMenuItem key={segment}>
+                            <SidebarMenuButton
+                              asChild
+                              tooltip={feature.label}
+                              isActive={isActive}
+                            >
+                              <Link href={href}>
+                                <TradeFeatureIcon
+                                  name={feature.icon}
+                                  variant="nav"
+                                />
+                                <span className="truncate">{feature.label}</span>
+                              </Link>
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                        );
+                      })}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                </SidebarGroup>
+              ) : null}
+            </SidebarContent>
+            <WebUserMenu
+              webSession={webSession}
+              onLogout={handleWebLogout}
+              logoutBusy={authBusy}
+            />
+            <SidebarRail />
+          </Sidebar>
+          <SidebarInset>
+            <header className="flex h-14 min-w-0 shrink-0 items-center gap-2 px-4">
+              <SidebarTrigger className="-ml-1 shrink-0" />
+              <Separator orientation="vertical" className="mr-2 h-4 shrink-0" />
+              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <h1 className="truncate text-sm font-medium leading-none">
+                  {title}
+                </h1>
+                <p className="truncate text-xs text-muted-foreground">
+                  {subtitle}
+                </p>
+                {!currentPermissions.canEdit ? (
+                  <p className="truncate text-[11px] text-amber-700 dark:text-amber-400">
+                    {webSession.locale === "en"
+                      ? "Read-only mode for this module"
+                      : "Nur Lesemodus fuer dieses Modul"}
+                  </p>
+                ) : null}
+              </div>
+              {headerActionsNode ? (
+                <div className="flex shrink-0 items-center gap-2">
+                  {headerActionsNode}
+                </div>
+              ) : null}
+            </header>
+            <main
+              id="main-content"
+              tabIndex={-1}
+              className="flex min-h-0 min-w-0 flex-1 flex-col gap-6 overflow-auto p-6"
+            >
+              {deniedHint ? (
+                <Alert variant="destructive">
+                  <AlertTitle>{deniedHint.title}</AlertTitle>
+                  <AlertDescription>{deniedHint.description}</AlertDescription>
+                </Alert>
+              ) : null}
+              {children}
+            </main>
+          </SidebarInset>
+        </SidebarProvider>
+      </WebShellHeaderActionsProvider>
     </WebAppProvider>
   );
 }

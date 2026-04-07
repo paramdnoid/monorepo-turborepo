@@ -259,7 +259,7 @@ export function EmployeesAbsencesCard({
               <p className="text-xs text-muted-foreground">{t.vacationDecisionNoPermission}</p>
             ) : null}
 
-            <form onSubmit={(ev) => void submitVacation(ev)} className="grid gap-3 sm:max-w-xl">
+            <form onSubmit={(ev) => void submitVacation(ev)} className="grid gap-3">
               <div className="grid gap-2 sm:grid-cols-2">
                 <div className="grid gap-2">
                   <Label htmlFor={`vac-from-${employeeId}`}>{t.vacationFrom}</Label>
@@ -305,7 +305,7 @@ export function EmployeesAbsencesCard({
                 {vacationRows.map((r) => (
                   <li
                     key={r.id}
-                    className="rounded-md border border-border/60 bg-background/60 px-3 py-2"
+                    className="rounded-lg border border-border/60 bg-muted/10 px-3 py-2"
                   >
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge variant={statusVariant(r.status)}>{statusLabel(r.status, t)}</Badge>
@@ -357,7 +357,7 @@ export function EmployeesAbsencesCard({
             {sickMsg ? <p className="text-sm text-muted-foreground">{sickMsg}</p> : null}
             {sickLoadError ? <p className="text-sm text-destructive">{sickLoadError}</p> : null}
 
-            <form onSubmit={(ev) => void submitSick(ev)} className="grid gap-3 sm:max-w-xl">
+            <form onSubmit={(ev) => void submitSick(ev)} className="grid gap-3">
               <div className="grid gap-2 sm:grid-cols-2">
                 <div className="grid gap-2">
                   <Label htmlFor={`sick-from-${employeeId}`}>{t.sickFrom}</Label>
@@ -419,7 +419,7 @@ export function EmployeesAbsencesCard({
                 {sickRows.map((r) => (
                   <li
                     key={r.id}
-                    className="rounded-md border border-border/60 bg-background/60 px-3 py-2"
+                    className="rounded-lg border border-border/60 bg-muted/10 px-3 py-2"
                   >
                     <p className="text-sm">
                       {r.fromDate} - {r.toDate}

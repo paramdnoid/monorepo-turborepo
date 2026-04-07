@@ -200,7 +200,7 @@ export function WorkforceModuleLandingContent() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <Card className="border-border/80 bg-muted/15 shadow-none">
         <CardHeader>
           <CardTitle className="text-base">{copy.title}</CardTitle>
@@ -274,7 +274,10 @@ export function WorkforceModuleLandingContent() {
             ) : data && data.recentEmployees.length > 0 ? (
               <ul className="space-y-2">
                 {data.recentEmployees.map((item) => (
-                  <li key={item.id} className="rounded-md border bg-muted/20 p-2">
+                  <li
+                    key={item.id}
+                    className="rounded-lg border border-border/60 bg-muted/10 px-3 py-2"
+                  >
                     <p className="text-sm font-medium">
                       <Link
                         href={`/web/employees/${item.id}`}
@@ -310,7 +313,10 @@ export function WorkforceModuleLandingContent() {
             ) : data && data.todaysAssignmentItems.length > 0 ? (
               <ul className="space-y-2">
                 {data.todaysAssignmentItems.map((item) => (
-                  <li key={item.id} className="rounded-md border bg-muted/20 p-2">
+                  <li
+                    key={item.id}
+                    className="rounded-lg border border-border/60 bg-muted/10 px-3 py-2"
+                  >
                     <p className="text-sm font-medium">
                       {item.startTime} · {item.title}
                     </p>

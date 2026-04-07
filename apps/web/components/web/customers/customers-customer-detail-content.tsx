@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Building2, Loader2, MapPin, Pencil, Plus } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -89,6 +90,7 @@ export function CustomersCustomerDetailContent({
 }: CustomersCustomerDetailContentProps) {
   const copy = getCustomersDetailCopy(locale);
   const listCopy = getCustomersListCopy(locale);
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [customer, setCustomer] = useState<CustomerDetail | null>(null);
@@ -106,6 +108,7 @@ export function CustomersCustomerDetailContent({
   const [reminderLevel3DaysAfterDue, setReminderLevel3DaysAfterDue] = useState("");
   const [masterBusy, setMasterBusy] = useState(false);
   const [masterDialogOpen, setMasterDialogOpen] = useState(false);
+  const [masterDialogAutoOpened, setMasterDialogAutoOpened] = useState(false);
 
   const [addKind, setAddKind] = useState<CustomerAddressKind>("billing");
   const [addManual, setAddManual] = useState<CustomerAddressManualValues>({
@@ -201,6 +204,13 @@ export function CustomersCustomerDetailContent({
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (masterDialogAutoOpened) return;
+    if (searchParams.get("edit") !== "1") return;
+    setMasterDialogOpen(true);
+    setMasterDialogAutoOpened(true);
+  }, [masterDialogAutoOpened, searchParams]);
 
   useEffect(() => {
     if (!masterDialogOpen || !customer) return;

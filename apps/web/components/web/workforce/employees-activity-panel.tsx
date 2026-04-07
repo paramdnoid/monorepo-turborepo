@@ -277,9 +277,9 @@ export function EmployeesActivityPanel({
       <CardContent className="space-y-3">
         {busy ? (
           <div className="space-y-2" aria-hidden>
-            <Skeleton className="h-4 w-full max-w-md" />
-            <Skeleton className="h-4 w-full max-w-lg" />
-            <Skeleton className="h-4 w-2/3 max-w-sm" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-2/3" />
           </div>
         ) : null}
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
@@ -293,7 +293,7 @@ export function EmployeesActivityPanel({
               return (
                 <li
                   key={ev.id}
-                  className="rounded-md border border-border/60 bg-background/60 px-3 py-2"
+                  className="rounded-lg border border-border/60 bg-muted/10 px-3 py-2"
                 >
                   <p className="text-sm font-medium">{actionHeading(ev, locale)}</p>
                   <p className="text-xs text-muted-foreground">

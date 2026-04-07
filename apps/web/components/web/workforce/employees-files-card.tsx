@@ -8,6 +8,7 @@ import { employeeAttachmentsListResponseSchema } from "@repo/api-contracts";
 import { Button } from "@repo/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@repo/ui/card";
 import { Input } from "@repo/ui/input";
+import { Label } from "@repo/ui/label";
 import {
   Select,
   SelectContent,
@@ -195,7 +196,7 @@ export function EmployeesFilesCard({
         <CardTitle className="text-base">{t.filesCardTitle}</CardTitle>
         <CardDescription className="text-xs">{t.filesCardDescription}</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-5">
+      <CardContent className="space-y-4">
         <div className="space-y-2">
           <Image
             src={profileImageUrl}
@@ -207,12 +208,18 @@ export function EmployeesFilesCard({
           />
           {canEdit ? (
             <div className="flex flex-wrap items-center gap-2">
+              <Label
+                htmlFor={`employee-profile-upload-${employeeId}`}
+                className="sr-only"
+              >
+                {t.filesProfileUploadAria}
+              </Label>
               <Input
                 ref={profileInputRef}
+                id={`employee-profile-upload-${employeeId}`}
                 type="file"
                 accept="image/png,image/jpeg,image/webp"
-                className="w-full max-w-xs"
-                aria-label={t.filesProfileUploadAria}
+                className="w-full"
                 onChange={(ev) => {
                   const file = ev.currentTarget.files?.[0];
                   if (file) void uploadProfileImage(file);
@@ -229,33 +236,47 @@ export function EmployeesFilesCard({
         <div className="space-y-3">
           <h3 className="text-sm font-medium">{t.filesAttachmentsTitle}</h3>
           {canEdit ? (
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <Select
-                value={attachmentKind}
-                onValueChange={(v) =>
-                  setAttachmentKind(v as "document" | "certificate" | "other")
-                }
-              >
-                <SelectTrigger className="w-full sm:w-44">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="document">{t.filesKindDocument}</SelectItem>
-                  <SelectItem value="certificate">{t.filesKindCertificate}</SelectItem>
-                  <SelectItem value="other">{t.filesKindOther}</SelectItem>
-                </SelectContent>
-              </Select>
-              <Input
-                ref={attachmentInputRef}
-                type="file"
-                className="sm:max-w-xs"
-                aria-label={t.filesAttachmentUploadAria}
-                onChange={(ev) => {
-                  const file = ev.currentTarget.files?.[0];
-                  if (file) void uploadAttachment(file);
-                }}
-                disabled={busy}
-              />
+            <div className="grid gap-3 sm:grid-cols-[10rem_1fr] sm:items-end">
+              <div className="grid gap-2">
+                <Label htmlFor={`employee-attachment-kind-${employeeId}`}>
+                  {t.filesAttachmentKindLabel}
+                </Label>
+                <Select
+                  value={attachmentKind}
+                  onValueChange={(v) =>
+                    setAttachmentKind(v as "document" | "certificate" | "other")
+                  }
+                  disabled={busy}
+                >
+                  <SelectTrigger
+                    id={`employee-attachment-kind-${employeeId}`}
+                    className="w-full"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="document">{t.filesKindDocument}</SelectItem>
+                    <SelectItem value="certificate">{t.filesKindCertificate}</SelectItem>
+                    <SelectItem value="other">{t.filesKindOther}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor={`employee-attachment-upload-${employeeId}`}>
+                  {t.filesAttachmentUploadAria}
+                </Label>
+                <Input
+                  ref={attachmentInputRef}
+                  id={`employee-attachment-upload-${employeeId}`}
+                  type="file"
+                  className="w-full"
+                  onChange={(ev) => {
+                    const file = ev.currentTarget.files?.[0];
+                    if (file) void uploadAttachment(file);
+                  }}
+                  disabled={busy}
+                />
+              </div>
             </div>
           ) : null}
 
