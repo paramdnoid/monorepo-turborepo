@@ -40,11 +40,13 @@ import {
 } from "./routes/project-assets.js";
 import {
   createProjectDetailHandler,
+  createProjectHubDetailHandler,
   createProjectPatchHandler,
   createProjectsCreateHandler,
   createProjectsListHandler,
 } from "./routes/projects.js";
 import {
+  createSalesInvoiceFinalizePostHandler,
   createSalesInvoiceDetailHandler,
   createSalesInvoiceLineDeleteHandler,
   createSalesInvoiceLinePatchHandler,
@@ -66,9 +68,16 @@ import {
   createSalesInvoicePaymentPostHandler,
   createSalesInvoicePaymentDeleteHandler,
   createSalesInvoiceReminderPostHandler,
+  createSalesReminderEmailJobPostHandler,
+  createSalesReminderEmailJobPatchHandler,
+  createSalesReminderEmailJobRetryPostHandler,
+  createSalesReminderEmailJobsProcessPostHandler,
+  createSalesReminderEmailJobsListHandler,
   createSalesInvoiceDeleteHandler,
   createSalesInvoicePostHandler,
   createSalesInvoicesListHandler,
+  createSalesInvoiceXRechnungGetHandler,
+  createSalesInvoiceZugferdGetHandler,
   createSalesOpenInvoicesExportGetHandler,
   createSalesOpenInvoicesListHandler,
   createSalesQuoteArchivePostHandler,
@@ -174,6 +183,7 @@ export function createApp(options?: CreateAppOptions) {
   const projectsListHandler = createProjectsListHandler(getDb);
   const projectsCreateHandler = createProjectsCreateHandler(getDb);
   const projectDetailHandler = createProjectDetailHandler(getDb);
+  const projectHubDetailHandler = createProjectHubDetailHandler(getDb);
   const projectPatchHandler = createProjectPatchHandler(getDb);
   const gaebImportPost = createGaebImportPostHandler(getDb);
   const gaebListHandler = createGaebListHandler(getDb);
@@ -224,9 +234,19 @@ export function createApp(options?: CreateAppOptions) {
   const salesInvoicePaymentDelete =
     createSalesInvoicePaymentDeleteHandler(getDb);
   const salesInvoiceReminderPost = createSalesInvoiceReminderPostHandler(getDb);
+  const salesReminderEmailJobPost = createSalesReminderEmailJobPostHandler(getDb);
+  const salesReminderEmailJobPatch = createSalesReminderEmailJobPatchHandler(getDb);
+  const salesReminderEmailJobRetryPost =
+    createSalesReminderEmailJobRetryPostHandler(getDb);
+  const salesReminderEmailJobsProcessPost =
+    createSalesReminderEmailJobsProcessPostHandler(getDb);
+  const salesReminderEmailJobsList = createSalesReminderEmailJobsListHandler(getDb);
+  const salesInvoiceFinalizePost = createSalesInvoiceFinalizePostHandler(getDb);
   const salesInvoiceDelete = createSalesInvoiceDeleteHandler(getDb);
   const salesInvoicePdf = createSalesInvoicePdfHandler(getDb);
   const salesInvoiceReminderPdf = createSalesInvoiceReminderPdfHandler(getDb);
+  const salesInvoiceXRechnung = createSalesInvoiceXRechnungGetHandler(getDb);
+  const salesInvoiceZugferd = createSalesInvoiceZugferdGetHandler(getDb);
   const salesReminderTemplatesList =
     createSalesReminderTemplatesListHandler(getDb);
   const salesReminderTemplatesPut =
@@ -465,6 +485,7 @@ export function createApp(options?: CreateAppOptions) {
   v1.get("/projects", orgMiddleware, projectsListHandler);
   v1.post("/projects", orgMiddleware, projectsCreateHandler);
   v1.get("/projects/:id", orgMiddleware, projectDetailHandler);
+  v1.get("/projects/:id/hub", orgMiddleware, projectHubDetailHandler);
   v1.patch("/projects/:id", orgMiddleware, projectPatchHandler);
   v1.get(
     "/projects/:projectId/assets/:assetId",
@@ -576,6 +597,34 @@ export function createApp(options?: CreateAppOptions) {
     salesInvoicePaymentDelete,
   );
   v1.post("/sales/invoices/:id/reminders", orgMiddleware, salesInvoiceReminderPost);
+  v1.get(
+    "/sales/invoices/:id/reminders/:reminderId/email-jobs",
+    orgMiddleware,
+    salesReminderEmailJobsList,
+  );
+  v1.post(
+    "/sales/invoices/:id/reminders/:reminderId/email-jobs",
+    orgMiddleware,
+    salesReminderEmailJobPost,
+  );
+  v1.patch(
+    "/sales/reminder-email-jobs/:jobId",
+    orgMiddleware,
+    salesReminderEmailJobPatch,
+  );
+  v1.post(
+    "/sales/reminder-email-jobs/:jobId/retry",
+    orgMiddleware,
+    salesReminderEmailJobRetryPost,
+  );
+  v1.post(
+    "/sales/reminder-email-jobs/process",
+    orgMiddleware,
+    salesReminderEmailJobsProcessPost,
+  );
+  v1.post("/sales/invoices/:id/finalize", orgMiddleware, salesInvoiceFinalizePost);
+  v1.get("/sales/invoices/:id/xrechnung", orgMiddleware, salesInvoiceXRechnung);
+  v1.get("/sales/invoices/:id/zugferd", orgMiddleware, salesInvoiceZugferd);
   v1.post("/sales/invoices/:id/cancel", orgMiddleware, salesInvoiceCancelPost);
   v1.patch("/sales/invoices/:id", orgMiddleware, salesInvoicePatch);
   v1.delete("/sales/invoices/:id", orgMiddleware, salesInvoiceDelete);

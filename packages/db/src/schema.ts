@@ -995,17 +995,35 @@ export const salesInvoices = pgTable(
     documentNumber: text("document_number").notNull(),
     customerLabel: text("customer_label").notNull(),
     status: text("status").notNull(),
+    /** `invoice` | `partial` | `final` | `credit_note` */
+    billingType: text("billing_type").notNull().default("invoice"),
     currency: text("currency").notNull().default("EUR"),
     totalCents: integer("total_cents").notNull().default(0),
     quoteId: uuid("quote_id").references(() => salesQuotes.id, {
       onDelete: "set null",
     }),
+    parentInvoiceId: uuid("parent_invoice_id").references(
+      (): AnyPgColumn => salesInvoices.id,
+      {
+        onDelete: "set null",
+      },
+    ),
+    creditForInvoiceId: uuid("credit_for_invoice_id").references(
+      (): AnyPgColumn => salesInvoices.id,
+      {
+        onDelete: "set null",
+      },
+    ),
     projectId: uuid("project_id").references(() => projects.id, {
       onDelete: "set null",
     }),
     issuedAt: timestamp("issued_at", { withTimezone: true }),
     dueAt: timestamp("due_at", { withTimezone: true }),
     paidAt: timestamp("paid_at", { withTimezone: true }),
+    isFinalized: boolean("is_finalized").notNull().default(false),
+    finalizedAt: timestamp("finalized_at", { withTimezone: true }),
+    snapshotHash: text("snapshot_hash"),
+    snapshotJson: jsonb("snapshot_json").$type<Record<string, unknown>>(),
     customerId: uuid("customer_id").references(() => customers.id, {
       onDelete: "set null",
     }),
@@ -1020,6 +1038,14 @@ export const salesInvoices = pgTable(
     tenantDocumentNumber: unique("sales_invoices_tenant_document_number").on(
       t.tenantId,
       t.documentNumber,
+    ),
+    tenantParentIdx: index("sales_invoices_tenant_parent_idx").on(
+      t.tenantId,
+      t.parentInvoiceId,
+    ),
+    tenantCreditForIdx: index("sales_invoices_tenant_credit_for_idx").on(
+      t.tenantId,
+      t.creditForInvoiceId,
     ),
   }),
 );
@@ -1151,6 +1177,53 @@ export const salesInvoiceReminders = pgTable(
 );
 
 /**
+ * Outbox für Mahn-E-Mails: Audit, Retry-Zähler, Lieferstatus (E-06 Produktivpfad).
+ */
+export const salesReminderEmailJobs = pgTable(
+  "sales_reminder_email_jobs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => organizations.tenantId, { onDelete: "cascade" }),
+    invoiceId: uuid("invoice_id")
+      .notNull()
+      .references(() => salesInvoices.id, { onDelete: "cascade" }),
+    reminderId: uuid("reminder_id")
+      .notNull()
+      .references(() => salesInvoiceReminders.id, { onDelete: "cascade" }),
+    toEmail: text("to_email").notNull(),
+    subject: text("subject").notNull(),
+    bodyText: text("body_text").notNull(),
+    /** `de` | `en` — Validierung in API. */
+    locale: text("locale").notNull(),
+    /** `pending` | `sent` | `failed` */
+    status: text("status").notNull().default("pending"),
+    attempts: integer("attempts").notNull().default(0),
+    maxAttempts: integer("max_attempts").notNull().default(3),
+    lastError: text("last_error"),
+    createdBySub: text("created_by_sub"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+  },
+  (t) => ({
+    tenantCreatedIdx: index("sales_reminder_email_jobs_tenant_created_idx").on(
+      t.tenantId,
+      t.createdAt,
+    ),
+    invoiceReminderIdx: index("sales_reminder_email_jobs_invoice_reminder_idx").on(
+      t.invoiceId,
+      t.reminderId,
+    ),
+  }),
+);
+
+/**
  * Mandantenspezifische Mahntexte und optionale Mahngebuehr pro Stufe/Sprache (PDF/Druck).
  * `bodyText` null: Standardfließtext; `feeCents` null: keine Gebuehrzeile.
  */
@@ -1192,6 +1265,10 @@ export const salesQuoteLines = pgTable("sales_quote_lines", {
   description: text("description").notNull(),
   quantity: text("quantity"),
   unit: text("unit"),
+  /** 700 = 7%, 1900 = 19% */
+  taxRateBps: integer("tax_rate_bps").notNull().default(1900),
+  /** Rabatt in Basispunkten (z. B. 250 = 2.5%) */
+  discountBps: integer("discount_bps").notNull().default(0),
   unitPriceCents: integer("unit_price_cents").notNull().default(0),
   lineTotalCents: integer("line_total_cents").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true })
@@ -1212,6 +1289,10 @@ export const salesInvoiceLines = pgTable("sales_invoice_lines", {
   description: text("description").notNull(),
   quantity: text("quantity"),
   unit: text("unit"),
+  /** 700 = 7%, 1900 = 19% */
+  taxRateBps: integer("tax_rate_bps").notNull().default(1900),
+  /** Rabatt in Basispunkten (z. B. 250 = 2.5%) */
+  discountBps: integer("discount_bps").notNull().default(0),
   unitPriceCents: integer("unit_price_cents").notNull().default(0),
   lineTotalCents: integer("line_total_cents").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true })

@@ -26,6 +26,17 @@ export type SalesInvoiceStatus = z.infer<typeof salesInvoiceStatusSchema>;
 export const SALES_INVOICE_STATUS_OPTIONS: readonly SalesInvoiceStatus[] =
   salesInvoiceStatusSchema.options;
 
+export const salesInvoiceBillingTypeSchema = z.enum([
+  "invoice",
+  "partial",
+  "final",
+  "credit_note",
+]);
+
+export type SalesInvoiceBillingType = z.infer<
+  typeof salesInvoiceBillingTypeSchema
+>;
+
 const optionalUuidOrNull = z.union([z.string().uuid(), z.null()]).optional();
 
 const optionalInstantOrNull = z.union([z.string(), z.null()]).optional();
@@ -51,9 +62,12 @@ export const salesCreateInvoiceSchema = z.object({
   documentNumber: z.string().trim().min(1).max(80),
   customerLabel: z.string().trim().min(1).max(400),
   status: salesInvoiceStatusSchema.default("draft"),
+  billingType: salesInvoiceBillingTypeSchema.default("invoice"),
   currency: z.string().length(3).default("EUR"),
   totalCents: z.number().int().min(0).max(1_000_000_000_000),
   quoteId: optionalUuidOrNull,
+  parentInvoiceId: optionalUuidOrNull,
+  creditForInvoiceId: optionalUuidOrNull,
   projectId: optionalUuidOrNull,
   issuedAt: optionalInstantOrNull,
   dueAt: optionalInstantOrNull,
@@ -153,6 +167,8 @@ export const salesDocumentLineSchema = z.object({
   unit: z.string().nullable(),
   unitPriceCents: z.number().int(),
   lineTotalCents: z.number().int(),
+  taxRateBps: z.number().int().min(0).max(10_000).default(1900),
+  discountBps: z.number().int().min(0).max(10_000).default(0),
 });
 
 export type SalesDocumentLine = z.infer<typeof salesDocumentLineSchema>;
@@ -163,6 +179,8 @@ export const salesCreateQuoteLineSchema = z.object({
   unit: z.string().max(40).nullable().optional(),
   unitPriceCents: z.number().int().min(0).optional().default(0),
   lineTotalCents: z.number().int().min(0),
+  taxRateBps: z.number().int().min(0).max(10_000).optional().default(1900),
+  discountBps: z.number().int().min(0).max(10_000).optional().default(0),
 });
 
 export type SalesCreateQuoteLineInput = z.infer<typeof salesCreateQuoteLineSchema>;
@@ -208,11 +226,17 @@ export const salesInvoiceListItemSchema = z.object({
   customerId: z.string().uuid().nullable(),
   projectId: z.string().uuid().nullable(),
   status: z.string(),
+  billingType: salesInvoiceBillingTypeSchema.default("invoice"),
+  parentInvoiceId: z.string().uuid().nullable().default(null),
+  creditForInvoiceId: z.string().uuid().nullable().default(null),
   currency: z.string(),
   totalCents: z.number().int(),
   issuedAt: z.string().nullable(),
   dueAt: z.string().nullable(),
   paidAt: z.string().nullable(),
+  isFinalized: z.boolean().default(false),
+  finalizedAt: z.string().nullable().default(null),
+  snapshotHash: z.string().nullable().default(null),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -495,6 +519,16 @@ export const salesInvoiceDetailSchema = salesInvoiceListItemSchema.extend({
   paidTotalCents: z.number().int().nonnegative(),
   /** totalCents − paidTotalCents (kann negativ sein bei Datenfehlern). */
   balanceCents: z.number().int(),
+  taxBreakdown: z
+    .array(
+      z.object({
+        taxRateBps: z.number().int().min(0).max(10_000),
+        netCents: z.number().int(),
+        taxCents: z.number().int(),
+        grossCents: z.number().int(),
+      }),
+    )
+    .default([]),
 });
 
 export const salesInvoiceDetailResponseSchema = z.object({
@@ -523,4 +557,104 @@ export const salesReminderEmailSpikeResponseSchema = z.object({
 
 export type SalesReminderEmailSpikeResponse = z.infer<
   typeof salesReminderEmailSpikeResponseSchema
+>;
+
+/** POST /v1/sales/invoices/:id/reminders/:reminderId/email-jobs */
+export const salesReminderEmailJobCreateSchema = z.object({
+  to: z.string().trim().email(),
+  subject: z.string().trim().min(1).max(500),
+  bodyText: z.string().min(1).max(200_000),
+  locale: z.enum(["de", "en"]),
+});
+
+export type SalesReminderEmailJobCreateInput = z.infer<
+  typeof salesReminderEmailJobCreateSchema
+>;
+
+export const salesReminderEmailJobStatusSchema = z.enum([
+  "pending",
+  "sent",
+  "failed",
+]);
+
+export type SalesReminderEmailJobStatus = z.infer<
+  typeof salesReminderEmailJobStatusSchema
+>;
+
+export const salesReminderEmailJobRecordSchema = z.object({
+  id: z.string().uuid(),
+  tenantId: z.string(),
+  invoiceId: z.string().uuid(),
+  reminderId: z.string().uuid(),
+  toEmail: z.string().email(),
+  subject: z.string(),
+  bodyText: z.string(),
+  locale: z.enum(["de", "en"]),
+  status: salesReminderEmailJobStatusSchema,
+  attempts: z.number().int().nonnegative(),
+  maxAttempts: z.number().int().positive(),
+  lastError: z.string().nullable(),
+  createdBySub: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  sentAt: z.string().nullable(),
+});
+
+export type SalesReminderEmailJobRecord = z.infer<
+  typeof salesReminderEmailJobRecordSchema
+>;
+
+export const salesReminderEmailJobsListResponseSchema = z.object({
+  jobs: z.array(salesReminderEmailJobRecordSchema),
+});
+
+/** PATCH /v1/sales/reminder-email-jobs/:jobId */
+export const salesReminderEmailJobPatchSchema = z.object({
+  status: z.enum(["sent", "failed"]),
+  lastError: z.string().max(8000).nullable().optional(),
+});
+
+export type SalesReminderEmailJobPatchInput = z.infer<
+  typeof salesReminderEmailJobPatchSchema
+>;
+
+export const salesReminderEmailJobCreateResponseSchema = z.object({
+  job: salesReminderEmailJobRecordSchema,
+});
+
+/** POST /v1/sales/reminder-email-jobs/:jobId/retry */
+export const salesReminderEmailJobRetryResponseSchema = z.object({
+  job: salesReminderEmailJobRecordSchema,
+});
+
+/** POST /v1/sales/reminder-email-jobs/process */
+export const salesReminderEmailJobsProcessRequestSchema = z.object({
+  jobId: z.string().uuid().optional(),
+  limit: z.number().int().min(1).max(100).optional(),
+});
+
+export type SalesReminderEmailJobsProcessRequest = z.infer<
+  typeof salesReminderEmailJobsProcessRequestSchema
+>;
+
+export const salesReminderEmailJobsProcessResponseSchema = z.object({
+  processed: z.number().int().nonnegative(),
+  sent: z.number().int().nonnegative(),
+  failed: z.number().int().nonnegative(),
+  jobs: z.array(salesReminderEmailJobRecordSchema),
+});
+
+export type SalesReminderEmailJobsProcessResponse = z.infer<
+  typeof salesReminderEmailJobsProcessResponseSchema
+>;
+
+/** BFF: Produktivpfad mit Outbox-Audit (ersetzt reinen Spike bei Versand). */
+export const salesReminderEmailQueueResponseSchema =
+  salesReminderEmailSpikeResponseSchema.extend({
+    jobId: z.string().uuid().optional(),
+    deliveryAttempts: z.number().int().nonnegative().optional(),
+  });
+
+export type SalesReminderEmailQueueResponse = z.infer<
+  typeof salesReminderEmailQueueResponseSchema
 >;

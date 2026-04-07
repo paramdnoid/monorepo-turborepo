@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
@@ -8,7 +8,9 @@ import {
   salesCamtMatchResponseSchema,
   customerDetailResponseSchema,
   salesInvoiceDetailResponseSchema,
-  salesReminderEmailSpikeResponseSchema,
+  salesReminderEmailJobsListResponseSchema,
+  salesReminderEmailJobsProcessResponseSchema,
+  salesReminderEmailQueueResponseSchema,
   salesQuoteDetailResponseSchema,
 } from "@repo/api-contracts";
 import type { z } from "zod";
@@ -185,6 +187,23 @@ export function SalesDetail({
   const [reminderEmailBusyId, setReminderEmailBusyId] = useState<string | null>(
     null,
   );
+  const [reminderEmailRetryBusyId, setReminderEmailRetryBusyId] = useState<
+    string | null
+  >(null);
+  const [reminderEmailJobStateByReminder, setReminderEmailJobStateByReminder] =
+    useState<
+      Map<
+        string,
+        {
+          jobId: string;
+          status: "pending" | "sent" | "failed";
+          attempts: number;
+          maxAttempts: number;
+          lastError: string | null;
+          updatedAt: string;
+        }
+      >
+    >(() => new Map());
 
   useEffect(() => {
     if (mode !== "invoices") return;
@@ -237,6 +256,10 @@ export function SalesDetail({
 
   const lifecycleErrorText = (errCode: string): string => {
     if (errCode === "invalid_state") return lifecycleCopy.actionFailed;
+    if (errCode === "finalized_locked")
+      return locale === "en"
+        ? "Finalized invoices are read-only."
+        : "Finalisierte Rechnungen sind schreibgeschuetzt.";
     if (errCode === "quote_has_invoices") return lifecycleCopy.confirmDescDeleteQuote;
     if (errCode === "cannot_cancel_paid") return lifecycleCopy.confirmDescCancelInvoice;
     if (errCode === "cannot_cancel_with_payments")
@@ -465,7 +488,7 @@ export function SalesDetail({
     setReminderEmailBusyId(reminderId);
     try {
       const dryRunRes = await fetch(
-        `/api/web/sales/invoices/${encodeURIComponent(inv.id)}/reminders/${encodeURIComponent(reminderId)}/email-spike`,
+        `/api/web/sales/invoices/${encodeURIComponent(inv.id)}/reminders/${encodeURIComponent(reminderId)}/email-queue`,
         {
           method: "POST",
           credentials: "include",
@@ -482,7 +505,7 @@ export function SalesDetail({
       if (!dryRunRes.ok) {
         throw new Error("dry_run_failed");
       }
-      const dryRunParsed = salesReminderEmailSpikeResponseSchema.safeParse(dryRunJson);
+      const dryRunParsed = salesReminderEmailQueueResponseSchema.safeParse(dryRunJson);
       if (!dryRunParsed.success) {
         throw new Error("invalid_payload");
       }
@@ -504,7 +527,7 @@ export function SalesDetail({
       }
 
       const sendRes = await fetch(
-        `/api/web/sales/invoices/${encodeURIComponent(inv.id)}/reminders/${encodeURIComponent(reminderId)}/email-spike`,
+        `/api/web/sales/invoices/${encodeURIComponent(inv.id)}/reminders/${encodeURIComponent(reminderId)}/email-queue`,
         {
           method: "POST",
           credentials: "include",
@@ -521,22 +544,27 @@ export function SalesDetail({
       if (!sendRes.ok) {
         throw new Error("send_failed");
       }
-      const sendParsed = salesReminderEmailSpikeResponseSchema.safeParse(sendJson);
+      const sendParsed = salesReminderEmailQueueResponseSchema.safeParse(sendJson);
       if (!sendParsed.success) {
         throw new Error("invalid_payload");
       }
-      if (!sendParsed.data.delivered) {
-        toast.error(
-          locale === "en"
-            ? "SMTP not configured; email was not sent."
-            : "SMTP nicht konfiguriert; E-Mail wurde nicht gesendet.",
-        );
-        return;
+      const queuedJobId = sendParsed.data.jobId ?? null;
+      if (queuedJobId) {
+        await fetch("/api/web/sales/reminder-email-jobs/process", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ jobId: queuedJobId }),
+        });
       }
+      await reloadReminderEmailJobs(
+        inv.id,
+        inv.reminders.map((r) => r.id),
+      );
       toast.success(
         locale === "en"
-          ? "Reminder email sent (spike)."
-          : "Mahn-E-Mail gesendet (Spike).",
+          ? "Reminder email queued."
+          : "Mahn-E-Mail in Warteschlange aufgenommen.",
       );
     } catch {
       toast.error(
@@ -546,6 +574,93 @@ export function SalesDetail({
       );
     } finally {
       setReminderEmailBusyId(null);
+    }
+  };
+
+  const reloadReminderEmailJobs = useCallback(async (
+    invoiceId: string,
+    reminderIds: string[],
+  ) => {
+    const byReminder = new Map<
+      string,
+      {
+        jobId: string;
+        status: "pending" | "sent" | "failed";
+        attempts: number;
+        maxAttempts: number;
+        lastError: string | null;
+        updatedAt: string;
+      }
+    >();
+    await Promise.all(
+      reminderIds.map(async (rid) => {
+        try {
+          const res = await fetch(
+            `/api/web/sales/invoices/${encodeURIComponent(invoiceId)}/reminders/${encodeURIComponent(rid)}/email-jobs`,
+            { credentials: "include", cache: "no-store" },
+          );
+          const text = await res.text();
+          const json = parseResponseJson(text);
+          const parsed = salesReminderEmailJobsListResponseSchema.safeParse(json);
+          if (!res.ok || !parsed.success || parsed.data.jobs.length === 0) return;
+          const latest = parsed.data.jobs[0]!;
+          byReminder.set(rid, {
+            jobId: latest.id,
+            status: latest.status,
+            attempts: latest.attempts,
+            maxAttempts: latest.maxAttempts,
+            lastError: latest.lastError ?? null,
+            updatedAt: latest.updatedAt,
+          });
+        } catch {
+          // ignore per reminder
+        }
+      }),
+    );
+    setReminderEmailJobStateByReminder(byReminder);
+  }, []);
+
+  const retryReminderEmailJob = async (reminderId: string) => {
+    if (!detail || detail.mode !== "invoices") return;
+    const inv = detail.data.invoice;
+    const state = reminderEmailJobStateByReminder.get(reminderId);
+    if (!state || state.status !== "failed") return;
+    if (reminderEmailRetryBusyId) return;
+    setReminderEmailRetryBusyId(reminderId);
+    try {
+      const retryRes = await fetch(
+        `/api/web/sales/reminder-email-jobs/${encodeURIComponent(state.jobId)}/retry`,
+        { method: "POST", credentials: "include" },
+      );
+      if (!retryRes.ok) {
+        throw new Error("retry_failed");
+      }
+
+      const processRes = await fetch("/api/web/sales/reminder-email-jobs/process", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId: state.jobId }),
+      });
+      if (processRes.ok) {
+        const processText = await processRes.text();
+        const processJson = parseResponseJson(processText);
+        salesReminderEmailJobsProcessResponseSchema.safeParse(processJson);
+      }
+
+      await reloadReminderEmailJobs(
+        inv.id,
+        inv.reminders.map((r) => r.id),
+      );
+      toast.success(
+        locale === "en"
+          ? "Email retry queued."
+          : "E-Mail-Retry eingeplant.",
+      );
+    } catch {
+      toast.error(locale === "en" ? "Retry failed." : "Retry fehlgeschlagen.");
+    } finally {
+      setReminderEmailRetryBusyId(null);
     }
   };
 
@@ -711,6 +826,19 @@ export function SalesDetail({
     invReminderMaxLevel,
     reminderLevelTouched,
   ]);
+
+  useEffect(() => {
+    if (!detail || detail.mode !== "invoices") {
+      setReminderEmailJobStateByReminder(new Map());
+      return;
+    }
+    const reminderIds = detail.data.invoice.reminders.map((r) => r.id);
+    if (reminderIds.length === 0) {
+      setReminderEmailJobStateByReminder(new Map());
+      return;
+    }
+    void reloadReminderEmailJobs(detail.data.invoice.id, reminderIds);
+  }, [detail, reloadReminderEmailJobs]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1008,19 +1136,66 @@ export function SalesDetail({
             {printCopy.downloadPdf}
           </a>
         </Button>
+        {inv.isFinalized ? (
+          <>
+            <Button variant="outline" size="sm" asChild>
+              <a href={`/api/web/sales/invoices/${encodeURIComponent(inv.id)}/xrechnung`}>
+                XRechnung
+              </a>
+            </Button>
+            <Button variant="outline" size="sm" asChild>
+              <a href={`/api/web/sales/invoices/${encodeURIComponent(inv.id)}/zugferd`}>
+                ZUGFeRD
+              </a>
+            </Button>
+          </>
+        ) : null}
         <Button
           type="button"
           variant="secondary"
           size="sm"
+          disabled={inv.isFinalized}
           onClick={() => setEditing((e) => !e)}
         >
           {editing ? formCopy.cancel : formCopy.edit}
         </Button>
+        {!inv.isFinalized ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              try {
+                const json = await fetchDocument(
+                  `/api/web/sales/invoices/${encodeURIComponent(inv.id)}/finalize`,
+                  { method: "POST" },
+                );
+                const parsed = salesInvoiceDetailResponseSchema.safeParse(json);
+                if (!parsed.success) throw new Error("invalid_payload");
+                setDetail({ mode: "invoices", data: parsed.data });
+                toast.success(locale === "en" ? "Invoice finalized." : "Rechnung finalisiert.");
+              } catch (err) {
+                const code = err instanceof Error ? err.message : "unknown";
+                toast.error(
+                  code === "invalid_state"
+                    ? locale === "en"
+                      ? "Invoice cannot be finalized in current state."
+                      : "Rechnung kann in diesem Status nicht finalisiert werden."
+                    : locale === "en"
+                      ? "Finalization failed."
+                      : "Finalisierung fehlgeschlagen.",
+                );
+              }
+            }}
+          >
+            {locale === "en" ? "Finalize" : "Finalisieren"}
+          </Button>
+        ) : null}
         <Button
           type="button"
           variant="outline"
           size="sm"
-          disabled={actionBusy || inv.payments.length > 0}
+          disabled={actionBusy || inv.payments.length > 0 || inv.isFinalized}
           onClick={() => setConfirmAction("cancel-invoice")}
         >
           {lifecycleCopy.cancelInvoice}
@@ -1029,11 +1204,23 @@ export function SalesDetail({
           type="button"
           variant="destructive"
           size="sm"
+          disabled={inv.isFinalized}
           onClick={() => setConfirmAction("delete-invoice")}
         >
           {lifecycleCopy.deleteInvoice}
         </Button>
       </div>
+      {inv.isFinalized ? (
+        <Alert>
+          <AlertTitle>{locale === "en" ? "Finalized document" : "Finalisiertes Dokument"}</AlertTitle>
+          <AlertDescription>
+            {locale === "en"
+              ? "Content fields are locked. Use credit note or follow-up invoices for corrections."
+              : "Inhaltsfelder sind gesperrt. Fuer Korrekturen bitte Gutschrift oder Folgebeleg verwenden."}
+            {inv.snapshotHash ? ` · Hash: ${inv.snapshotHash}` : ""}
+          </AlertDescription>
+        </Alert>
+      ) : null}
       {editing ? (
         <Card>
           <CardHeader>
@@ -1240,6 +1427,9 @@ export function SalesDetail({
             <ul className="space-y-2 border-t border-border pt-3">
               {inv.reminders.map((r) => (
                 <li key={r.id}>
+                  {(() => {
+                    const jobState = reminderEmailJobStateByReminder.get(r.id);
+                    return (
                   <div className="flex items-start gap-2">
                     <div className="min-w-0 flex-1 text-sm">
                       <span className="font-medium">
@@ -1252,6 +1442,13 @@ export function SalesDetail({
                       {r.note ? (
                         <span className="mt-0.5 block text-xs text-muted-foreground">
                           {r.note}
+                        </span>
+                      ) : null}
+                      {jobState ? (
+                        <span className="mt-0.5 block text-xs text-muted-foreground">
+                          {locale === "en" ? "Email job" : "E-Mail-Job"}: {jobState.status} ·{" "}
+                          {jobState.attempts}/{jobState.maxAttempts}
+                          {jobState.lastError ? ` · ${jobState.lastError}` : ""}
                         </span>
                       ) : null}
                     </div>
@@ -1269,6 +1466,23 @@ export function SalesDetail({
                             : "Sende …"
                           : "E-Mail Spike"}
                       </Button>
+                      {jobState?.status === "failed" ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="xs"
+                          disabled={reminderEmailRetryBusyId === r.id}
+                          onClick={() => void retryReminderEmailJob(r.id)}
+                        >
+                          {reminderEmailRetryBusyId === r.id
+                            ? locale === "en"
+                              ? "Retry…"
+                              : "Retry …"
+                            : locale === "en"
+                              ? "Retry"
+                              : "Erneut senden"}
+                        </Button>
+                      ) : null}
                       <Button variant="outline" size="xs" asChild>
                         <Link
                           href={`/web/sales/invoices/${encodeURIComponent(inv.id)}/reminders/${encodeURIComponent(r.id)}/print`}
@@ -1285,6 +1499,8 @@ export function SalesDetail({
                       </Button>
                     </div>
                   </div>
+                    );
+                  })()}
                 </li>
               ))}
             </ul>

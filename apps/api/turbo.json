@@ -20,11 +20,20 @@
         "AUTH_OIDC_ISSUER",
         "AUTH_TENANT_CLAIM",
         "DATABASE_URL",
+        "EMAIL_FROM_NAME",
         "KEYCLOAK_BASE_URL",
+        "MAIL_FROM",
         "NODE_ENV",
         "PORT",
         "PROJECT_ASSETS_DIR",
-        "PROJECT_ASSETS_MAX_MB"
+        "PROJECT_ASSETS_MAX_MB",
+        "SMTP_AUTH",
+        "SMTP_HOST",
+        "SMTP_PASS",
+        "SMTP_PORT",
+        "SMTP_SSL",
+        "SMTP_STARTTLS",
+        "SMTP_USER"
       ]
     },
     "build": {
@@ -46,8 +55,17 @@
         "AUTH_OIDC_ISSUER",
         "AUTH_OIDC_AUDIENCE",
         "AUTH_TENANT_CLAIM",
+        "EMAIL_FROM_NAME",
+        "MAIL_FROM",
         "PROJECT_ASSETS_DIR",
-        "PROJECT_ASSETS_MAX_MB"
+        "PROJECT_ASSETS_MAX_MB",
+        "SMTP_AUTH",
+        "SMTP_HOST",
+        "SMTP_PASS",
+        "SMTP_PORT",
+        "SMTP_SSL",
+        "SMTP_STARTTLS",
+        "SMTP_USER"
       ]
     },
     "lint": {
@@ -60,11 +78,20 @@
         "AUTH_OIDC_ISSUER",
         "AUTH_TENANT_CLAIM",
         "DATABASE_URL",
+        "EMAIL_FROM_NAME",
         "KEYCLOAK_BASE_URL",
+        "MAIL_FROM",
         "NODE_ENV",
         "SEED_ORG_NAME",
         "SEED_TENANT_ID",
-        "SEED_TRADE_SLUG"
+        "SEED_TRADE_SLUG",
+        "SMTP_AUTH",
+        "SMTP_HOST",
+        "SMTP_PASS",
+        "SMTP_PORT",
+        "SMTP_SSL",
+        "SMTP_STARTTLS",
+        "SMTP_USER"
       ]
     },
     "check-types": {
@@ -83,11 +110,20 @@
         "AUTH_OIDC_ISSUER",
         "AUTH_TENANT_CLAIM",
         "DATABASE_URL",
+        "EMAIL_FROM_NAME",
         "KEYCLOAK_BASE_URL",
+        "MAIL_FROM",
         "NODE_ENV",
         "SEED_ORG_NAME",
         "SEED_TENANT_ID",
-        "SEED_TRADE_SLUG"
+        "SEED_TRADE_SLUG",
+        "SMTP_AUTH",
+        "SMTP_HOST",
+        "SMTP_PASS",
+        "SMTP_PORT",
+        "SMTP_SSL",
+        "SMTP_STARTTLS",
+        "SMTP_USER"
       ]
     }
   }

@@ -13,25 +13,11 @@ import {
   Upload,
 } from "lucide-react";
 import {
-  customerDetailResponseSchema,
-  employeesListResponseSchema,
-  gaebImportsListResponseSchema,
+  projectHubResponseSchema,
   projectAssetKindSchema,
   projectAssetUploadResponseSchema,
-  projectAssetsListResponseSchema,
-  projectResponseSchema,
-  salesInvoiceDetailResponseSchema,
-  salesOpenInvoicesListResponseSchema,
-  salesInvoicesListResponseSchema,
-  salesQuotesListResponseSchema,
-  schedulingAssignmentsListResponseSchema,
-  workTimeEntriesListResponseSchema,
-  type GaebLvDocumentSummary,
   type Project,
   type ProjectAssetKind,
-  type ProjectAssetSummary,
-  type SalesInvoiceListItem,
-  type SalesQuoteListItem,
 } from "@repo/api-contracts";
 import { Alert, AlertDescription, AlertTitle } from "@repo/ui/alert";
 import { Button } from "@repo/ui/button";
@@ -39,7 +25,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/card";
 import { Input } from "@repo/ui/input";
 import { Label } from "@repo/ui/label";
 import { Skeleton } from "@repo/ui/skeleton";
-import type { ZodType } from "zod";
 
 import type { Locale } from "@/lib/i18n/locale";
 import { formatMinorCurrency } from "@/lib/money-format";
@@ -48,34 +33,74 @@ import { parseResponseJson } from "@/lib/parse-response-json";
 type HubData = {
   project: Project;
   siteAddressLabel: string | null;
-  quotes: SalesQuoteListItem[];
-  invoices: SalesInvoiceListItem[];
-  assets: ProjectAssetSummary[];
-  gaebDocuments: GaebLvDocumentSummary[];
+  quotes: {
+    id: string;
+    documentNumber: string;
+    status: string;
+    currency: string;
+    totalCents: number;
+    updatedAt: string;
+  }[];
+  invoices: {
+    id: string;
+    documentNumber: string;
+    status: string;
+    billingType: "invoice" | "partial" | "final" | "credit_note";
+    currency: string;
+    totalCents: number;
+    dueAt: string | null;
+    updatedAt: string;
+  }[];
+  assets: {
+    id: string;
+    filename: string;
+    kind: ProjectAssetKind;
+    byteSize: number;
+    createdAt: string;
+  }[];
+  gaebDocuments: {
+    id: string;
+    filename: string;
+    status: "pending_review" | "failed" | "approved";
+    updatedAt: string;
+  }[];
+  schedulingWeek: { id: string; date: string; startTime: string; title: string }[];
+  workTimeSummary: {
+    totalMinutes: number;
+    entries: {
+      id: string;
+      workDate: string;
+      durationMinutes: number;
+      employeeName: string | null;
+      notes: string | null;
+    }[];
+  };
+  openItems: {
+    total: number;
+    invoices: {
+      id: string;
+      documentNumber: string;
+      customerLabel: string;
+      dueAt: string | null;
+      currency: string;
+      balanceCents: number;
+      reminderCount: number;
+      maxReminderLevel: number | null;
+      latestReminderId: string | null;
+    }[];
+  };
+  kpis: {
+    quoteCount: number;
+    quoteVolumeCents: number;
+    acceptedQuoteCount: number;
+    invoiceCount: number;
+    invoiceVolumeCents: number;
+    openBalanceCents: number;
+    overdueOpenCount: number;
+    next7AssignmentsCount: number;
+    workTimeMinutesMonthToDate: number;
+  };
 };
-
-async function fetchParsed<T>(url: string, schema: ZodType<T>): Promise<T> {
-  const res = await fetch(url, { credentials: "include", cache: "no-store" });
-  const text = await res.text();
-  const json = parseResponseJson(text);
-  const parsed = schema.safeParse(json);
-  if (!res.ok || !parsed.success) {
-    throw new Error("load_failed");
-  }
-  return parsed.data;
-}
-
-function formatSiteAddressLabel(a: {
-  label: string | null;
-  recipientName: string;
-  street: string;
-  postalCode: string;
-  city: string;
-}): string {
-  const label = a.label?.trim();
-  const head = label && label.length > 0 ? label : a.recipientName.trim();
-  return `${head} · ${a.street.trim()}, ${a.postalCode.trim()} ${a.city.trim()}`;
-}
 
 function formatProjectStatus(locale: Locale, status: string): string {
   if (locale === "en") {
@@ -105,13 +130,6 @@ function formatBytes(bytes: number): string {
   return `${v.toFixed(digits)} ${units[i]}`;
 }
 
-function isoDateLocal(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
 function formatDuration(locale: Locale, minutes: number): string {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
@@ -131,18 +149,6 @@ function formatYmd(locale: Locale, ymd: string): string {
   const dt = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
   const tag = locale === "en" ? "en-GB" : "de-DE";
   return new Intl.DateTimeFormat(tag, { dateStyle: "medium" }).format(dt);
-}
-
-function addDaysIsoLocal(ymd: string, days: number): string {
-  const parts = ymd.split("-");
-  if (parts.length !== 3) return ymd;
-  const y = Number(parts[0]);
-  const mo = Number(parts[1]);
-  const d = Number(parts[2]);
-  if (!Number.isFinite(y) || !Number.isFinite(mo) || !Number.isFinite(d)) return ymd;
-  const dt = new Date(y, mo - 1, d);
-  dt.setDate(dt.getDate() + days);
-  return isoDateLocal(dt);
 }
 
 export function ProjectHubContent({
@@ -208,6 +214,13 @@ export function ProjectHubContent({
             receivablesOpen: "Open open items",
             receivablesLoadError: "Open items could not be loaded.",
             receivablesEmpty: "No open items linked to this project.",
+            kpiTitle: "Pipeline and KPIs",
+            kpiQuotes: "Quotes",
+            kpiInvoices: "Invoices",
+            kpiOpenBalance: "Open balance",
+            kpiOverdue: "Overdue open items",
+            kpiAssignments: "Assignments (7 days)",
+            kpiWorkTime: "Work time (month to date)",
           }
         : {
             back: "Projekte",
@@ -263,6 +276,13 @@ export function ProjectHubContent({
             receivablesOpen: "Zu den offenen Posten",
             receivablesLoadError: "Offene Posten konnten nicht geladen werden.",
             receivablesEmpty: "Keine offenen Posten zu diesem Projekt.",
+            kpiTitle: "Pipeline und KPIs",
+            kpiQuotes: "Angebote",
+            kpiInvoices: "Rechnungen",
+            kpiOpenBalance: "Offener Saldo",
+            kpiOverdue: "Ueberfaellige OP",
+            kpiAssignments: "Einsaetze (7 Tage)",
+            kpiWorkTime: "Zeiten (Monat bis heute)",
           },
     [locale],
   );
@@ -335,7 +355,7 @@ export function ProjectHubContent({
     setNotFound(false);
     setData(null);
     try {
-      const res = await fetch(`/api/web/projects/${encodeURIComponent(projectId)}`, {
+      const res = await fetch(`/api/web/projects/${encodeURIComponent(projectId)}/hub`, {
         credentials: "include",
         cache: "no-store",
       });
@@ -345,56 +365,23 @@ export function ProjectHubContent({
         setNotFound(true);
         return;
       }
-      const projectParsed = projectResponseSchema.safeParse(json);
-      if (!res.ok || !projectParsed.success) {
+      const hubParsed = projectHubResponseSchema.safeParse(json);
+      if (!res.ok || !hubParsed.success) {
         throw new Error("load_failed");
       }
-      const project = projectParsed.data.project;
-
-      const [quotesRes, invoicesRes, assetsRes, gaebRes] = await Promise.all([
-        fetchParsed(
-          `/api/web/sales/quotes?sortBy=updatedAt&sortDir=desc&limit=8&offset=0&projectId=${encodeURIComponent(projectId)}`,
-          salesQuotesListResponseSchema,
-        ),
-        fetchParsed(
-          `/api/web/sales/invoices?sortBy=updatedAt&sortDir=desc&limit=8&offset=0&projectId=${encodeURIComponent(projectId)}`,
-          salesInvoicesListResponseSchema,
-        ),
-        fetchParsed(
-          `/api/web/projects/${encodeURIComponent(projectId)}/assets`,
-          projectAssetsListResponseSchema,
-        ),
-        fetchParsed(
-          `/api/web/gaeb/imports?projectId=${encodeURIComponent(projectId)}`,
-          gaebImportsListResponseSchema,
-        ),
-      ]);
-
-      let siteAddressLabel: string | null = null;
-      if (project.customerId && project.siteAddressId) {
-        try {
-          const customerRes = await fetchParsed(
-            `/api/web/customers/${encodeURIComponent(project.customerId)}`,
-            customerDetailResponseSchema,
-          );
-          const match = customerRes.customer.addresses.find(
-            (a) => a.id === project.siteAddressId,
-          );
-          if (match) {
-            siteAddressLabel = formatSiteAddressLabel(match);
-          }
-        } catch {
-          siteAddressLabel = null;
-        }
-      }
+      const hub = hubParsed.data;
 
       setData({
-        project,
-        siteAddressLabel,
-        quotes: quotesRes.quotes,
-        invoices: invoicesRes.invoices,
-        assets: assetsRes.assets,
-        gaebDocuments: gaebRes.documents,
+        project: hub.project,
+        siteAddressLabel: hub.siteAddressLabel,
+        quotes: hub.quotes,
+        invoices: hub.invoices,
+        assets: hub.assets,
+        gaebDocuments: hub.gaebDocuments,
+        schedulingWeek: hub.schedulingWeek,
+        workTimeSummary: hub.workTime,
+        openItems: hub.receivables,
+        kpis: hub.kpis,
       });
     } catch {
       setError(copy.loadError);
@@ -413,55 +400,9 @@ export function ProjectHubContent({
       setSchedulingBusy(false);
       return;
     }
-    setSchedulingWeek(null);
-    let cancelled = false;
-    setSchedulingBusy(true);
-    const todayIso = isoDateLocal(new Date());
-    const endIso = addDaysIsoLocal(todayIso, 6);
-    void (async () => {
-      try {
-        const qs = new URLSearchParams({
-          projectId,
-          dateFrom: todayIso,
-          dateTo: endIso,
-        }).toString();
-        const res = await fetch(`/api/web/scheduling/assignments?${qs}`, {
-          credentials: "include",
-          cache: "no-store",
-        });
-        const text = await res.text();
-        const json = parseResponseJson(text);
-        const parsed = schedulingAssignmentsListResponseSchema.safeParse(json);
-        if (!res.ok || !parsed.success || cancelled) {
-          if (!cancelled) {
-            setSchedulingWeek([]);
-          }
-          return;
-        }
-        if (!cancelled) {
-          setSchedulingWeek(
-            parsed.data.assignments.map((a) => ({
-              id: a.id,
-              date: a.date,
-              startTime: a.startTime,
-              title: a.title,
-            })),
-          );
-        }
-      } catch {
-        if (!cancelled) {
-          setSchedulingWeek([]);
-        }
-      } finally {
-        if (!cancelled) {
-          setSchedulingBusy(false);
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [data, projectId]);
+    setSchedulingBusy(false);
+    setSchedulingWeek(data.schedulingWeek);
+  }, [data]);
 
   useEffect(() => {
     if (!data) {
@@ -470,83 +411,10 @@ export function ProjectHubContent({
       setWorkTimeBusy(false);
       return;
     }
-    setWorkTimeSummary(null);
     setWorkTimeError(false);
-    let cancelled = false;
-    setWorkTimeBusy(true);
-    const now = new Date();
-    const from = isoDateLocal(new Date(now.getFullYear(), now.getMonth(), 1));
-    const to = isoDateLocal(now);
-    void (async () => {
-      try {
-        const qs = new URLSearchParams({ from, to, projectId }).toString();
-        const res = await fetch(`/api/web/work-time/entries?${qs}`, {
-          credentials: "include",
-          cache: "no-store",
-        });
-        const text = await res.text();
-        const json = parseResponseJson(text);
-        const parsed = workTimeEntriesListResponseSchema.safeParse(json);
-        if (!res.ok || !parsed.success || cancelled) {
-          if (!cancelled) setWorkTimeError(true);
-          return;
-        }
-
-        const entries = parsed.data.entries;
-        const totalMinutes = entries.reduce(
-          (sum, e) => sum + (Number.isFinite(e.durationMinutes) ? e.durationMinutes : 0),
-          0,
-        );
-
-        const employeeNameById = new Map<string, string>();
-        if (entries.length > 0) {
-          try {
-            const empRes = await fetch("/api/web/employees?limit=200", {
-              credentials: "include",
-              cache: "no-store",
-            });
-            const empText = await empRes.text();
-            const empJson = parseResponseJson(empText);
-            const empParsed = employeesListResponseSchema.safeParse(empJson);
-            if (empRes.ok && empParsed.success) {
-              for (const e of empParsed.data.employees) {
-                employeeNameById.set(e.id, e.displayName);
-              }
-            }
-          } catch {
-            // optional
-          }
-        }
-
-        const lastEntries = [...entries]
-          .sort((a, b) => {
-            const cmpDate = a.workDate.localeCompare(b.workDate);
-            if (cmpDate !== 0) return cmpDate;
-            return a.createdAt.localeCompare(b.createdAt);
-          })
-          .slice(-5)
-          .reverse()
-          .map((e) => ({
-            id: e.id,
-            workDate: e.workDate,
-            durationMinutes: e.durationMinutes,
-            employeeName: employeeNameById.get(e.employeeId) ?? null,
-            notes: e.notes,
-          }));
-
-        if (!cancelled) {
-          setWorkTimeSummary({ totalMinutes, entries: lastEntries });
-        }
-      } catch {
-        if (!cancelled) setWorkTimeError(true);
-      } finally {
-        if (!cancelled) setWorkTimeBusy(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [data, projectId]);
+    setWorkTimeBusy(false);
+    setWorkTimeSummary(data.workTimeSummary);
+  }, [data]);
 
   useEffect(() => {
     if (!data) {
@@ -555,83 +423,10 @@ export function ProjectHubContent({
       setOpenItemsBusy(false);
       return;
     }
-    setOpenItems(null);
     setOpenItemsError(false);
-    let cancelled = false;
-    setOpenItemsBusy(true);
-    void (async () => {
-      try {
-        const qs = new URLSearchParams({
-          projectId,
-          sortBy: "dueAt",
-          sortDir: "asc",
-          limit: "5",
-          offset: "0",
-        }).toString();
-        const res = await fetch(`/api/web/sales/invoices/open-items?${qs}`, {
-          credentials: "include",
-          cache: "no-store",
-        });
-        const text = await res.text();
-        const json = parseResponseJson(text);
-        const parsed = salesOpenInvoicesListResponseSchema.safeParse(json);
-        if (!res.ok || !parsed.success || cancelled) {
-          if (!cancelled) setOpenItemsError(true);
-          return;
-        }
-        const baseRows = parsed.data.invoices.map((i) => ({
-          id: i.id,
-          documentNumber: i.documentNumber,
-          customerLabel: i.customerLabel,
-          dueAt: i.dueAt,
-          currency: i.currency,
-          balanceCents: i.balanceCents,
-          reminderCount: 0,
-          maxReminderLevel: null as number | null,
-          latestReminderId: null as string | null,
-        }));
-        const enriched = await Promise.all(
-          baseRows.map(async (row) => {
-            try {
-              const dRes = await fetch(
-                `/api/web/sales/invoices/${encodeURIComponent(row.id)}`,
-                { credentials: "include", cache: "no-store" },
-              );
-              const dText = await dRes.text();
-              const dJson = parseResponseJson(dText);
-              const dParsed = salesInvoiceDetailResponseSchema.safeParse(dJson);
-              if (!dRes.ok || !dParsed.success) return row;
-              const rem = dParsed.data.invoice.reminders;
-              if (rem.length === 0) return row;
-              const maxLevel = Math.max(...rem.map((r) => r.level));
-              const latest = [...rem].sort(
-                (a, b) =>
-                  new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime(),
-              )[0];
-              return {
-                ...row,
-                reminderCount: rem.length,
-                maxReminderLevel: maxLevel,
-                latestReminderId: latest?.id ?? null,
-              };
-            } catch {
-              return row;
-            }
-          }),
-        );
-        if (!cancelled) {
-          setOpenItems({ total: parsed.data.total, invoices: enriched });
-        }
-      } catch {
-        if (!cancelled) setOpenItemsError(true);
-      } finally {
-        if (!cancelled) setOpenItemsBusy(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [data, projectId]);
+    setOpenItemsBusy(false);
+    setOpenItems(data.openItems);
+  }, [data]);
 
   const upload = useCallback(async () => {
     setUploadError(null);
@@ -738,6 +533,50 @@ export function ProjectHubContent({
               {copy.title} · {projectId}
             </p>
           </div>
+
+          <Card className="border-border/80 bg-muted/15 shadow-none">
+            <CardHeader>
+              <CardTitle className="text-base">{copy.kpiTitle}</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+              <div className="rounded-md border bg-background/40 p-3">
+                <div className="text-xs text-muted-foreground">{copy.kpiQuotes}</div>
+                <div className="font-medium">
+                  {data.kpis.quoteCount} ·{" "}
+                  {formatMinorCurrency(data.kpis.quoteVolumeCents, "EUR", locale)}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {locale === "en" ? "Accepted" : "Angenommen"}: {data.kpis.acceptedQuoteCount}
+                </div>
+              </div>
+              <div className="rounded-md border bg-background/40 p-3">
+                <div className="text-xs text-muted-foreground">{copy.kpiInvoices}</div>
+                <div className="font-medium">
+                  {data.kpis.invoiceCount} ·{" "}
+                  {formatMinorCurrency(data.kpis.invoiceVolumeCents, "EUR", locale)}
+                </div>
+              </div>
+              <div className="rounded-md border bg-background/40 p-3">
+                <div className="text-xs text-muted-foreground">{copy.kpiOpenBalance}</div>
+                <div className="font-medium">
+                  {formatMinorCurrency(data.kpis.openBalanceCents, "EUR", locale)}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {copy.kpiOverdue}: {data.kpis.overdueOpenCount}
+                </div>
+              </div>
+              <div className="rounded-md border bg-background/40 p-3">
+                <div className="text-xs text-muted-foreground">{copy.kpiAssignments}</div>
+                <div className="font-medium">{data.kpis.next7AssignmentsCount}</div>
+              </div>
+              <div className="rounded-md border bg-background/40 p-3">
+                <div className="text-xs text-muted-foreground">{copy.kpiWorkTime}</div>
+                <div className="font-medium">
+                  {formatDuration(locale, data.kpis.workTimeMinutesMonthToDate)}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           <div className="grid gap-3 lg:grid-cols-3">
             <Card className="border-border/80 bg-muted/15 shadow-none">

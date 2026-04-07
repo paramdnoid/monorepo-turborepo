@@ -207,12 +207,15 @@ export function createDatevBookingsExportHandler(getDb: () => Db | undefined) {
         createdAt: salesInvoices.createdAt,
         currency: salesInvoices.currency,
         customerLabel: salesInvoices.customerLabel,
+        billingType: salesInvoices.billingType,
+        isFinalized: salesInvoices.isFinalized,
       })
       .from(salesInvoices)
       .where(
         and(
           eq(salesInvoices.tenantId, auth.tenantId),
           inArray(salesInvoices.status, [...EXPORTABLE_INVOICE_STATUSES]),
+          eq(salesInvoices.isFinalized, true),
           sql`coalesce(${salesInvoices.issuedAt}, ${salesInvoices.createdAt}) >= ${fromTs}`,
           sql`coalesce(${salesInvoices.issuedAt}, ${salesInvoices.createdAt}) <= ${toTs}`,
         ),
@@ -223,11 +226,21 @@ export function createDatevBookingsExportHandler(getDb: () => Db | undefined) {
     const invoices = rows.map((r) => {
       const d = r.issuedAt ?? r.createdAt;
       const postingDate = d.toISOString().slice(0, 10);
+      const typeLabel =
+        r.billingType === "credit_note"
+          ? "Gutschrift"
+          : r.billingType === "partial"
+            ? "Teilrechnung"
+            : r.billingType === "final"
+              ? "Schlussrechnung"
+              : "Rechnung";
+      const signedTotalCents =
+        r.billingType === "credit_note" ? -Math.abs(r.totalCents) : r.totalCents;
       return {
         documentNumber: r.documentNumber,
-        totalCents: r.totalCents,
+        totalCents: signedTotalCents,
         postingDate,
-        description: `Rechnung ${r.documentNumber} — ${r.customerLabel}`,
+        description: `${typeLabel} ${r.documentNumber} — ${r.customerLabel}`,
       };
     });
 

@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
+import nodemailer from "nodemailer";
 
 import {
   and,
@@ -48,6 +49,14 @@ import {
   SALES_REMINDER_TEMPLATE_LEVEL_MAX,
   salesReminderTemplateLocaleSchema,
   salesReminderTemplatesPutBodySchema,
+  salesReminderEmailJobCreateSchema,
+  salesReminderEmailJobCreateResponseSchema,
+  salesReminderEmailJobsListResponseSchema,
+  salesReminderEmailJobPatchSchema,
+  salesReminderEmailJobRetryResponseSchema,
+  salesReminderEmailJobsProcessRequestSchema,
+  salesReminderEmailJobsProcessResponseSchema,
+  salesReminderEmailJobRecordSchema,
 } from "@repo/api-contracts";
 
 import {
@@ -63,6 +72,7 @@ import {
   salesQuoteLines,
   salesQuotes,
   salesReminderTemplates,
+  salesReminderEmailJobs,
   type Db,
 } from "@repo/db";
 
@@ -155,6 +165,7 @@ type SalesLifecycleAction =
   | "quote_archived"
   | "quote_unarchived"
   | "quote_deleted"
+  | "invoice_finalized"
   | "invoice_cancelled"
   | "invoice_deleted";
 
@@ -255,6 +266,51 @@ function parseListNumber(
   return n;
 }
 
+function envBool(value: string | undefined, defaultTrue: boolean): boolean {
+  if (value === undefined || value === "") return defaultTrue;
+  return value.toLowerCase() === "true" || value === "1";
+}
+
+function isSmtpConfigured(): boolean {
+  return Boolean(
+    process.env.SMTP_HOST?.trim() &&
+      process.env.SMTP_USER?.trim() &&
+      process.env.SMTP_PASS !== undefined,
+  );
+}
+
+function createSmtpTransport() {
+  const host = process.env.SMTP_HOST?.trim();
+  const port = Number(process.env.SMTP_PORT) || 587;
+  const user = process.env.SMTP_USER?.trim();
+  const pass = process.env.SMTP_PASS ?? "";
+
+  if (!host || !user) {
+    throw new Error("smtp_not_configured");
+  }
+
+  const secure = envBool(process.env.SMTP_SSL, false);
+  const requireTLS = envBool(process.env.SMTP_STARTTLS, true);
+  const useAuth = envBool(process.env.SMTP_AUTH, true);
+
+  return nodemailer.createTransport({
+    host,
+    port,
+    secure,
+    requireTLS: secure ? false : requireTLS,
+    auth: useAuth ? { user, pass } : undefined,
+  });
+}
+
+function smtpFromAddress(): string {
+  const from =
+    process.env.MAIL_FROM?.trim() ||
+    process.env.SMTP_USER?.trim() ||
+    "noreply@localhost";
+  const fromName = process.env.EMAIL_FROM_NAME?.trim();
+  return fromName ? `"${fromName}" <${from}>` : from;
+}
+
 function mapQuoteRow(r: typeof salesQuotes.$inferSelect) {
   return {
     id: r.id,
@@ -279,11 +335,22 @@ function mapInvoiceRow(r: typeof salesInvoices.$inferSelect) {
     customerId: r.customerId ?? null,
     projectId: r.projectId ?? null,
     status: r.status,
+    billingType:
+      r.billingType === "partial" ||
+      r.billingType === "final" ||
+      r.billingType === "credit_note"
+        ? r.billingType
+        : "invoice",
+    parentInvoiceId: r.parentInvoiceId ?? null,
+    creditForInvoiceId: r.creditForInvoiceId ?? null,
     currency: r.currency,
     totalCents: r.totalCents,
     issuedAt: r.issuedAt ? r.issuedAt.toISOString() : null,
     dueAt: r.dueAt ? r.dueAt.toISOString() : null,
     paidAt: r.paidAt ? r.paidAt.toISOString() : null,
+    isFinalized: Boolean(r.isFinalized),
+    finalizedAt: r.finalizedAt ? r.finalizedAt.toISOString() : null,
+    snapshotHash: r.snapshotHash ?? null,
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
   };
@@ -298,6 +365,8 @@ function mapQuoteLineRow(r: typeof salesQuoteLines.$inferSelect) {
     unit: r.unit ?? null,
     unitPriceCents: r.unitPriceCents,
     lineTotalCents: r.lineTotalCents,
+    taxRateBps: r.taxRateBps ?? 1900,
+    discountBps: r.discountBps ?? 0,
   };
 }
 
@@ -310,6 +379,8 @@ function mapInvoiceLineRow(r: typeof salesInvoiceLines.$inferSelect) {
     unit: r.unit ?? null,
     unitPriceCents: r.unitPriceCents,
     lineTotalCents: r.lineTotalCents,
+    taxRateBps: r.taxRateBps ?? 1900,
+    discountBps: r.discountBps ?? 0,
   };
 }
 
@@ -450,6 +521,46 @@ async function syncInvoicePaymentState(db: Db, invoiceId: string): Promise<void>
   await db.update(salesInvoices).set(updates).where(eq(salesInvoices.id, invoiceId));
 }
 
+function computeInvoiceTaxBreakdown(
+  lines: Array<{
+    taxRateBps: number | null;
+    lineTotalCents: number;
+  }>,
+): Array<{
+  taxRateBps: number;
+  netCents: number;
+  taxCents: number;
+  grossCents: number;
+}> {
+  const byRate = new Map<number, number>();
+  for (const line of lines) {
+    const rate = Number.isFinite(line.taxRateBps) ? Number(line.taxRateBps) : 1900;
+    const prev = byRate.get(rate) ?? 0;
+    byRate.set(rate, prev + line.lineTotalCents);
+  }
+  const rows = [...byRate.entries()]
+    .map(([taxRateBps, grossCents]) => {
+      if (taxRateBps <= 0) {
+        return {
+          taxRateBps: 0,
+          netCents: grossCents,
+          taxCents: 0,
+          grossCents,
+        };
+      }
+      const divisor = 10_000 + taxRateBps;
+      const netCents = Math.round((grossCents * 10_000) / divisor);
+      const taxCents = grossCents - netCents;
+      return { taxRateBps, netCents, taxCents, grossCents };
+    })
+    .sort((a, b) => a.taxRateBps - b.taxRateBps);
+  return rows;
+}
+
+function canMutateInvoice(inv: typeof salesInvoices.$inferSelect): boolean {
+  return !inv.isFinalized;
+}
+
 async function buildQuoteDetailPayload(
   db: Db,
   tenantId: string,
@@ -534,6 +645,12 @@ async function buildInvoiceDetailPayload(
     paidFromRowsSum: paidFromRows,
   });
   const balanceCents = invoiceBalanceCents(row.totalCents, paidTotalCents);
+  const taxBreakdown = computeInvoiceTaxBreakdown(
+    lines.map((line) => ({
+      taxRateBps: line.taxRateBps,
+      lineTotalCents: line.lineTotalCents,
+    })),
+  );
 
   return {
     invoice: {
@@ -545,6 +662,7 @@ async function buildInvoiceDetailPayload(
       reminders: reminderRows.map(mapInvoiceReminderRow),
       paidTotalCents,
       balanceCents,
+      taxBreakdown,
     },
   };
 }
@@ -977,7 +1095,7 @@ function buildSalesOpenInvoicesPayAggSubquery(db: Db, tenantId: string) {
   return db
     .select({
       invoiceId: salesInvoicePayments.invoiceId,
-      sumCents: sum(salesInvoicePayments.amountCents),
+      sumCents: sum(salesInvoicePayments.amountCents).as("sum_cents"),
     })
     .from(salesInvoicePayments)
     .where(eq(salesInvoicePayments.tenantId, tenantId))
@@ -1660,6 +1778,190 @@ export function createSalesInvoiceDetailHandler(getDb: () => Db | undefined) {
   };
 }
 
+function toStableSnapshotHash(payload: unknown): string {
+  return createHash("sha256").update(JSON.stringify(payload)).digest("hex");
+}
+
+function escapeXml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&apos;");
+}
+
+function buildSimpleEInvoiceXml(args: {
+  profile: "xrechnung" | "zugferd";
+  invoice: {
+    documentNumber: string;
+    issuedAt: string | null;
+    dueAt: string | null;
+    currency: string;
+    customerLabel: string;
+    totalCents: number;
+    balanceCents: number;
+  };
+}): string {
+  const issueDate = args.invoice.issuedAt
+    ? args.invoice.issuedAt.slice(0, 10)
+    : new Date().toISOString().slice(0, 10);
+  const dueDate = args.invoice.dueAt ? args.invoice.dueAt.slice(0, 10) : "";
+  const total = (args.invoice.totalCents / 100).toFixed(2);
+  const open = (args.invoice.balanceCents / 100).toFixed(2);
+  return [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    `<EInvoice profile="${args.profile}">`,
+    `  <DocumentNumber>${escapeXml(args.invoice.documentNumber)}</DocumentNumber>`,
+    `  <IssueDate>${escapeXml(issueDate)}</IssueDate>`,
+    `  <DueDate>${escapeXml(dueDate)}</DueDate>`,
+    `  <Currency>${escapeXml(args.invoice.currency)}</Currency>`,
+    `  <BuyerName>${escapeXml(args.invoice.customerLabel)}</BuyerName>`,
+    `  <TotalAmount>${escapeXml(total)}</TotalAmount>`,
+    `  <OpenAmount>${escapeXml(open)}</OpenAmount>`,
+    "</EInvoice>",
+    "",
+  ].join("\n");
+}
+
+export function createSalesInvoiceFinalizePostHandler(
+  getDb: () => Db | undefined,
+) {
+  return async (c: Context) => {
+    const auth = c.get("auth");
+    if (!auth) return c.json({ error: "missing_auth" }, 500);
+    if (!canEditSalesDocuments(auth)) return c.json({ error: "forbidden" }, 403);
+    const idParse = z.string().uuid().safeParse(c.req.param("id"));
+    if (!idParse.success) return c.json({ error: "invalid_id" }, 400);
+    const invoiceId = idParse.data;
+    const db = getDb();
+    if (!db) return c.json({ error: "database_unavailable" }, 503);
+
+    const inv = await invoiceForTenant(db, auth.tenantId, invoiceId);
+    if (!inv) return c.json({ error: "not_found" }, 404);
+    if (inv.isFinalized) {
+      const payload = await buildInvoiceDetailPayload(db, auth.tenantId, invoiceId);
+      if (!payload) return c.json({ error: "not_found" }, 404);
+      return c.json(payload);
+    }
+    if (inv.status === "draft" || inv.status === "cancelled") {
+      return c.json({ error: "invalid_state" }, 409);
+    }
+
+    const detail = await buildInvoiceDetailPayload(db, auth.tenantId, invoiceId);
+    if (!detail) return c.json({ error: "not_found" }, 404);
+    const snapshotHash = toStableSnapshotHash(detail.invoice);
+    const now = new Date();
+    const [updated] = await db
+      .update(salesInvoices)
+      .set({
+        isFinalized: true,
+        finalizedAt: now,
+        snapshotHash,
+        snapshotJson: detail.invoice as unknown as Record<string, unknown>,
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(salesInvoices.id, invoiceId),
+          eq(salesInvoices.tenantId, auth.tenantId),
+          eq(salesInvoices.isFinalized, false),
+        ),
+      )
+      .returning();
+    if (!updated) {
+      const payload = await buildInvoiceDetailPayload(db, auth.tenantId, invoiceId);
+      if (!payload) return c.json({ error: "not_found" }, 404);
+      return c.json(payload);
+    }
+
+    await logSalesLifecycleEvent(db, {
+      tenantId: auth.tenantId,
+      actorSub: auth.sub?.trim() || "unknown",
+      entityType: "invoice",
+      entityId: invoiceId,
+      action: "invoice_finalized",
+      fromStatus: inv.status,
+      toStatus: inv.status,
+    });
+    const payload = await buildInvoiceDetailPayload(db, auth.tenantId, invoiceId);
+    if (!payload) return c.json({ error: "not_found" }, 404);
+    return c.json(payload);
+  };
+}
+
+function resolveInvoiceSnapshotSource(
+  inv: typeof salesInvoices.$inferSelect,
+  fallback: Awaited<ReturnType<typeof buildInvoiceDetailPayload>> | null,
+) {
+  if (inv.snapshotJson && typeof inv.snapshotJson === "object") {
+    return inv.snapshotJson as {
+      documentNumber: string;
+      issuedAt: string | null;
+      dueAt: string | null;
+      currency: string;
+      customerLabel: string;
+      totalCents: number;
+      balanceCents: number;
+    };
+  }
+  return fallback?.invoice ?? null;
+}
+
+export function createSalesInvoiceXRechnungGetHandler(getDb: () => Db | undefined) {
+  return async (c: Context) => {
+    const auth = c.get("auth");
+    if (!auth) return c.json({ error: "missing_auth" }, 500);
+    const idParse = z.string().uuid().safeParse(c.req.param("id"));
+    if (!idParse.success) return c.json({ error: "invalid_id" }, 400);
+    const db = getDb();
+    if (!db) return c.json({ error: "database_unavailable" }, 503);
+    const inv = await invoiceForTenant(db, auth.tenantId, idParse.data);
+    if (!inv) return c.json({ error: "not_found" }, 404);
+    if (!inv.isFinalized) return c.json({ error: "finalize_required" }, 409);
+    const detail = await buildInvoiceDetailPayload(db, auth.tenantId, idParse.data);
+    const snapshot = resolveInvoiceSnapshotSource(inv, detail);
+    if (!snapshot) return c.json({ error: "not_found" }, 404);
+    const xml = buildSimpleEInvoiceXml({
+      profile: "xrechnung",
+      invoice: snapshot,
+    });
+    c.header("Content-Type", "application/xml; charset=utf-8");
+    c.header(
+      "Content-Disposition",
+      `attachment; filename="${snapshot.documentNumber}-xrechnung.xml"`,
+    );
+    return c.body(xml);
+  };
+}
+
+export function createSalesInvoiceZugferdGetHandler(getDb: () => Db | undefined) {
+  return async (c: Context) => {
+    const auth = c.get("auth");
+    if (!auth) return c.json({ error: "missing_auth" }, 500);
+    const idParse = z.string().uuid().safeParse(c.req.param("id"));
+    if (!idParse.success) return c.json({ error: "invalid_id" }, 400);
+    const db = getDb();
+    if (!db) return c.json({ error: "database_unavailable" }, 503);
+    const inv = await invoiceForTenant(db, auth.tenantId, idParse.data);
+    if (!inv) return c.json({ error: "not_found" }, 404);
+    if (!inv.isFinalized) return c.json({ error: "finalize_required" }, 409);
+    const detail = await buildInvoiceDetailPayload(db, auth.tenantId, idParse.data);
+    const snapshot = resolveInvoiceSnapshotSource(inv, detail);
+    if (!snapshot) return c.json({ error: "not_found" }, 404);
+    const xml = buildSimpleEInvoiceXml({
+      profile: "zugferd",
+      invoice: snapshot,
+    });
+    c.header("Content-Type", "application/xml; charset=utf-8");
+    c.header(
+      "Content-Disposition",
+      `attachment; filename="${snapshot.documentNumber}-zugferd.xml"`,
+    );
+    return c.body(xml);
+  };
+}
+
 export function createSalesInvoiceCancelPostHandler(getDb: () => Db | undefined) {
   return async (c: Context) => {
     const auth = c.get("auth");
@@ -1673,6 +1975,9 @@ export function createSalesInvoiceCancelPostHandler(getDb: () => Db | undefined)
 
     const row = await invoiceForTenant(db, auth.tenantId, id);
     if (!row) return c.json({ error: "not_found" }, 404);
+    if (!canMutateInvoice(row)) {
+      return c.json({ error: "finalized_locked" }, 409);
+    }
     if (row.status === "cancelled") {
       const payload = await buildInvoiceDetailPayload(db, auth.tenantId, id);
       if (!payload) return c.json({ error: "not_found" }, 404);
@@ -1736,6 +2041,9 @@ export function createSalesInvoiceDeleteHandler(getDb: () => Db | undefined) {
 
     const row = await invoiceForTenant(db, auth.tenantId, id);
     if (!row) return c.json({ error: "not_found" }, 404);
+    if (!canMutateInvoice(row)) {
+      return c.json({ error: "finalized_locked" }, 409);
+    }
     if (row.status !== "draft") {
       return c.json({ error: "invalid_state" }, 409);
     }
@@ -2032,6 +2340,25 @@ export function createSalesInvoicePostHandler(getDb: () => Db | undefined) {
         return c.json({ error: "invalid_quote" }, 400);
       }
     }
+    if (input.parentInvoiceId) {
+      if (input.parentInvoiceId === input.creditForInvoiceId) {
+        return c.json({ error: "invalid_parent_invoice" }, 400);
+      }
+      const ok = await assertInvoiceForTenant(db, auth.tenantId, input.parentInvoiceId);
+      if (!ok) {
+        return c.json({ error: "invalid_parent_invoice" }, 400);
+      }
+    }
+    if (input.creditForInvoiceId) {
+      const ok = await assertInvoiceForTenant(
+        db,
+        auth.tenantId,
+        input.creditForInvoiceId,
+      );
+      if (!ok) {
+        return c.json({ error: "invalid_credit_reference" }, 400);
+      }
+    }
     if (input.customerId) {
       const ok = await assertCustomerForTenant(
         db,
@@ -2086,9 +2413,12 @@ export function createSalesInvoicePostHandler(getDb: () => Db | undefined) {
           documentNumber: input.documentNumber,
           customerLabel: input.customerLabel,
           status: input.status,
+          billingType: input.billingType ?? "invoice",
           currency: input.currency,
           totalCents: input.totalCents,
           quoteId: input.quoteId ?? null,
+          parentInvoiceId: input.parentInvoiceId ?? null,
+          creditForInvoiceId: input.creditForInvoiceId ?? null,
           projectId: input.projectId ?? null,
           issuedAt: issuedAtValue,
           dueAt: dueAtValue,
@@ -2215,9 +2545,12 @@ export function createSalesInvoiceFromQuotePostHandler(
             documentNumber: input.documentNumber,
             customerLabel: quoteRow.customerLabel,
             status: input.status,
+            billingType: "invoice",
             currency: quoteRow.currency,
             totalCents: 0,
             quoteId,
+            parentInvoiceId: null,
+            creditForInvoiceId: null,
             projectId: quoteRow.projectId ?? null,
             issuedAt: issuedAtValue,
             dueAt: dueAtValue,
@@ -2238,6 +2571,8 @@ export function createSalesInvoiceFromQuotePostHandler(
               description: l.description,
               quantity: l.quantity ?? null,
               unit: l.unit ?? null,
+              taxRateBps: l.taxRateBps ?? 1900,
+              discountBps: l.discountBps ?? 0,
               unitPriceCents: l.unitPriceCents,
               lineTotalCents: l.lineTotalCents,
             })),
@@ -2306,6 +2641,13 @@ export function createSalesInvoicePatchHandler(getDb: () => Db | undefined) {
     if (!db) {
       return c.json({ error: "database_unavailable" }, 503);
     }
+    const current = await invoiceForTenant(db, auth.tenantId, id);
+    if (!current) {
+      return c.json({ error: "not_found" }, 404);
+    }
+    if (!canMutateInvoice(current)) {
+      return c.json({ error: "finalized_locked" }, 409);
+    }
     const lineCount = await salesInvoiceLineCount(db, id);
     const patchKeysEffective = Object.keys(patch).filter(
       (key) => !(lineCount > 0 && key === "totalCents"),
@@ -2325,6 +2667,32 @@ export function createSalesInvoicePatchHandler(getDb: () => Db | undefined) {
         return c.json({ error: "invalid_quote" }, 400);
       }
     }
+    if (patch.parentInvoiceId !== undefined && patch.parentInvoiceId !== null) {
+      if (patch.parentInvoiceId === id) {
+        return c.json({ error: "invalid_parent_invoice" }, 400);
+      }
+      const ok = await assertInvoiceForTenant(
+        db,
+        auth.tenantId,
+        patch.parentInvoiceId,
+      );
+      if (!ok) {
+        return c.json({ error: "invalid_parent_invoice" }, 400);
+      }
+    }
+    if (patch.creditForInvoiceId !== undefined && patch.creditForInvoiceId !== null) {
+      if (patch.creditForInvoiceId === id) {
+        return c.json({ error: "invalid_credit_reference" }, 400);
+      }
+      const ok = await assertInvoiceForTenant(
+        db,
+        auth.tenantId,
+        patch.creditForInvoiceId,
+      );
+      if (!ok) {
+        return c.json({ error: "invalid_credit_reference" }, 400);
+      }
+    }
     if (patch.customerId !== undefined && patch.customerId !== null) {
       const ok = await assertCustomerForTenant(db, auth.tenantId, patch.customerId);
       if (!ok) {
@@ -2337,9 +2705,12 @@ export function createSalesInvoicePatchHandler(getDb: () => Db | undefined) {
       customerLabel?: string;
       customerId?: string | null;
       status?: string;
+      billingType?: "invoice" | "partial" | "final" | "credit_note";
       currency?: string;
       totalCents?: number;
       quoteId?: string | null;
+      parentInvoiceId?: string | null;
+      creditForInvoiceId?: string | null;
       projectId?: string | null;
       issuedAt?: Date | null;
       dueAt?: Date | null;
@@ -2357,6 +2728,9 @@ export function createSalesInvoicePatchHandler(getDb: () => Db | undefined) {
     if (patch.status !== undefined) {
       updates.status = patch.status;
     }
+    if (patch.billingType !== undefined) {
+      updates.billingType = patch.billingType;
+    }
     if (patch.currency !== undefined) {
       updates.currency = patch.currency;
     }
@@ -2365,6 +2739,12 @@ export function createSalesInvoicePatchHandler(getDb: () => Db | undefined) {
     }
     if (patch.quoteId !== undefined) {
       updates.quoteId = patch.quoteId;
+    }
+    if (patch.parentInvoiceId !== undefined) {
+      updates.parentInvoiceId = patch.parentInvoiceId;
+    }
+    if (patch.creditForInvoiceId !== undefined) {
+      updates.creditForInvoiceId = patch.creditForInvoiceId;
     }
     if (patch.projectId !== undefined) {
       updates.projectId = patch.projectId;
@@ -2701,6 +3081,468 @@ export function createSalesInvoiceReminderPostHandler(getDb: () => Db | undefine
   };
 }
 
+function mapSalesReminderEmailJobRow(
+  row: typeof salesReminderEmailJobs.$inferSelect,
+) {
+  const mapped = {
+    id: row.id,
+    tenantId: row.tenantId,
+    invoiceId: row.invoiceId,
+    reminderId: row.reminderId,
+    toEmail: row.toEmail,
+    subject: row.subject,
+    bodyText: row.bodyText,
+    locale: row.locale === "en" ? "en" as const : "de" as const,
+    status: row.status as "pending" | "sent" | "failed",
+    attempts: row.attempts,
+    maxAttempts: row.maxAttempts,
+    lastError: row.lastError ?? null,
+    createdBySub: row.createdBySub ?? null,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+    sentAt: row.sentAt?.toISOString() ?? null,
+  };
+  const safe = salesReminderEmailJobRecordSchema.safeParse(mapped);
+  if (!safe.success) {
+    return null;
+  }
+  return safe.data;
+}
+
+async function markReminderEmailJobAttempt(
+  db: Db,
+  row: typeof salesReminderEmailJobs.$inferSelect,
+  args: { status: "sent" | "failed"; lastError: string | null },
+): Promise<typeof salesReminderEmailJobs.$inferSelect | null> {
+  const now = new Date();
+  const [updated] = await db
+    .update(salesReminderEmailJobs)
+    .set({
+      status: args.status,
+      attempts: row.attempts + 1,
+      lastError: args.status === "failed" ? (args.lastError ?? "delivery_failed") : null,
+      sentAt: args.status === "sent" ? now : null,
+      updatedAt: now,
+    })
+    .where(
+      and(
+        eq(salesReminderEmailJobs.id, row.id),
+        eq(salesReminderEmailJobs.tenantId, row.tenantId),
+        eq(salesReminderEmailJobs.status, "pending"),
+      ),
+    )
+    .returning();
+  return updated ?? null;
+}
+
+async function deliverReminderEmailJob(
+  db: Db,
+  row: typeof salesReminderEmailJobs.$inferSelect,
+): Promise<typeof salesReminderEmailJobs.$inferSelect | null> {
+  if (row.attempts + 1 > row.maxAttempts) {
+    const now = new Date();
+    const [updated] = await db
+      .update(salesReminderEmailJobs)
+      .set({
+        status: "failed",
+        attempts: row.attempts,
+        lastError: "max_attempts_exceeded",
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(salesReminderEmailJobs.id, row.id),
+          eq(salesReminderEmailJobs.tenantId, row.tenantId),
+        ),
+      )
+      .returning();
+    return updated ?? null;
+  }
+
+  if (!isSmtpConfigured()) {
+    return markReminderEmailJobAttempt(db, row, {
+      status: "failed",
+      lastError: "smtp_not_configured",
+    });
+  }
+
+  const transport = createSmtpTransport();
+  try {
+    await transport.sendMail({
+      from: smtpFromAddress(),
+      to: row.toEmail,
+      subject: row.subject,
+      text: row.bodyText,
+    });
+    return markReminderEmailJobAttempt(db, row, { status: "sent", lastError: null });
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message.slice(0, 8000) : "smtp_send_failed";
+    return markReminderEmailJobAttempt(db, row, {
+      status: "failed",
+      lastError: message,
+    });
+  }
+}
+
+async function processPendingReminderEmailJobs(
+  db: Db,
+  tenantId: string,
+  args?: { limit?: number; jobId?: string },
+): Promise<{
+  processed: number;
+  sent: number;
+  failed: number;
+  rows: typeof salesReminderEmailJobs.$inferSelect[];
+}> {
+  const limit = Math.min(100, Math.max(1, args?.limit ?? 20));
+  const where: SQL[] = [
+    eq(salesReminderEmailJobs.tenantId, tenantId),
+    eq(salesReminderEmailJobs.status, "pending"),
+  ];
+  if (args?.jobId) {
+    where.push(eq(salesReminderEmailJobs.id, args.jobId));
+  }
+  const pending = await db
+    .select()
+    .from(salesReminderEmailJobs)
+    .where(and(...where))
+    .orderBy(asc(salesReminderEmailJobs.createdAt))
+    .limit(limit);
+
+  const rows: typeof salesReminderEmailJobs.$inferSelect[] = [];
+  let sent = 0;
+  let failed = 0;
+  for (const row of pending) {
+    const updated = await deliverReminderEmailJob(db, row);
+    if (!updated) continue;
+    rows.push(updated);
+    if (updated.status === "sent") sent += 1;
+    if (updated.status === "failed") failed += 1;
+  }
+  return {
+    processed: rows.length,
+    sent,
+    failed,
+    rows,
+  };
+}
+
+export function createSalesReminderEmailJobPostHandler(
+  getDb: () => Db | undefined,
+) {
+  return async (c: Context) => {
+    const auth = c.get("auth");
+    if (!auth) return c.json({ error: "missing_auth" }, 500);
+    if (!canEditSalesDocuments(auth)) return c.json({ error: "forbidden" }, 403);
+    const invoiceIdParse = z.string().uuid().safeParse(c.req.param("id"));
+    const reminderIdParse = z
+      .string()
+      .uuid()
+      .safeParse(c.req.param("reminderId"));
+    if (!invoiceIdParse.success || !reminderIdParse.success) {
+      return c.json({ error: "invalid_id" }, 400);
+    }
+    const invoiceId = invoiceIdParse.data;
+    const reminderId = reminderIdParse.data;
+
+    let body: unknown;
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ error: "invalid_json" }, 400);
+    }
+    const parsed = salesReminderEmailJobCreateSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ error: "validation_error" }, 400);
+    }
+
+    const db = getDb();
+    if (!db) return c.json({ error: "database_unavailable" }, 503);
+
+    const inv = await invoiceForTenant(db, auth.tenantId, invoiceId);
+    if (!inv) return c.json({ error: "not_found" }, 404);
+
+    const [reminderRow] = await db
+      .select({ id: salesInvoiceReminders.id })
+      .from(salesInvoiceReminders)
+      .where(
+        and(
+          eq(salesInvoiceReminders.id, reminderId),
+          eq(salesInvoiceReminders.invoiceId, invoiceId),
+          eq(salesInvoiceReminders.tenantId, auth.tenantId),
+        ),
+      )
+      .limit(1);
+    if (!reminderRow) {
+      return c.json({ error: "not_found" }, 404);
+    }
+
+    const now = new Date();
+    const [inserted] = await db
+      .insert(salesReminderEmailJobs)
+      .values({
+        tenantId: auth.tenantId,
+        invoiceId,
+        reminderId,
+        toEmail: parsed.data.to,
+        subject: parsed.data.subject,
+        bodyText: parsed.data.bodyText,
+        locale: parsed.data.locale,
+        status: "pending",
+        attempts: 0,
+        maxAttempts: 3,
+        createdBySub: auth.sub || null,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+
+    const row = inserted;
+    if (!row) return c.json({ error: "insert_failed" }, 500);
+    const job = mapSalesReminderEmailJobRow(row);
+    if (!job) return c.json({ error: "response_serialization" }, 500);
+    const payload = salesReminderEmailJobCreateResponseSchema.safeParse({ job });
+    if (!payload.success) {
+      return c.json({ error: "response_serialization" }, 500);
+    }
+    return c.json(payload.data, 201);
+  };
+}
+
+export function createSalesReminderEmailJobPatchHandler(
+  getDb: () => Db | undefined,
+) {
+  return async (c: Context) => {
+    const auth = c.get("auth");
+    if (!auth) return c.json({ error: "missing_auth" }, 500);
+    if (!canEditSalesDocuments(auth)) return c.json({ error: "forbidden" }, 403);
+    const jobIdParse = z.string().uuid().safeParse(c.req.param("jobId"));
+    if (!jobIdParse.success) return c.json({ error: "invalid_id" }, 400);
+    const jobId = jobIdParse.data;
+
+    let body: unknown;
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ error: "invalid_json" }, 400);
+    }
+    const parsed = salesReminderEmailJobPatchSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ error: "validation_error" }, 400);
+    }
+
+    const db = getDb();
+    if (!db) return c.json({ error: "database_unavailable" }, 503);
+
+    const [existing] = await db
+      .select()
+      .from(salesReminderEmailJobs)
+      .where(
+        and(
+          eq(salesReminderEmailJobs.id, jobId),
+          eq(salesReminderEmailJobs.tenantId, auth.tenantId),
+        ),
+      )
+      .limit(1);
+    if (!existing) return c.json({ error: "not_found" }, 404);
+    if (existing.status !== "pending") {
+      return c.json({ error: "invalid_state" }, 409);
+    }
+
+    const now = new Date();
+    const nextAttempts = existing.attempts + 1;
+    if (nextAttempts > existing.maxAttempts) {
+      return c.json({ error: "max_attempts_exceeded" }, 409);
+    }
+
+    const nextStatus = parsed.data.status;
+    const [updated] = await db
+      .update(salesReminderEmailJobs)
+      .set({
+        status: nextStatus,
+        attempts: nextAttempts,
+        lastError:
+          nextStatus === "failed"
+            ? (parsed.data.lastError ?? "delivery_failed")
+            : null,
+        sentAt: nextStatus === "sent" ? now : null,
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(salesReminderEmailJobs.id, jobId),
+          eq(salesReminderEmailJobs.tenantId, auth.tenantId),
+        ),
+      )
+      .returning();
+
+    const row = updated;
+    if (!row) return c.json({ error: "update_failed" }, 500);
+    const job = mapSalesReminderEmailJobRow(row);
+    if (!job) return c.json({ error: "response_serialization" }, 500);
+    return c.json({ job });
+  };
+}
+
+export function createSalesReminderEmailJobRetryPostHandler(
+  getDb: () => Db | undefined,
+) {
+  return async (c: Context) => {
+    const auth = c.get("auth");
+    if (!auth) return c.json({ error: "missing_auth" }, 500);
+    if (!canEditSalesDocuments(auth)) return c.json({ error: "forbidden" }, 403);
+    const jobIdParse = z.string().uuid().safeParse(c.req.param("jobId"));
+    if (!jobIdParse.success) return c.json({ error: "invalid_id" }, 400);
+    const db = getDb();
+    if (!db) return c.json({ error: "database_unavailable" }, 503);
+
+    const [existing] = await db
+      .select()
+      .from(salesReminderEmailJobs)
+      .where(
+        and(
+          eq(salesReminderEmailJobs.id, jobIdParse.data),
+          eq(salesReminderEmailJobs.tenantId, auth.tenantId),
+        ),
+      )
+      .limit(1);
+    if (!existing) return c.json({ error: "not_found" }, 404);
+    if (existing.status !== "failed") {
+      return c.json({ error: "invalid_state" }, 409);
+    }
+    if (existing.attempts >= existing.maxAttempts) {
+      return c.json({ error: "max_attempts_exceeded" }, 409);
+    }
+
+    const [updated] = await db
+      .update(salesReminderEmailJobs)
+      .set({
+        status: "pending",
+        updatedAt: new Date(),
+        lastError: null,
+        sentAt: null,
+      })
+      .where(
+        and(
+          eq(salesReminderEmailJobs.id, existing.id),
+          eq(salesReminderEmailJobs.tenantId, auth.tenantId),
+        ),
+      )
+      .returning();
+    if (!updated) return c.json({ error: "update_failed" }, 500);
+    const job = mapSalesReminderEmailJobRow(updated);
+    if (!job) return c.json({ error: "response_serialization" }, 500);
+    const safe = salesReminderEmailJobRetryResponseSchema.safeParse({ job });
+    if (!safe.success) return c.json({ error: "response_serialization" }, 500);
+    return c.json(safe.data);
+  };
+}
+
+export function createSalesReminderEmailJobsProcessPostHandler(
+  getDb: () => Db | undefined,
+) {
+  return async (c: Context) => {
+    const auth = c.get("auth");
+    if (!auth) return c.json({ error: "missing_auth" }, 500);
+    if (!canEditSalesDocuments(auth)) return c.json({ error: "forbidden" }, 403);
+    const db = getDb();
+    if (!db) return c.json({ error: "database_unavailable" }, 503);
+
+    let body: unknown = {};
+    try {
+      const text = await c.req.text();
+      body = text.trim() === "" ? {} : JSON.parse(text);
+    } catch {
+      return c.json({ error: "invalid_json" }, 400);
+    }
+
+    const parsed = salesReminderEmailJobsProcessRequestSchema.safeParse(body);
+    if (!parsed.success) return c.json({ error: "validation_error" }, 400);
+
+    const result = await processPendingReminderEmailJobs(db, auth.tenantId, {
+      limit: parsed.data.limit,
+      jobId: parsed.data.jobId,
+    });
+    const jobs = result.rows
+      .map((row) => mapSalesReminderEmailJobRow(row))
+      .filter((row): row is NonNullable<typeof row> => row != null);
+    const payload = salesReminderEmailJobsProcessResponseSchema.safeParse({
+      processed: result.processed,
+      sent: result.sent,
+      failed: result.failed,
+      jobs,
+    });
+    if (!payload.success) {
+      return c.json({ error: "response_serialization" }, 500);
+    }
+    return c.json(payload.data);
+  };
+}
+
+export function createSalesReminderEmailJobsListHandler(
+  getDb: () => Db | undefined,
+) {
+  return async (c: Context) => {
+    const auth = c.get("auth");
+    if (!auth) return c.json({ error: "missing_auth" }, 500);
+    if (!canEditSalesDocuments(auth)) return c.json({ error: "forbidden" }, 403);
+    const invoiceIdParse = z.string().uuid().safeParse(c.req.param("id"));
+    const reminderIdParse = z
+      .string()
+      .uuid()
+      .safeParse(c.req.param("reminderId"));
+    if (!invoiceIdParse.success || !reminderIdParse.success) {
+      return c.json({ error: "invalid_id" }, 400);
+    }
+    const invoiceId = invoiceIdParse.data;
+    const reminderId = reminderIdParse.data;
+
+    const db = getDb();
+    if (!db) return c.json({ error: "database_unavailable" }, 503);
+
+    const inv = await invoiceForTenant(db, auth.tenantId, invoiceId);
+    if (!inv) return c.json({ error: "not_found" }, 404);
+
+    const [reminderRow] = await db
+      .select({ id: salesInvoiceReminders.id })
+      .from(salesInvoiceReminders)
+      .where(
+        and(
+          eq(salesInvoiceReminders.id, reminderId),
+          eq(salesInvoiceReminders.invoiceId, invoiceId),
+          eq(salesInvoiceReminders.tenantId, auth.tenantId),
+        ),
+      )
+      .limit(1);
+    if (!reminderRow) {
+      return c.json({ error: "not_found" }, 404);
+    }
+
+    const rows = await db
+      .select()
+      .from(salesReminderEmailJobs)
+      .where(
+        and(
+          eq(salesReminderEmailJobs.invoiceId, invoiceId),
+          eq(salesReminderEmailJobs.reminderId, reminderId),
+          eq(salesReminderEmailJobs.tenantId, auth.tenantId),
+        ),
+      )
+      .orderBy(desc(salesReminderEmailJobs.createdAt))
+      .limit(100);
+
+    const jobs = rows
+      .map((r) => mapSalesReminderEmailJobRow(r))
+      .filter((j): j is NonNullable<typeof j> => j != null);
+    const payload = salesReminderEmailJobsListResponseSchema.safeParse({ jobs });
+    if (!payload.success) {
+      return c.json({ error: "response_serialization" }, 500);
+    }
+    return c.json(payload.data);
+  };
+}
+
 export function createSalesQuoteLinePostHandler(getDb: () => Db | undefined) {
   return async (c: Context) => {
     const auth = c.get("auth");
@@ -2741,6 +3583,8 @@ export function createSalesQuoteLinePostHandler(getDb: () => Db | undefined) {
       description: input.description,
       quantity: input.quantity ?? null,
       unit: input.unit ?? null,
+      taxRateBps: input.taxRateBps ?? 1900,
+      discountBps: input.discountBps ?? 0,
       unitPriceCents: input.unitPriceCents,
       lineTotalCents: input.lineTotalCents,
     });
@@ -2808,6 +3652,8 @@ export function createSalesQuoteLinePatchHandler(getDb: () => Db | undefined) {
       description?: string;
       quantity?: string | null;
       unit?: string | null;
+      taxRateBps?: number;
+      discountBps?: number;
       unitPriceCents?: number;
       lineTotalCents?: number;
     } = { updatedAt: new Date() };
@@ -2822,6 +3668,12 @@ export function createSalesQuoteLinePatchHandler(getDb: () => Db | undefined) {
     }
     if (patch.unit !== undefined) {
       updates.unit = patch.unit;
+    }
+    if (patch.taxRateBps !== undefined) {
+      updates.taxRateBps = patch.taxRateBps;
+    }
+    if (patch.discountBps !== undefined) {
+      updates.discountBps = patch.discountBps;
     }
     if (patch.unitPriceCents !== undefined) {
       updates.unitPriceCents = patch.unitPriceCents;
@@ -2933,6 +3785,13 @@ export function createSalesInvoiceLinePostHandler(getDb: () => Db | undefined) {
     if (!db) {
       return c.json({ error: "database_unavailable" }, 503);
     }
+    const inv = await invoiceForTenant(db, auth.tenantId, invoiceId);
+    if (!inv) {
+      return c.json({ error: "not_found" }, 404);
+    }
+    if (!canMutateInvoice(inv)) {
+      return c.json({ error: "finalized_locked" }, 409);
+    }
     const invOk = await assertInvoiceForTenant(db, auth.tenantId, invoiceId);
     if (!invOk) {
       return c.json({ error: "not_found" }, 404);
@@ -2945,6 +3804,8 @@ export function createSalesInvoiceLinePostHandler(getDb: () => Db | undefined) {
       description: input.description,
       quantity: input.quantity ?? null,
       unit: input.unit ?? null,
+      taxRateBps: input.taxRateBps ?? 1900,
+      discountBps: input.discountBps ?? 0,
       unitPriceCents: input.unitPriceCents,
       lineTotalCents: input.lineTotalCents,
     });
@@ -2991,6 +3852,13 @@ export function createSalesInvoiceLinePatchHandler(getDb: () => Db | undefined) 
     if (!db) {
       return c.json({ error: "database_unavailable" }, 503);
     }
+    const inv = await invoiceForTenant(db, auth.tenantId, invoiceId);
+    if (!inv) {
+      return c.json({ error: "not_found" }, 404);
+    }
+    if (!canMutateInvoice(inv)) {
+      return c.json({ error: "finalized_locked" }, 409);
+    }
     const access = await db
       .select({ id: salesInvoiceLines.id })
       .from(salesInvoiceLines)
@@ -3015,6 +3883,8 @@ export function createSalesInvoiceLinePatchHandler(getDb: () => Db | undefined) 
       description?: string;
       quantity?: string | null;
       unit?: string | null;
+      taxRateBps?: number;
+      discountBps?: number;
       unitPriceCents?: number;
       lineTotalCents?: number;
     } = { updatedAt: new Date() };
@@ -3029,6 +3899,12 @@ export function createSalesInvoiceLinePatchHandler(getDb: () => Db | undefined) 
     }
     if (patch.unit !== undefined) {
       updates.unit = patch.unit;
+    }
+    if (patch.taxRateBps !== undefined) {
+      updates.taxRateBps = patch.taxRateBps;
+    }
+    if (patch.discountBps !== undefined) {
+      updates.discountBps = patch.discountBps;
     }
     if (patch.unitPriceCents !== undefined) {
       updates.unitPriceCents = patch.unitPriceCents;
@@ -3070,6 +3946,13 @@ export function createSalesInvoiceLineDeleteHandler(
     const db = getDb();
     if (!db) {
       return c.json({ error: "database_unavailable" }, 503);
+    }
+    const inv = await invoiceForTenant(db, auth.tenantId, invoiceId);
+    if (!inv) {
+      return c.json({ error: "not_found" }, 404);
+    }
+    if (!canMutateInvoice(inv)) {
+      return c.json({ error: "finalized_locked" }, 409);
     }
     const access = await db
       .select({ id: salesInvoiceLines.id })
@@ -3199,6 +4082,13 @@ export function createSalesInvoiceLinesReorderHandler(getDb: () => Db | undefine
     const db = getDb();
     if (!db) {
       return c.json({ error: "database_unavailable" }, 503);
+    }
+    const inv = await invoiceForTenant(db, auth.tenantId, invoiceId);
+    if (!inv) {
+      return c.json({ error: "not_found" }, 404);
+    }
+    if (!canMutateInvoice(inv)) {
+      return c.json({ error: "finalized_locked" }, 409);
     }
     const invOk = await assertInvoiceForTenant(db, auth.tenantId, invoiceId);
     if (!invOk) {

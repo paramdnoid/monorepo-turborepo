@@ -62,14 +62,17 @@ importers:
         specifier: ^0.45.1
         version: 0.45.2(@types/pg@8.20.0)(pg@8.20.0)
       fast-xml-parser:
-        specifier: ^5.2.5
-        version: 5.5.10
+        specifier: 5.5.7
+        version: 5.5.7
       hono:
         specifier: ^4.11.7
         version: 4.12.9
       jose:
         specifier: ^6.2.2
         version: 6.2.2
+      nodemailer:
+        specifier: ^7.0.13
+        version: 7.0.13
       pdfkit:
         specifier: ^0.18.0
         version: 0.18.0
@@ -4668,6 +4671,10 @@ packages:
     resolution: {integrity: sha512-go2J2xODMc32hT+4Xr/bBGXMaIoiCwrwp2mMtAvKyvEFW6S/v5Gn2pBmE4nvbwNjGhpcAiOwEv7R6/GZ6XRa9w==}
     hasBin: true
 
+  fast-xml-parser@5.5.7:
+    resolution: {integrity: sha512-LteOsISQ2GEiDHZch6L9hB0+MLoYVLToR7xotrzU0opCICBkxOPgHAy1HxAvtxfJNXDJpgAsQN30mkrfpO2Prg==}
+    hasBin: true
+
   fastq@1.19.1:
     resolution: {integrity: sha512-GwLTyxkCXjXbxqIhTsMI2Nui8huMPtnxg7krajPJAjnEG/iiOS7i+zCtWGZR9G0NBKbXKh6X9m9UIsYX/N6vvQ==}
 
@@ -5808,6 +5815,10 @@ packages:
 
   node-releases@2.0.36:
     resolution: {integrity: sha512-TdC8FSgHz8Mwtw9g5L4gR/Sh9XhSP/0DEkQxfEFXOpiul5IiHgHan2VhYYb6agDSfp4KuvltmGApc8HMgUrIkA==}
+
+  nodemailer@7.0.13:
+    resolution: {integrity: sha512-PNDFSJdP+KFgdsG3ZzMXCgquO7I6McjY2vlqILjtJd0hy8wEvtugS9xKRF2NWlPNGxvLCXlTNIae4serI7dinw==}
+    engines: {node: '>=6.0.0'}
 
   nodemailer@8.0.4:
     resolution: {integrity: sha512-k+jf6N8PfQJ0Fe8ZhJlgqU5qJU44Lpvp2yvidH3vp1lPnVQMgi4yEEMPXg5eJS1gFIJTVq1NHBk7Ia9ARdSBdQ==}
@@ -12534,6 +12545,12 @@ snapshots:
       path-expression-matcher: 1.2.1
       strnum: 2.2.2
 
+  fast-xml-parser@5.5.7:
+    dependencies:
+      fast-xml-builder: 1.1.4
+      path-expression-matcher: 1.2.1
+      strnum: 2.2.2
+
   fastq@1.19.1:
     dependencies:
       reusify: 1.1.0
@@ -13938,6 +13955,8 @@ snapshots:
   node-int64@0.4.0: {}
 
   node-releases@2.0.36: {}
+
+  nodemailer@7.0.13: {}
 
   nodemailer@8.0.4: {}
 

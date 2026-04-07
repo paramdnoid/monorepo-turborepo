@@ -138,3 +138,96 @@ export const projectResponseSchema = z.object({
 });
 
 export type ProjectResponse = z.infer<typeof projectResponseSchema>;
+
+const projectHubQuoteSchema = z.object({
+  id: z.string().uuid(),
+  documentNumber: z.string(),
+  status: z.string(),
+  currency: z.string(),
+  totalCents: z.number().int(),
+  updatedAt: z.string(),
+});
+
+const projectHubInvoiceSchema = z.object({
+  id: z.string().uuid(),
+  documentNumber: z.string(),
+  status: z.string(),
+  billingType: z.enum(["invoice", "partial", "final", "credit_note"]),
+  currency: z.string(),
+  totalCents: z.number().int(),
+  dueAt: z.string().nullable(),
+  updatedAt: z.string(),
+});
+
+const projectHubAssetSchema = z.object({
+  id: z.string().uuid(),
+  filename: z.string(),
+  kind: z.enum(["plan", "photo", "document", "other"]),
+  byteSize: z.number().int(),
+  createdAt: z.string(),
+});
+
+const projectHubGaebDocumentSchema = z.object({
+  id: z.string().uuid(),
+  filename: z.string(),
+  status: z.enum(["pending_review", "failed", "approved"]),
+  updatedAt: z.string(),
+});
+
+const projectHubSchedulingAssignmentSchema = z.object({
+  id: z.string().uuid(),
+  date: z.string(),
+  startTime: z.string(),
+  title: z.string(),
+});
+
+const projectHubWorkTimeEntrySchema = z.object({
+  id: z.string().uuid(),
+  workDate: z.string(),
+  durationMinutes: z.number().int(),
+  employeeName: z.string().nullable(),
+  notes: z.string().nullable(),
+});
+
+const projectHubOpenItemSchema = z.object({
+  id: z.string().uuid(),
+  documentNumber: z.string(),
+  customerLabel: z.string(),
+  dueAt: z.string().nullable(),
+  currency: z.string(),
+  balanceCents: z.number().int(),
+  reminderCount: z.number().int().nonnegative(),
+  maxReminderLevel: z.number().int().nullable(),
+  latestReminderId: z.string().uuid().nullable(),
+});
+
+export const projectHubResponseSchema = z.object({
+  project: projectSchema,
+  siteAddressLabel: z.string().nullable(),
+  quotes: z.array(projectHubQuoteSchema),
+  invoices: z.array(projectHubInvoiceSchema),
+  assets: z.array(projectHubAssetSchema),
+  gaebDocuments: z.array(projectHubGaebDocumentSchema),
+  schedulingWeek: z.array(projectHubSchedulingAssignmentSchema),
+  workTime: z.object({
+    totalMinutes: z.number().int().nonnegative(),
+    entries: z.array(projectHubWorkTimeEntrySchema),
+  }),
+  receivables: z.object({
+    total: z.number().int().nonnegative(),
+    invoices: z.array(projectHubOpenItemSchema),
+  }),
+  kpis: z.object({
+    quoteCount: z.number().int().nonnegative(),
+    quoteVolumeCents: z.number().int(),
+    acceptedQuoteCount: z.number().int().nonnegative(),
+    invoiceCount: z.number().int().nonnegative(),
+    invoiceVolumeCents: z.number().int(),
+    openBalanceCents: z.number().int(),
+    overdueOpenCount: z.number().int().nonnegative(),
+    next7AssignmentsCount: z.number().int().nonnegative(),
+    workTimeMinutesMonthToDate: z.number().int().nonnegative(),
+  }),
+});
+
+export type ProjectHubResponse = z.infer<typeof projectHubResponseSchema>;

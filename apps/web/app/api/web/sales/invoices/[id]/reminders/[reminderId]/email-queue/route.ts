@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 
 import {
   salesInvoiceDetailResponseSchema,
+  salesReminderEmailJobCreateResponseSchema,
+  salesReminderEmailQueueResponseSchema,
   salesReminderEmailSpikeRequestSchema,
-  salesReminderEmailSpikeResponseSchema,
   salesReminderTemplatesResolvedResponseSchema,
 } from "@repo/api-contracts";
 
@@ -11,7 +12,7 @@ import { getUiText } from "@/content/ui-text";
 import { validateWebAccessTokenSession } from "@/lib/auth/validate-web-session";
 import { getRequestLocale } from "@/lib/i18n/request-locale";
 import { buildReminderEmailSubjectAndBody } from "@/lib/mail/reminder-email-content";
-import { createSmtpTransport, isSmtpConfigured } from "@/lib/mail/smtp-transport";
+import { isSmtpConfigured } from "@/lib/mail/smtp-transport";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_WEB_API_BASE_URL ?? "http://127.0.0.1:4000";
@@ -28,7 +29,6 @@ function noStoreInit(init?: ResponseInit): ResponseInit {
 
 type RouteContext = { params: Promise<{ id: string; reminderId: string }> };
 
-/** @deprecated Produktiv: `/email-queue` (Outbox + Audit). Spike bleibt für Rückwärtskompatibilität. */
 export async function POST(request: Request, context: RouteContext) {
   const { id, reminderId } = await context.params;
   const reqLocale = getRequestLocale(request);
@@ -115,34 +115,72 @@ export async function POST(request: Request, context: RouteContext) {
     });
 
     const smtpConfigured = isSmtpConfigured();
-    let delivered = false;
 
-    if (!dryRun && smtpConfigured) {
-      const from =
-        process.env.MAIL_FROM?.trim() ||
-        process.env.SMTP_USER?.trim() ||
-        "noreply@localhost";
-      const fromName = process.env.EMAIL_FROM_NAME?.trim();
-      const transport = createSmtpTransport();
-      await transport.sendMail({
-        from: fromName ? `"${fromName}" <${from}>` : from,
+    if (dryRun) {
+      const responsePayload = {
         to: body.to,
         subject,
-        text: bodyText,
-      });
-      delivered = true;
+        bodyText,
+        smtpConfigured,
+        dryRun: true,
+        delivered: false,
+      };
+      const responseParsed =
+        salesReminderEmailQueueResponseSchema.safeParse(responsePayload);
+      if (!responseParsed.success) {
+        return NextResponse.json({ error: "serialize_error" }, noStoreInit({ status: 500 }));
+      }
+      return NextResponse.json(responseParsed.data, noStoreInit());
     }
+
+    const createRes = await fetch(
+      `${API_BASE}/v1/sales/invoices/${encodeURIComponent(id)}/reminders/${encodeURIComponent(reminderId)}/email-jobs`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          to: body.to,
+          subject,
+          bodyText,
+          locale,
+        }),
+      },
+    );
+    const createText = await createRes.text();
+    let createJson: unknown;
+    try {
+      createJson = JSON.parse(createText);
+    } catch {
+      return NextResponse.json({ error: "invalid_upstream" }, noStoreInit({ status: 502 }));
+    }
+    if (!createRes.ok) {
+      return NextResponse.json(
+        typeof createJson === "object" && createJson !== null && "error" in createJson
+          ? createJson
+          : { error: "upstream_error" },
+        noStoreInit({ status: createRes.status >= 500 ? 503 : createRes.status }),
+      );
+    }
+    const createParsed = salesReminderEmailJobCreateResponseSchema.safeParse(createJson);
+    if (!createParsed.success) {
+      return NextResponse.json({ error: "invalid_upstream" }, noStoreInit({ status: 502 }));
+    }
+    const jobId = createParsed.data.job.id;
 
     const responsePayload = {
       to: body.to,
       subject,
       bodyText,
       smtpConfigured,
-      dryRun,
-      delivered,
+      dryRun: false,
+      delivered: false,
+      jobId,
+      deliveryAttempts: 0,
     };
-    const responseParsed =
-      salesReminderEmailSpikeResponseSchema.safeParse(responsePayload);
+    const responseParsed = salesReminderEmailQueueResponseSchema.safeParse(responsePayload);
     if (!responseParsed.success) {
       return NextResponse.json({ error: "serialize_error" }, noStoreInit({ status: 500 }));
     }

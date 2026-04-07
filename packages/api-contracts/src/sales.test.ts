@@ -13,6 +13,10 @@ import {
   salesInvoicesListQuerySchema,
   salesOpenInvoicesListResponseSchema,
   salesQuotesListResponseSchema,
+  salesReminderEmailJobCreateSchema,
+  salesReminderEmailJobsProcessRequestSchema,
+  salesReminderEmailJobsProcessResponseSchema,
+  salesReminderEmailQueueResponseSchema,
 } from "./sales.js";
 
 test("salesCreateInvoiceFromQuoteSchema accepts minimal body", () => {
@@ -257,6 +261,67 @@ test("salesBatchInvoicePaymentsResponseSchema parses payload", () => {
     ],
     invoiceIds: ["123e4567-e89b-12d3-a456-426614174000"],
     totalAmountCents: 2500,
+  });
+  assert.equal(parsed.success, true);
+});
+
+test("salesReminderEmailJobCreateSchema parses body", () => {
+  const parsed = salesReminderEmailJobCreateSchema.safeParse({
+    to: "kunde@example.org",
+    subject: "Mahnung RE-1",
+    bodyText: "Hallo …",
+    locale: "de",
+  });
+  assert.equal(parsed.success, true);
+});
+
+test("salesReminderEmailQueueResponseSchema allows optional jobId", () => {
+  const parsed = salesReminderEmailQueueResponseSchema.safeParse({
+    to: "kunde@example.org",
+    subject: "Mahnung RE-1",
+    bodyText: "Hallo …",
+    smtpConfigured: true,
+    dryRun: false,
+    delivered: true,
+    jobId: "123e4567-e89b-12d3-a456-426614174000",
+    deliveryAttempts: 1,
+  });
+  assert.equal(parsed.success, true);
+});
+
+test("salesReminderEmailJobsProcessRequestSchema accepts optional limit and jobId", () => {
+  const parsed = salesReminderEmailJobsProcessRequestSchema.safeParse({
+    limit: 10,
+    jobId: "123e4567-e89b-12d3-a456-426614174000",
+  });
+  assert.equal(parsed.success, true);
+});
+
+test("salesReminderEmailJobsProcessResponseSchema parses processing result", () => {
+  const parsed = salesReminderEmailJobsProcessResponseSchema.safeParse({
+    processed: 1,
+    sent: 1,
+    failed: 0,
+    jobs: [
+      {
+        id: "123e4567-e89b-12d3-a456-426614174000",
+        tenantId: "tenant-1",
+        invoiceId: "123e4567-e89b-12d3-a456-426614174001",
+        reminderId: "123e4567-e89b-12d3-a456-426614174002",
+        toEmail: "kunde@example.org",
+        subject: "Mahnung RE-1",
+        bodyText: "Hallo …",
+        locale: "de",
+        status: "sent",
+        attempts: 1,
+        maxAttempts: 3,
+        lastError: null,
+        createdBySub: null,
+        createdAt: "2026-04-07T12:00:00.000Z",
+        updatedAt: "2026-04-07T12:00:01.000Z",
+        sentAt: "2026-04-07T12:00:01.000Z",
+      },
+    ],
   });
   assert.equal(parsed.success, true);
 });

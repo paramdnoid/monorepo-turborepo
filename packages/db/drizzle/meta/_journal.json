@@ -232,6 +232,20 @@
       "when": 1775443977779,
       "tag": "0032_magical_warhawk",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1775572018648,
+      "tag": "0033_sales_reminder_email_jobs",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1775573809959,
+      "tag": "0034_smooth_sister_grimm",
+      "breakpoints": true
     }
   ]
 }
