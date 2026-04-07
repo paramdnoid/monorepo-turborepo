@@ -23,6 +23,8 @@ type EmployeesCopy = {
   geoNo: string;
   detailLoadError: string;
   detailNotFound: string;
+  detailLoadingAria: string;
+  actionRetry: string;
   save: string;
   saving: string;
   saved: string;
@@ -37,7 +39,11 @@ type EmployeesCopy = {
   fieldNotes: string;
   sectionPrivateAddress: string;
   fieldAddressLabel: string;
+  defaultAddressLabel: string;
   fieldAddressLine2: string;
+  addressLine2Show: string;
+  addressLine2Hide: string;
+  addressLine2Placeholder: string;
   fieldRecipient: string;
   fieldStreet: string;
   fieldPostal: string;
@@ -65,6 +71,7 @@ type EmployeesCopy = {
   createDialogTitle: string;
   createDialogDescription: string;
   cancel: string;
+  coordinatesBothOrNeitherError: string;
   createSubmit: string;
   wizardNext: string;
   wizardBack: string;
@@ -95,6 +102,8 @@ type EmployeesCopy = {
   availabilityTimeOrderError: string;
   availabilityOverlapError: string;
   availabilityOverrideOverlapError: string;
+  availabilityEmpty: string;
+  availabilityOverridesEmpty: string;
   notesCharCount: string;
   validationErrorHint: string;
   savedAria: string;
@@ -106,6 +115,7 @@ type EmployeesCopy = {
   deleteForbidden: string;
   deleteDialogTitle: string;
   deleteDialogDescription: string;
+  deleteDialogCancel: string;
   deleteDialogConfirm: string;
   deletedBanner: string;
   fieldEmployeeNo: string;
@@ -203,6 +213,7 @@ type EmployeesCopy = {
   skillsSave: string;
   skillsSaved: string;
   skillsSaveError: string;
+  skillsCreateLabel: string;
   skillsCreatePlaceholder: string;
   skillsCreateCatalog: string;
   skillsCreateError: string;
@@ -261,6 +272,8 @@ const de: EmployeesCopy = {
   geoNo: "—",
   detailLoadError: "Daten konnten nicht geladen werden.",
   detailNotFound: "Mitarbeiter nicht gefunden.",
+  detailLoadingAria: "Mitarbeiter wird geladen…",
+  actionRetry: "Erneut versuchen",
   save: "Speichern",
   saving: "Speichern…",
   saved: "Gespeichert.",
@@ -276,7 +289,11 @@ const de: EmployeesCopy = {
   fieldNotes: "Notizen",
   sectionPrivateAddress: "Private Startadresse",
   fieldAddressLabel: "Bezeichnung",
+  defaultAddressLabel: "Privatadresse",
   fieldAddressLine2: "Adresszusatz",
+  addressLine2Show: "Adresszusatz anzeigen",
+  addressLine2Hide: "Adresszusatz ausblenden",
+  addressLine2Placeholder: "z. B. Wohnung, Etage, Hinterhaus",
   fieldRecipient: "Empfaenger",
   fieldStreet: "Strasse",
   fieldPostal: "PLZ",
@@ -305,6 +322,7 @@ const de: EmployeesCopy = {
   createDialogDescription:
     "Stammdaten, private Startadresse mit Koordinaten und woechentliche Verfuegbarkeit. Pflicht ist nur der Anzeigename.",
   cancel: "Abbrechen",
+  coordinatesBothOrNeitherError: "Bitte beide Koordinaten angeben oder leer lassen.",
   createSubmit: "Anlegen",
   wizardNext: "Weiter",
   wizardBack: "Zurueck",
@@ -342,6 +360,10 @@ const de: EmployeesCopy = {
     "Ueberlappende Zeitfenster am selben Wochentag — bitte anpassen.",
   availabilityOverrideOverlapError:
     "Ueberlappende Ausnahmen am selben Datum — bitte anpassen.",
+  availabilityEmpty:
+    "Noch keine Zeitfenster hinterlegt. Optional — du kannst oben Zeitfenster hinzufuegen.",
+  availabilityOverridesEmpty:
+    "Noch keine Ausnahmen hinterlegt. Optional — du kannst oben Ausnahmen hinzufuegen.",
   notesCharCount: "{n} / {max} Zeichen",
   validationErrorHint:
     "Die Eingabe wurde abgelehnt. Bitte Felder und Verfuegbarkeit pruefen.",
@@ -356,6 +378,7 @@ const de: EmployeesCopy = {
   deleteDialogTitle: "Mitarbeitende:n wirklich dauerhaft loeschen?",
   deleteDialogDescription:
     "Diese Aktion kann nicht rueckgaengig gemacht werden.",
+  deleteDialogCancel: "Abbrechen",
   deleteDialogConfirm: "Jetzt loeschen",
   deletedBanner: "Mitarbeitende:r wurde geloescht.",
   fieldEmployeeNo: "Personalnummer",
@@ -458,6 +481,7 @@ const de: EmployeesCopy = {
   skillsSave: "Skills speichern",
   skillsSaved: "Skills aktualisiert.",
   skillsSaveError: "Skills konnten nicht gespeichert werden.",
+  skillsCreateLabel: "Neuer Skill",
   skillsCreatePlaceholder: "Neuer Skill (z. B. Stapler, Erste Hilfe)",
   skillsCreateCatalog: "Zum Katalog hinzufuegen",
   skillsCreateError: "Skill konnte nicht angelegt werden.",
@@ -519,6 +543,8 @@ const en: EmployeesCopy = {
   geoNo: "—",
   detailLoadError: "Could not load data.",
   detailNotFound: "Employee not found.",
+  detailLoadingAria: "Loading employee…",
+  actionRetry: "Retry",
   save: "Save",
   saving: "Saving…",
   saved: "Saved.",
@@ -534,7 +560,11 @@ const en: EmployeesCopy = {
   fieldNotes: "Notes",
   sectionPrivateAddress: "Private start address",
   fieldAddressLabel: "Label",
+  defaultAddressLabel: "Private address",
   fieldAddressLine2: "Address line 2",
+  addressLine2Show: "Show address line 2",
+  addressLine2Hide: "Hide address line 2",
+  addressLine2Placeholder: "e.g., apartment, floor, building",
   fieldRecipient: "Recipient",
   fieldStreet: "Street",
   fieldPostal: "Postal code",
@@ -563,6 +593,7 @@ const en: EmployeesCopy = {
   createDialogDescription:
     "Master data, private start address with coordinates, and weekly availability. Only the display name is required.",
   cancel: "Cancel",
+  coordinatesBothOrNeitherError: "Enter both coordinates or neither.",
   createSubmit: "Create",
   wizardNext: "Next",
   wizardBack: "Back",
@@ -600,6 +631,10 @@ const en: EmployeesCopy = {
     "Overlapping time windows on the same weekday — please adjust.",
   availabilityOverrideOverlapError:
     "Overlapping exceptions on the same date — please adjust.",
+  availabilityEmpty:
+    "No time windows yet. Optional — you can add time windows above.",
+  availabilityOverridesEmpty:
+    "No exceptions yet. Optional — you can add exceptions above.",
   notesCharCount: "{n} / {max} characters",
   validationErrorHint:
     "The input was rejected. Please check fields and availability.",
@@ -613,6 +648,7 @@ const en: EmployeesCopy = {
   deleteForbidden: "You do not have permission to delete employees.",
   deleteDialogTitle: "Permanently delete this employee?",
   deleteDialogDescription: "This action cannot be undone.",
+  deleteDialogCancel: "Cancel",
   deleteDialogConfirm: "Delete now",
   deletedBanner: "Employee deleted.",
   fieldEmployeeNo: "Employee number",
@@ -714,6 +750,7 @@ const en: EmployeesCopy = {
   skillsSave: "Save skills",
   skillsSaved: "Skills updated.",
   skillsSaveError: "Could not save skills.",
+  skillsCreateLabel: "New skill",
   skillsCreatePlaceholder: "New skill (e.g. forklift, first aid)",
   skillsCreateCatalog: "Add to catalog",
   skillsCreateError: "Could not create skill.",

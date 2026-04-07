@@ -1,15 +1,15 @@
 # Epic Initiative Briefs — Maler & Lackierer
 
 **Stand:** 2026-04-07  
-**Bezug:** [Funktionslücken](./maler-lackierer-modul-funktionsluecken.md) · [Epic-Roadmap](./maler-lackierer-roadmap-epics.md)
+**Bezug:** [Funktionslücken](./maler-lackierer-modul-funktionsluecken.md) · [Epic-Roadmap](./maler-lackierer-roadmap-epics.md) · [Doc↔Code Verifikation](./maler-lackierer-doc-code-verification.md)
 
-**Priorität:** E-06 **Mail-Outbox** vor E-02 Hub-v3 — siehe Roadmap „Prioritätsentscheid“.
+**Priorität (historisch, umgesetzt):** E-06 **Mail-Outbox** vor E-02 Hub-v3 — siehe Roadmap „Prioritätsentscheid“.
 
 ## Änderungsstand (vollständig abgeglichen)
 
-- Alle Epic-Status auf den aktuellen Code-Stand harmonisiert (insb. E-06 v5-Basis sowie E-07 bis E-13).
+- Alle Epic-Status auf den aktuellen Code-Stand harmonisiert (insb. E-06 bis **v6 Mail-Outbox** sowie E-07 bis E-13).
 - Inkonsistenz in E-05 bereinigt: Projektbezug bei Zeiterfassung ist **optional** (wie Schema/API), nicht Pflicht.
-- E-06-V4-Iteration inkl. API-Smoke (`http-smoke-mock.mts`) als abgeschlossen dokumentiert; v5-Basis (E-Mail-/CAMT-Spike), **CAMT-Dateiimport** (Persistenz/Idempotenz/Historie), **Sammelzahlungen** (`POST …/payments/batch` + OP-UI) und **CAMT-Mehrfach-Prefill** ergänzt; Rest-Backlog **Mail-Produktivität** getrennt.
+- E-06 gestrafft: Fokus auf **nächsten Implementierungszug** + kompakter Lieferstand (v1–v6); detaillierte Iterationstabellen entfernt und Code-Nachweis auf Verifikation verlinkt.
 
 Zweck: **parallele Frontend-/Backend-Planung** — pro Epic ein gemeinsames Verständnis aus Problemraum, Erfolgskriterien, technischen Risiken (Spikes) und **MVP vs. Phase 2**.
 
@@ -22,14 +22,14 @@ Zweck: **parallele Frontend-/Backend-Planung** — pro Epic ein gemeinsames Vers
 | Epic | Reifegrad | Fokus im nächsten Implementierungszug |
 |------|-----------|----------------------------------------|
 | **E-01** | umgesetzt | Stabilisieren/Backfill operativ abschließen |
-| **E-02** | in Arbeit | Hub-v3: KPI-/Mini-Pipeline + 30-Tage-Segmente/Trends + **KPI-UI-Polish** (Hierarchie, Mobile) geliefert |
+| **E-02** | in Arbeit | Hub: weitere projektbezogene KPIs/Widgets (z. B. Material nach E-11) + Payload-Härtung/Performance |
 | **E-03** | in Arbeit | Kommerz-Defaults vertiefen (optional Kreditlimit) |
 | **E-04** | in Arbeit | Konflikte/Serien/Sollstunden |
 | **E-05** | in Arbeit | Soll/Ist + Auswertung |
-| **E-06** | in Arbeit | Mahn-E-Mail **Outbox** (`sales_reminder_email_jobs`, API, BFF `email-queue`) geliefert; optional Cron/Retry-UI; CAMT/Sammelzahlung wie zuvor geliefert |
+| **E-06** | in Arbeit | Mail-Outbox Betriebshärtung: Monitoring/Alerting, optional Scheduling (Cron/Worker) und Eskalationsregeln |
 | **E-07** | teilweise umgesetzt | Steuer-/Rabatt-/Teilrechnungslogik |
 | **E-08** | teilweise umgesetzt | Finalisierung + Snapshot + Sperren |
-| **E-09** | teilweise umgesetzt | XRechnung/ZUGFeRD + DATEV-Tiefe |
+| **E-09** | teilweise umgesetzt | XRechnung/ZUGFeRD Standardtiefe/Profil + DATEV-Tiefe |
 | **E-10** | teilweise umgesetzt | End-to-End-Übernahme in Angebotsfluss |
 | **E-11** | teilweise vorbereitet | Bestellung/Wareneingang/Nachkalkulation |
 | **E-12** | offen | späterer Scope |
@@ -182,7 +182,15 @@ Zweck: **parallele Frontend-/Backend-Planung** — pro Epic ein gemeinsames Vers
 
 ## E-06 — Forderungsmanagement (Mahnung, Zahlung, OP)
 
-**Status:** in Arbeit — **v1 + v2 + v3 + v4 + v5-Basis + v6-Mail-Outbox umgesetzt** (v6: 2026-04-07): wie v3, zusaetzlich **`sales_reminder_templates`** (Stufe 1–10, Locale `de`/`en`, optional `fee_cents`); `GET`/`PUT /v1/sales/reminder-templates`, `GET …/resolved`; Reminder-PDF und Browser-Druck verwenden aufgeloesten Fließtext und Gebuehr inkl. Platzhalter (z. B. `{{invoiceNumber}}`, `{{openBalance}}`); Web **Einstellungen** (nur Mandanten-Admin) zum Pflegen. **E-Mail:** Legacy-**Spike**-Route; **Produktiv** `sales_reminder_email_jobs` + `POST/GET …/email-jobs` + `PATCH …/reminder-email-jobs/:jobId` + BFF **`/email-queue`** (Audit, Versand im Request, Retry-Zähler). **CAMT-Matching-Spike** (`POST /v1/sales/invoices/camt-match`, Top-Kandidat, Buchung auf aktueller Rechnung). **CAMT-Dateiimport:** `POST /v1/sales/invoices/camt-import` (Multipart/XML), Vorschau mit Kandidaten auf `/web/sales/invoices/open`, **Persistenz/Idempotenz** über Datei-Hash (`sales_camt_import_batches` / `sales_camt_import_lines`), **Historie** (`GET …/camt-imports`, `GET …/camt-imports/:id`) — **ohne** automatische Buchung. **Sammelzahlungen:** `POST /v1/sales/invoices/payments/batch` + OP-UI (Mehrfachauswahl); **CAMT → Sammelzahlung** einzeln oder **mehrere Zeilen** (Checkboxen, „Alle Treffer“, Prefill; Duplikat-Rechnungen im CAMT werden pro Rechnung summiert). **Offen:** Cron-Mailworker ohne Session; UI „erneut senden“ für `failed`.
+**Status:** in Arbeit (Stand 2026-04-07)
+
+**Kurzlage:** OP/Teilzahlungen/Mahnungen/Templates/CAMT/Batch + Mahn-E-Mail-Outbox sind geliefert; der nächste Zug ist Betriebshärtung (Monitoring/Alerting) und Automatisierung.
+
+### Nächster Implementierungszug
+
+- Monitoring/Alerting für Outbox (Backlog/Failed-Schwellen, Metriken).
+- Optional automatisierter Lauf (Cron/Worker) mit klarer Idempotenz/Locking-Strategie.
+- Eskalationsregeln (falls gewünscht) und Ops-Flows für fehlgeschlagene Jobs (Retry/Status-Sicht).
 
 ### Initiative Brief
 
@@ -192,50 +200,21 @@ Zweck: **parallele Frontend-/Backend-Planung** — pro Epic ein gemeinsames Vers
 | **Messgrößen** | (1) Anteil Rechnungen mit vollständig ausgeglichenem Saldo über System vs. manuell. (2) Anzahl Mahnläufe dokumentiert. (3) Durchschnittliche Tage bis Zahlung (DSO) — Trend über Quartale. |
 | **Nicht-Ziele** | Inkasso-Integration; automatische rechtliche Mahntexte; Zinsberechnung nach BGB (nur optional Hinweis). |
 
-### Technische Spike-Liste
+### Technische Restfragen (Spikes/Entscheidungen)
 
-| Bereich | Spike / Klärungsfrage |
-|---------|------------------------|
-| **Schema** | ~~Teilzahlungen~~ → **`sales_invoice_payments`**. ~~Mahn-Historie~~ → **`sales_invoice_reminders`**. ~~Mandanten-Mahntexte~~ → **`sales_reminder_templates`**. **CAMT-Import:** `sales_camt_import_batches` + `sales_camt_import_lines` (Hash-Idempotenz). |
-| **API** | Zahlung + Loeschen erledigt. Mahnung + PDF/Druck erledigt. ~~Mahntext `GET`/`PUT` + Resolved~~ erledigt. **CAMT:** `POST …/camt-match`, `POST …/camt-import`, `GET …/camt-imports`, `GET …/camt-imports/:id`. **Sammelzahlung:** `POST …/payments/batch`. **Mahn-E-Mail-Outbox:** `POST/GET …/email-jobs`, `PATCH …/reminder-email-jobs/:jobId`. **Offen:** optional Worker-Cron. ~~OP-Liste / CSV~~ erledigt. |
-| **UI** | Rechnungsdetail, OP, Mahnungen erledigt. ~~Einstellungen: Mahntexte/Gebuehr (Admin)~~ erledigt. **E-Mail:** Versand über BFF **`/email-queue`** (Outbox); Legacy-Spike-Route. **CAMT-Zuordnung** im Rechnungsdetail; **CAMT-Import-Panel** auf der OP-Seite (Historie, Zeilenauswahl, Prefill Sammelzahlung). **Offen:** Dashboard-Kachel „Summe OP“ (optional). |
+- **Outbox-Betrieb:** Welche Metriken/Schwellen (Backlog/Failed) und welche Retention/Replay-Strategie?
+- **Automatisierung:** Cron/Worker-Modell (in-api vs. separater Worker) und Idempotenz/Locking.
+- **Policy:** Eskalationsregeln (falls gewünscht) und Audit-Anforderungen.
 
-### MVP vs. Phase 2
+**Code-Nachweis (Endpoints/Tabellen):** siehe [`.cursor/maler-lackierer-doc-code-verification.md`](./maler-lackierer-doc-code-verification.md) (E-06 + Mail).
 
-| MVP | Phase 2 |
-|-----|---------|
-| ~~Teilzahlungen, Saldo-Anzeige~~ **(v1)**; ~~OP-Liste + CSV, Löschen Zahlungszeile~~ **(v2)**; ~~manuelle Mahnung + Historie + PDF/Druck~~ **(v3)**; ~~Mahntext-Templates + optionale Gebuehr, PDF/Druck, Admin-UI~~ **(v4)**; **E-Mail-/CAMT-Spike** **(v5-Basis)**; **CAMT-Dateiimport** (Vorschau + Persistenz/Historie) **(v5.1)**; **Sammelzahlung + CAMT-Mehrfach-Prefill** **(v5.2)**; **Mahn-E-Mail-Outbox** **(v6)**. | Cron-Mailworker, UI „erneut senden“, automatische Eskalation nach Regeln. |
+### Lieferstand (bis v6, kompakt)
 
-### Abgeschlossene Iteration — OP + CSV + Korrektur (v2)
-
-| # | Ticket | Status |
-|---|--------|--------|
-| **T1–T2** | Saldo-Logik zentral + `GET /v1/sales/invoices/open-items` | umgesetzt |
-| **T3** | CSV `…/open-items/export` | umgesetzt |
-| **T4–T5** | BFF + Web `/web/sales/invoices/open` | umgesetzt |
-| **T6** | E2E Playwright | optional / offen |
-| — | **`DELETE …/payments/:paymentId`** + BFF + UI (Korrektur falscher Buchung) | umgesetzt |
-
-### Abgeschlossene Iteration — Mahnung & Historie (v3)
-
-| # | Ticket | Status |
-|---|--------|--------|
-| **M1** | **Schema `sales_invoice_reminders`** | umgesetzt |
-| **M2** | **API** (`POST …/reminders`, Reminder-PDF `GET …/reminders/:reminderId/pdf`) | umgesetzt |
-| **M3** | **UI** (Rechnungsdetail: Liste + Erfassen; Druck/PDF) | umgesetzt |
-| **M4** | **E-03 Abgleich** (Kunden-Defaults + Prefill) | umgesetzt |
-
-### Abgeschlossene Iteration — Mahntext-Templates & Gebühren (v4)
-
-| # | Ticket | Status |
-|---|--------|--------|
-| **V4-1** | **`sales_reminder_templates` + `GET`/`PUT /v1/sales/reminder-templates`** | umgesetzt |
-| **V4-2** | **Reminder-PDF + Druck** nutzen aufgelösten Text (`…/resolved`, serverseitig in PDF-Handler) | umgesetzt inkl. Platzhalter-Auflösung |
-| **V4-3** | **Optionale `fee_cents`** je Stufe/Locale; Zeile im PDF/Druck | umgesetzt |
-| **V4-4** | **Web Einstellungen** (`WebSalesReminderTemplatesCard`, BFF) | umgesetzt (Rollen: wie sonstige Mandanteneinstellungen) |
-| **V4-5** | **API-Smoke** (`http-smoke-mock.mts`; Mahntexte + **CAMT-Import**) | umgesetzt |
-
-**Noch offen (Backlog):** optional Cron-Mailworker; UI für fehlgeschlagene Jobs. ~~Sammelzahlungen~~ / ~~CAMT-Persistenz~~ / ~~CAMT-Mehrfach-Prefill~~ / ~~Mahn-E-Mail-Outbox (API+BFF)~~ geliefert.
+- v1–v2: Teilzahlungen/Saldo, OP-Liste + CSV, Payment-Korrektur.
+- v3: Mahnhistorie + PDF/Druck + Prefill.
+- v4: Mahntext-Templates (mandantenweit) inkl. optionaler Gebühr + Admin-UI.
+- v5: CAMT-Matching + persistierter CAMT-Import (idempotent, Historie) + Sammelzahlungen inkl. CAMT-Mehrfach-Prefill.
+- v6: Mahn-E-Mail-Outbox (DB/API/BFF) inkl. Retry/Process/Metrics/One-shot-Processing.
 
 ---
 

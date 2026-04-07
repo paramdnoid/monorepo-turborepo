@@ -71,9 +71,11 @@ import {
   createSalesReminderEmailJobPostHandler,
   createSalesReminderEmailJobPatchHandler,
   createSalesReminderEmailJobRetryPostHandler,
+  createSalesReminderEmailJobReplayPostHandler,
   createSalesReminderEmailJobsMetricsGetHandler,
   createSalesReminderEmailJobsProcessPostHandler,
   createSalesReminderEmailJobsListHandler,
+  createSalesReminderEmailJobsTenantListGetHandler,
   createSalesInvoiceDeleteHandler,
   createSalesInvoicePostHandler,
   createSalesInvoicesListHandler,
@@ -239,11 +241,15 @@ export function createApp(options?: CreateAppOptions) {
   const salesReminderEmailJobPatch = createSalesReminderEmailJobPatchHandler(getDb);
   const salesReminderEmailJobRetryPost =
     createSalesReminderEmailJobRetryPostHandler(getDb);
+  const salesReminderEmailJobReplayPost =
+    createSalesReminderEmailJobReplayPostHandler(getDb);
   const salesReminderEmailJobsMetricsGet =
     createSalesReminderEmailJobsMetricsGetHandler(getDb);
   const salesReminderEmailJobsProcessPost =
     createSalesReminderEmailJobsProcessPostHandler(getDb);
   const salesReminderEmailJobsList = createSalesReminderEmailJobsListHandler(getDb);
+  const salesReminderEmailJobsTenantListGet =
+    createSalesReminderEmailJobsTenantListGetHandler(getDb);
   const salesInvoiceFinalizePost = createSalesInvoiceFinalizePostHandler(getDb);
   const salesInvoiceDelete = createSalesInvoiceDeleteHandler(getDb);
   const salesInvoicePdf = createSalesInvoicePdfHandler(getDb);
@@ -610,6 +616,11 @@ export function createApp(options?: CreateAppOptions) {
     orgMiddleware,
     salesReminderEmailJobPost,
   );
+  v1.get(
+    "/sales/reminder-email-jobs",
+    orgMiddleware,
+    salesReminderEmailJobsTenantListGet,
+  );
   v1.patch(
     "/sales/reminder-email-jobs/:jobId",
     orgMiddleware,
@@ -619,6 +630,11 @@ export function createApp(options?: CreateAppOptions) {
     "/sales/reminder-email-jobs/:jobId/retry",
     orgMiddleware,
     salesReminderEmailJobRetryPost,
+  );
+  v1.post(
+    "/sales/reminder-email-jobs/:jobId/replay",
+    orgMiddleware,
+    salesReminderEmailJobReplayPost,
   );
   v1.get(
     "/sales/reminder-email-jobs/metrics",

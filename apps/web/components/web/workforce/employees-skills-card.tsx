@@ -134,14 +134,28 @@ export function EmployeesSkillsCard({
       </CardHeader>
       <CardContent className="space-y-4">
         {canEdit ? (
-          <div className="flex flex-col gap-2 sm:max-w-xl sm:flex-row">
-            <Input
-              value={newSkillName}
-              onChange={(ev) => setNewSkillName(ev.target.value)}
-              placeholder={t.skillsCreatePlaceholder}
-              aria-label={t.skillsCreatePlaceholder}
-            />
-            <Button type="button" variant="secondary" onClick={() => void addSkill()} disabled={busy}>
+          <div className="grid gap-2 sm:max-w-xl sm:grid-cols-[1fr_auto] sm:items-end">
+            <div className="grid gap-2">
+              <Label htmlFor="employee-skill-new">{t.skillsCreateLabel}</Label>
+              <Input
+                id="employee-skill-new"
+                value={newSkillName}
+                onChange={(ev) => setNewSkillName(ev.target.value)}
+                placeholder={t.skillsCreatePlaceholder}
+                onKeyDown={(ev) => {
+                  if (ev.key !== "Enter") return;
+                  ev.preventDefault();
+                  void addSkill();
+                }}
+              />
+            </div>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => void addSkill()}
+              disabled={busy}
+              className="w-full sm:w-auto"
+            >
               {t.skillsCreateCatalog}
             </Button>
           </div>
@@ -171,7 +185,7 @@ export function EmployeesSkillsCard({
         )}
 
         {canEdit ? (
-          <div>
+          <div className="flex justify-end">
             <Button type="button" onClick={() => void saveSelected()} disabled={busy}>
               {t.skillsSave}
             </Button>

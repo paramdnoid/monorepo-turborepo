@@ -7,6 +7,28 @@
 
 ---
 
+## Status-Baseline (E-01 bis E-13)
+
+Diese Tabelle ist die **Referenz** für den Reifegrad-Status in den drei anderen `.cursor`-Dokumenten. Der Reifegrad ist **produkt-/flussbezogen** (nicht nur „Endpunkte existieren“).
+
+| Epic | Reifegrad | Kurzstatus (Code-Stand) | Nachweis (in dieser Datei) |
+|------|-----------|--------------------------|-----------------------------|
+| **E-01** | umgesetzt | Projekt ↔ Kunde ↔ Baustelle via `projects.customerId` + `projects.siteAddressId` | Matrix E-01 |
+| **E-02** | in Arbeit | Projekt-Hub v1–v3 inkl. KPI-/Mini-Pipeline, 30-Tage-Segmente/Trends und KPI-UI-Polish geliefert; weitere KPIs/Widgets optional | Matrix E-02 |
+| **E-03** | in Arbeit | Kunden-Defaults (Zahlungsziel/Skonto/Mahnfristen) geliefert; Vertiefung (z. B. Kreditlimit) offen | Matrix E-03 |
+| **E-04** | in Arbeit | Scheduling mit `projectId` + Zeitraumfilter (`dateFrom`/`dateTo`) geliefert; Konflikte/Serien/Sollstunden offen | Matrix E-04 |
+| **E-05** | in Arbeit | Zeiterfassung Web/API (`work_time_entries`, CRUD) geliefert; Soll/Ist + Auswertung offen | Matrix E-05 |
+| **E-06** | in Arbeit | OP/Teilzahlungen/Mahnungen/Templates + CAMT-Match/Import + Sammelzahlungen + **Mahn-E-Mail-Outbox** geliefert; Betrieb/Monitoring/Automatisierung offen | Matrix E-06 + Mail (unten) |
+| **E-07** | teilweise umgesetzt | Angebots-/Rechnungsbasis da; Steuer/Rabatt/Teilrechnungsketten offen | Offene Claims: E-07 |
+| **E-08** | teilweise umgesetzt | Audit-/Lifecycle-Vorstufe da; Finalisierung/Snapshot/Sperren offen | Offene Claims: E-08 |
+| **E-09** | teilweise umgesetzt | DATEV Settings + Buchungs-CSV vorhanden; XRechnung/ZUGFeRD-Endpunkte vorhanden, Standardtiefe/Profil-Konformität offen | Offene Claims: E-09 |
+| **E-10** | teilweise umgesetzt | Maler-Module/GAEB/Assets teils da; End-to-End-Integration unvollständig (z. B. Flächenberechnung weiterhin `localStorage`) | Stichprobe: E-10 & E-11 |
+| **E-11** | teilweise vorbereitet | Katalog-/Import-Bausteine vorhanden; operativer Bestell-/WE-Fluss offen (nicht tief verifiziert) | Stichprobe: E-10 & E-11 |
+| **E-12** | offen | optional/späterer Scope | — |
+| **E-13** | teilweise umgesetzt | Rollen/Audit/Offline-Bausteine teils da; zentrale Audit-Sicht und verbindliche Offline-Strategie offen | Stichprobe: E-13 |
+
+---
+
 ## Matrix E-01 bis E-06 (Kern „geliefert“)
 
 | Epic     | Doc-Claim (Kurz)                                                      | Code-Nachweis                                                                                                                                                                                                                                                                                                                                                                                                                                                               | Bemerkung                                                                                                                                |

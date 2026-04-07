@@ -43,6 +43,10 @@ const isoDate = z
 export const datevExportBookingsQuerySchema = z.object({
   from: isoDate,
   to: isoDate,
+  /** Optional: return JSON report instead of CSV (\"1\"/\"true\"). */
+  dryRun: z.enum(["1", "0", "true", "false"]).optional(),
+  /** Optional: fail export when invoice snapshots/tax-breakdown are incomplete (\"1\"/\"true\"). */
+  strict: z.enum(["1", "0", "true", "false"]).optional(),
 });
 
 export type DatevExportBookingsQuery = z.infer<

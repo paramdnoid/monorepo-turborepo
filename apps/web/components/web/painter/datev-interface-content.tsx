@@ -172,16 +172,50 @@ export function DatevInterfaceContent({
     }
     setExportBusy(true);
     try {
-      const qs = new URLSearchParams({ from: dateFrom, to: dateTo });
+      const qs = new URLSearchParams({ from: dateFrom, to: dateTo, strict: "1" });
       const res = await fetch(`/api/web/datev/export/bookings?${qs.toString()}`, {
         cache: "no-store",
       });
-      if (res.status === 409) {
-        toast.error(copy.exportNeedAccounts);
-        setExportBusy(false);
-        return;
-      }
       if (!res.ok) {
+        let json: unknown = null;
+        try {
+          json = (await res.json()) as unknown;
+        } catch {
+          // ignore
+        }
+        if (
+          res.status === 409 &&
+          typeof json === "object" &&
+          json !== null &&
+          "error" in json &&
+          (json as { error?: unknown }).error === "missing_accounts"
+        ) {
+          toast.error(copy.exportNeedAccounts);
+          setExportBusy(false);
+          return;
+        }
+        if (
+          res.status === 422 &&
+          typeof json === "object" &&
+          json !== null &&
+          "errors" in json &&
+          Array.isArray((json as { errors?: unknown }).errors) &&
+          (json as { errors: Array<{ documentNumber?: unknown; message?: unknown }> }).errors
+            .length > 0
+        ) {
+          const first = (json as { errors: Array<{ documentNumber?: unknown; message?: unknown }> })
+            .errors[0];
+          const doc =
+            typeof first?.documentNumber === "string" ? first.documentNumber : "";
+          const msg = typeof first?.message === "string" ? first.message : "";
+          toast.error(
+            doc && msg
+              ? `${copy.exportFailed}: ${doc} — ${msg}`
+              : copy.exportFailed,
+          );
+          setExportBusy(false);
+          return;
+        }
         toast.error(copy.exportFailed);
         setExportBusy(false);
         return;

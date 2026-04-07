@@ -15,6 +15,13 @@ test("meResponseSchema parses extended organization", () => {
       name: "Acme GmbH",
       tradeSlug: "maler",
       senderAddress: "Hauptstr. 1\n12345 Berlin",
+      senderStreet: "Hauptstr.",
+      senderHouseNumber: "1",
+      senderPostalCode: "12345",
+      senderCity: "Berlin",
+      senderCountry: "DE",
+      senderLatitude: 52.52,
+      senderLongitude: 13.405,
       vatId: "DE123456789",
       taxNumber: "12/345/67890",
       hasLogo: true,
@@ -26,4 +33,19 @@ test("meResponseSchema parses extended organization", () => {
 test("organizationPatchRequestSchema accepts clearLogo", () => {
   const parsed = organizationPatchRequestSchema.safeParse({ clearLogo: true });
   assert.equal(parsed.success, true);
+});
+
+test("organizationPatchRequestSchema accepts sender coords together", () => {
+  const parsed = organizationPatchRequestSchema.safeParse({
+    senderLatitude: 52.52,
+    senderLongitude: 13.405,
+  });
+  assert.equal(parsed.success, true);
+});
+
+test("organizationPatchRequestSchema rejects partial sender coords", () => {
+  const parsed = organizationPatchRequestSchema.safeParse({
+    senderLatitude: 52.52,
+  });
+  assert.equal(parsed.success, false);
 });

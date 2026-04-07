@@ -55,13 +55,17 @@ import {
   salesReminderEmailJobsListResponseSchema,
   salesReminderEmailJobPatchSchema,
   salesReminderEmailJobRetryResponseSchema,
+  salesReminderEmailJobReplayResponseSchema,
   salesReminderEmailJobsProcessRequestSchema,
   salesReminderEmailJobsProcessResponseSchema,
   salesReminderEmailJobsMetricsResponseSchema,
   salesReminderEmailJobRecordSchema,
+  salesReminderEmailJobsTenantListQuerySchema,
+  salesReminderEmailJobsTenantListResponseSchema,
 } from "@repo/api-contracts";
 
 import {
+  customerAddresses,
   customers,
   projects,
   salesLifecycleEvents,
@@ -105,6 +109,13 @@ import {
   parseCamtBankToCustomerXml,
   rankOpenInvoicesForCamt,
 } from "../sales-camt.js";
+import {
+  buildCiiEInvoiceXml as buildCiiEInvoiceXmlV2,
+  parseMultilineAddress,
+  validateCiiEInvoiceData,
+  type EInvoiceIssue,
+  type EInvoiceParty,
+} from "../sales-e-invoice.js";
 
 async function letterheadForPdf(org: {
   name: string;
@@ -1903,148 +1914,6 @@ function buildInvoiceSnapshot(
   };
 }
 
-function escapeXml(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&apos;");
-}
-
-function normalizeIsoDate(iso: string | null | undefined): string {
-  if (typeof iso === "string" && iso.length >= 10) return iso.slice(0, 10);
-  return new Date().toISOString().slice(0, 10);
-}
-
-function toDateYmdCompact(isoDate: string): string {
-  return isoDate.replaceAll("-", "");
-}
-
-function formatEuroAmount(cents: number): string {
-  return (cents / 100).toFixed(2);
-}
-
-function computeNetFromGross(grossCents: number, taxRateBps: number): number {
-  if (taxRateBps <= 0) return grossCents;
-  return Math.round((grossCents * 10_000) / (10_000 + taxRateBps));
-}
-
-function parseLineQuantityValue(raw: string | null): number {
-  if (!raw) return 1;
-  const normalized = raw.trim().replace(",", ".");
-  if (!/^-?\d+(\.\d+)?$/.test(normalized)) return 1;
-  const n = Number(normalized);
-  if (!Number.isFinite(n) || n <= 0) return 1;
-  return n;
-}
-
-function buildCiiEInvoiceXml(args: {
-  profile: "xrechnung" | "zugferd";
-  invoice: InvoiceSnapshot;
-}): string {
-  const issueDate = normalizeIsoDate(args.invoice.issuedAt);
-  const dueDate = normalizeIsoDate(args.invoice.dueAt ?? args.invoice.issuedAt);
-  const profileId =
-    args.profile === "xrechnung"
-      ? "urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0"
-      : "urn:cen.eu:en16931:2017#conformant#urn:factur-x.eu:1p0:basic";
-
-  const taxRows =
-    args.invoice.taxBreakdown.length > 0
-      ? args.invoice.taxBreakdown
-      : [{ taxRateBps: 0, netCents: args.invoice.totalCents, taxCents: 0, grossCents: args.invoice.totalCents }];
-  const taxBasisTotalCents = taxRows.reduce((acc, row) => acc + row.netCents, 0);
-  const taxTotalCents = taxRows.reduce((acc, row) => acc + row.taxCents, 0);
-  const lineNetTotalCents = args.invoice.lines.reduce((acc, line) => {
-    const rate = line.taxRateBps ?? 1900;
-    return acc + computeNetFromGross(line.lineTotalCents, rate);
-  }, 0);
-
-  return [
-    '<?xml version="1.0" encoding="UTF-8"?>',
-    '<rsm:CrossIndustryInvoice xmlns:rsm="urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100" xmlns:ram="urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100" xmlns:udt="urn:un:unece:uncefact:data:standard:UnqualifiedDataType:100">',
-    "  <rsm:ExchangedDocumentContext>",
-    "    <ram:GuidelineSpecifiedDocumentContextParameter>",
-    `      <ram:ID>${escapeXml(profileId)}</ram:ID>`,
-    "    </ram:GuidelineSpecifiedDocumentContextParameter>",
-    "  </rsm:ExchangedDocumentContext>",
-    "  <rsm:ExchangedDocument>",
-    `    <ram:ID>${escapeXml(args.invoice.documentNumber)}</ram:ID>`,
-    "    <ram:TypeCode>380</ram:TypeCode>",
-    "    <ram:IssueDateTime>",
-    `      <udt:DateTimeString format="102">${escapeXml(toDateYmdCompact(issueDate))}</udt:DateTimeString>`,
-    "    </ram:IssueDateTime>",
-    "  </rsm:ExchangedDocument>",
-    "  <rsm:SupplyChainTradeTransaction>",
-    ...args.invoice.lines.flatMap((line, idx) => {
-      const quantity = parseLineQuantityValue(line.quantity);
-      const lineTaxRateBps = line.taxRateBps ?? 1900;
-      const lineNetCents = computeNetFromGross(line.lineTotalCents, lineTaxRateBps);
-      const ratePercent = (lineTaxRateBps / 100).toFixed(2);
-      const unitCode = line.unit?.trim() ? line.unit.trim().slice(0, 3).toUpperCase() : "C62";
-      return [
-        "    <ram:IncludedSupplyChainTradeLineItem>",
-        "      <ram:AssociatedDocumentLineDocument>",
-        `        <ram:LineID>${idx + 1}</ram:LineID>`,
-        "      </ram:AssociatedDocumentLineDocument>",
-        "      <ram:SpecifiedTradeProduct>",
-        `        <ram:Name>${escapeXml(line.description)}</ram:Name>`,
-        "      </ram:SpecifiedTradeProduct>",
-        "      <ram:SpecifiedLineTradeAgreement>",
-        "        <ram:NetPriceProductTradePrice>",
-        `          <ram:ChargeAmount>${formatEuroAmount(line.unitPriceCents)}</ram:ChargeAmount>`,
-        "        </ram:NetPriceProductTradePrice>",
-        "      </ram:SpecifiedLineTradeAgreement>",
-        "      <ram:SpecifiedLineTradeDelivery>",
-        `        <ram:BilledQuantity unitCode="${escapeXml(unitCode)}">${quantity.toFixed(2)}</ram:BilledQuantity>`,
-        "      </ram:SpecifiedLineTradeDelivery>",
-        "      <ram:SpecifiedLineTradeSettlement>",
-        "        <ram:ApplicableTradeTax>",
-        "          <ram:TypeCode>VAT</ram:TypeCode>",
-        "          <ram:CategoryCode>S</ram:CategoryCode>",
-        `          <ram:RateApplicablePercent>${ratePercent}</ram:RateApplicablePercent>`,
-        "        </ram:ApplicableTradeTax>",
-        "        <ram:SpecifiedTradeSettlementLineMonetarySummation>",
-        `          <ram:LineTotalAmount>${formatEuroAmount(lineNetCents)}</ram:LineTotalAmount>`,
-        "        </ram:SpecifiedTradeSettlementLineMonetarySummation>",
-        "      </ram:SpecifiedLineTradeSettlement>",
-        "    </ram:IncludedSupplyChainTradeLineItem>",
-      ];
-    }),
-    "    <ram:ApplicableHeaderTradeAgreement>",
-    "      <ram:BuyerTradeParty>",
-    `        <ram:Name>${escapeXml(args.invoice.customerLabel)}</ram:Name>`,
-    "      </ram:BuyerTradeParty>",
-    "    </ram:ApplicableHeaderTradeAgreement>",
-    "    <ram:ApplicableHeaderTradeSettlement>",
-    `      <ram:InvoiceCurrencyCode>${escapeXml(args.invoice.currency)}</ram:InvoiceCurrencyCode>`,
-    ...taxRows.flatMap((row) => [
-      "      <ram:ApplicableTradeTax>",
-      `        <ram:CalculatedAmount>${formatEuroAmount(row.taxCents)}</ram:CalculatedAmount>`,
-      "        <ram:TypeCode>VAT</ram:TypeCode>",
-      `        <ram:BasisAmount>${formatEuroAmount(row.netCents)}</ram:BasisAmount>`,
-      "        <ram:CategoryCode>S</ram:CategoryCode>",
-      `        <ram:RateApplicablePercent>${(row.taxRateBps / 100).toFixed(2)}</ram:RateApplicablePercent>`,
-      "      </ram:ApplicableTradeTax>",
-    ]),
-    "      <ram:SpecifiedTradePaymentTerms>",
-    `        <ram:DueDateDateTime><udt:DateTimeString format="102">${escapeXml(toDateYmdCompact(dueDate))}</udt:DateTimeString></ram:DueDateDateTime>`,
-    "      </ram:SpecifiedTradePaymentTerms>",
-    "      <ram:SpecifiedTradeSettlementHeaderMonetarySummation>",
-    `        <ram:LineTotalAmount>${formatEuroAmount(lineNetTotalCents)}</ram:LineTotalAmount>`,
-    `        <ram:TaxBasisTotalAmount>${formatEuroAmount(taxBasisTotalCents)}</ram:TaxBasisTotalAmount>`,
-    `        <ram:TaxTotalAmount currencyID="${escapeXml(args.invoice.currency)}">${formatEuroAmount(taxTotalCents)}</ram:TaxTotalAmount>`,
-    `        <ram:GrandTotalAmount>${formatEuroAmount(args.invoice.totalCents)}</ram:GrandTotalAmount>`,
-    `        <ram:DuePayableAmount>${formatEuroAmount(args.invoice.balanceCents)}</ram:DuePayableAmount>`,
-    "      </ram:SpecifiedTradeSettlementHeaderMonetarySummation>",
-    "    </ram:ApplicableHeaderTradeSettlement>",
-    "  </rsm:SupplyChainTradeTransaction>",
-    "</rsm:CrossIndustryInvoice>",
-    "",
-  ].join("\n");
-}
-
 export function createSalesInvoiceFinalizePostHandler(
   getDb: () => Db | undefined,
 ) {
@@ -2071,6 +1940,31 @@ export function createSalesInvoiceFinalizePostHandler(
 
     const detail = await buildInvoiceDetailPayload(db, auth.tenantId, invoiceId);
     if (!detail) return c.json({ error: "not_found" }, 404);
+    const billingType = detail.invoice.billingType;
+    const parentInvoiceId = detail.invoice.parentInvoiceId ?? null;
+    const creditForInvoiceId = detail.invoice.creditForInvoiceId ?? null;
+    if (billingType === "invoice") {
+      if (parentInvoiceId) {
+        return c.json({ error: "invalid_parent_invoice" }, 400);
+      }
+      if (creditForInvoiceId) {
+        return c.json({ error: "invalid_credit_reference" }, 400);
+      }
+    } else if (billingType === "partial" || billingType === "final") {
+      if (!parentInvoiceId) {
+        return c.json({ error: "invalid_parent_invoice" }, 400);
+      }
+      if (creditForInvoiceId) {
+        return c.json({ error: "invalid_credit_reference" }, 400);
+      }
+    } else if (billingType === "credit_note") {
+      if (!creditForInvoiceId) {
+        return c.json({ error: "invalid_credit_reference" }, 400);
+      }
+      if (parentInvoiceId) {
+        return c.json({ error: "invalid_parent_invoice" }, 400);
+      }
+    }
     const snapshot = buildInvoiceSnapshot(detail.invoice);
     const snapshotHash = toStableSnapshotHash(snapshot);
     const now = new Date();
@@ -2128,19 +2022,162 @@ export function createSalesInvoiceXRechnungGetHandler(getDb: () => Db | undefine
   return async (c: Context) => {
     const auth = c.get("auth");
     if (!auth) return c.json({ error: "missing_auth" }, 500);
+    const org = c.get("organization");
+    if (!org) return c.json({ error: "missing_organization" }, 500);
     const idParse = z.string().uuid().safeParse(c.req.param("id"));
     if (!idParse.success) return c.json({ error: "invalid_id" }, 400);
     const db = getDb();
     if (!db) return c.json({ error: "database_unavailable" }, 503);
+    const validateOnly = c.req.query("validate") === "1";
     const inv = await invoiceForTenant(db, auth.tenantId, idParse.data);
     if (!inv) return c.json({ error: "not_found" }, 404);
     if (!inv.isFinalized) return c.json({ error: "finalize_required" }, 409);
     const detail = await buildInvoiceDetailPayload(db, auth.tenantId, idParse.data);
     const snapshot = resolveInvoiceSnapshotSource(inv, detail);
     if (!snapshot) return c.json({ error: "not_found" }, 404);
-    const xml = buildCiiEInvoiceXml({
+
+    const preflightErrors: EInvoiceIssue[] = [];
+    const preflightWarnings: EInvoiceIssue[] = [];
+
+    const sellerAddress = org.senderAddress
+      ? parseMultilineAddress(org.senderAddress)
+      : null;
+    if (!sellerAddress) {
+      preflightErrors.push({
+        level: "error",
+        code: "seller_address_missing",
+        message:
+          "organization senderAddress is required and must contain at least street + a 'PLZ Ort' line (e.g. '12345 Berlin')",
+        path: ["organization", "senderAddress"],
+      });
+    }
+
+    let buyer: EInvoiceParty | null = null;
+    let buyerReference: string | null = null;
+    if (!inv.customerId) {
+      preflightErrors.push({
+        level: "error",
+        code: "buyer_customer_missing",
+        message: "invoice customerId is required to resolve buyer address for e-invoicing",
+        path: ["invoice", "customerId"],
+      });
+    } else {
+      const customerRows = await db
+        .select({
+          id: customers.id,
+          displayName: customers.displayName,
+          customerNumber: customers.customerNumber,
+          vatId: customers.vatId,
+          taxNumber: customers.taxNumber,
+        })
+        .from(customers)
+        .where(and(eq(customers.id, inv.customerId), eq(customers.tenantId, auth.tenantId)))
+        .limit(1);
+      const customer = customerRows[0];
+      if (!customer) {
+        preflightErrors.push({
+          level: "error",
+          code: "buyer_customer_not_found",
+          message: "invoice customerId does not exist for this tenant",
+          path: ["invoice", "customerId"],
+        });
+      } else {
+        const addrRows = await db
+          .select()
+          .from(customerAddresses)
+          .where(eq(customerAddresses.customerId, customer.id));
+        const ranked = [...addrRows].sort((a, b) => {
+          const rank = (x: typeof customerAddresses.$inferSelect) => {
+            const kindRank =
+              x.kind === "billing"
+                ? 0
+                : x.kind === "shipping"
+                  ? 1
+                  : x.kind === "site"
+                    ? 2
+                    : 3;
+            return (x.isDefault ? 0 : 10) + kindRank;
+          };
+          const ra = rank(a);
+          const rb = rank(b);
+          if (ra !== rb) return ra - rb;
+          const da = a.createdAt?.getTime?.() ?? 0;
+          const dbt = b.createdAt?.getTime?.() ?? 0;
+          if (da !== dbt) return da - dbt;
+          return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+        });
+        const best = ranked[0] ?? null;
+        if (!best) {
+          preflightErrors.push({
+            level: "error",
+            code: "buyer_address_missing",
+            message: "customer must have at least one address to generate XRechnung/ZUGFeRD",
+            path: ["customer", "addresses"],
+          });
+        } else {
+          buyerReference = customer.customerNumber ?? null;
+          const buyerName =
+            (best.recipientName?.trim() || customer.displayName?.trim() || snapshot.customerLabel).trim();
+          buyer = {
+            name: buyerName,
+            address: {
+              street: best.street,
+              addressLine2: best.addressLine2 ?? null,
+              postalCode: best.postalCode,
+              city: best.city,
+              country: best.country,
+            },
+            vatId: customer.vatId ?? null,
+            taxNumber: customer.taxNumber ?? null,
+          };
+        }
+      }
+    }
+
+    if (preflightErrors.length > 0 || !sellerAddress || !buyer) {
+      const payload = {
+        ok: false,
+        profile: "xrechnung" as const,
+        errors: preflightErrors,
+        warnings: preflightWarnings,
+      };
+      return c.json(
+        validateOnly ? payload : { error: "e_invoice_validation_failed", ...payload },
+        422,
+      );
+    }
+
+    const seller: EInvoiceParty = {
+      name: org.name,
+      address: sellerAddress,
+      vatId: org.vatId ?? null,
+      taxNumber: org.taxNumber ?? null,
+    };
+
+    const validation = validateCiiEInvoiceData({
       profile: "xrechnung",
       invoice: snapshot,
+      seller,
+      buyer,
+      buyerReference,
+    });
+
+    if (validateOnly) {
+      return c.json({ profile: "xrechnung", ...validation }, validation.ok ? 200 : 422);
+    }
+    if (!validation.ok) {
+      return c.json(
+        { error: "e_invoice_validation_failed", profile: "xrechnung", ...validation },
+        422,
+      );
+    }
+
+    const xml = buildCiiEInvoiceXmlV2({
+      profile: "xrechnung",
+      invoice: snapshot,
+      seller,
+      buyer,
+      buyerReference,
     });
     c.header("Content-Type", "application/xml; charset=utf-8");
     c.header(
@@ -2155,19 +2192,162 @@ export function createSalesInvoiceZugferdGetHandler(getDb: () => Db | undefined)
   return async (c: Context) => {
     const auth = c.get("auth");
     if (!auth) return c.json({ error: "missing_auth" }, 500);
+    const org = c.get("organization");
+    if (!org) return c.json({ error: "missing_organization" }, 500);
     const idParse = z.string().uuid().safeParse(c.req.param("id"));
     if (!idParse.success) return c.json({ error: "invalid_id" }, 400);
     const db = getDb();
     if (!db) return c.json({ error: "database_unavailable" }, 503);
+    const validateOnly = c.req.query("validate") === "1";
     const inv = await invoiceForTenant(db, auth.tenantId, idParse.data);
     if (!inv) return c.json({ error: "not_found" }, 404);
     if (!inv.isFinalized) return c.json({ error: "finalize_required" }, 409);
     const detail = await buildInvoiceDetailPayload(db, auth.tenantId, idParse.data);
     const snapshot = resolveInvoiceSnapshotSource(inv, detail);
     if (!snapshot) return c.json({ error: "not_found" }, 404);
-    const xml = buildCiiEInvoiceXml({
+
+    const preflightErrors: EInvoiceIssue[] = [];
+    const preflightWarnings: EInvoiceIssue[] = [];
+
+    const sellerAddress = org.senderAddress
+      ? parseMultilineAddress(org.senderAddress)
+      : null;
+    if (!sellerAddress) {
+      preflightErrors.push({
+        level: "error",
+        code: "seller_address_missing",
+        message:
+          "organization senderAddress is required and must contain at least street + a 'PLZ Ort' line (e.g. '12345 Berlin')",
+        path: ["organization", "senderAddress"],
+      });
+    }
+
+    let buyer: EInvoiceParty | null = null;
+    let buyerReference: string | null = null;
+    if (!inv.customerId) {
+      preflightErrors.push({
+        level: "error",
+        code: "buyer_customer_missing",
+        message: "invoice customerId is required to resolve buyer address for e-invoicing",
+        path: ["invoice", "customerId"],
+      });
+    } else {
+      const customerRows = await db
+        .select({
+          id: customers.id,
+          displayName: customers.displayName,
+          customerNumber: customers.customerNumber,
+          vatId: customers.vatId,
+          taxNumber: customers.taxNumber,
+        })
+        .from(customers)
+        .where(and(eq(customers.id, inv.customerId), eq(customers.tenantId, auth.tenantId)))
+        .limit(1);
+      const customer = customerRows[0];
+      if (!customer) {
+        preflightErrors.push({
+          level: "error",
+          code: "buyer_customer_not_found",
+          message: "invoice customerId does not exist for this tenant",
+          path: ["invoice", "customerId"],
+        });
+      } else {
+        const addrRows = await db
+          .select()
+          .from(customerAddresses)
+          .where(eq(customerAddresses.customerId, customer.id));
+        const ranked = [...addrRows].sort((a, b) => {
+          const rank = (x: typeof customerAddresses.$inferSelect) => {
+            const kindRank =
+              x.kind === "billing"
+                ? 0
+                : x.kind === "shipping"
+                  ? 1
+                  : x.kind === "site"
+                    ? 2
+                    : 3;
+            return (x.isDefault ? 0 : 10) + kindRank;
+          };
+          const ra = rank(a);
+          const rb = rank(b);
+          if (ra !== rb) return ra - rb;
+          const da = a.createdAt?.getTime?.() ?? 0;
+          const dbt = b.createdAt?.getTime?.() ?? 0;
+          if (da !== dbt) return da - dbt;
+          return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+        });
+        const best = ranked[0] ?? null;
+        if (!best) {
+          preflightErrors.push({
+            level: "error",
+            code: "buyer_address_missing",
+            message: "customer must have at least one address to generate XRechnung/ZUGFeRD",
+            path: ["customer", "addresses"],
+          });
+        } else {
+          buyerReference = customer.customerNumber ?? null;
+          const buyerName =
+            (best.recipientName?.trim() || customer.displayName?.trim() || snapshot.customerLabel).trim();
+          buyer = {
+            name: buyerName,
+            address: {
+              street: best.street,
+              addressLine2: best.addressLine2 ?? null,
+              postalCode: best.postalCode,
+              city: best.city,
+              country: best.country,
+            },
+            vatId: customer.vatId ?? null,
+            taxNumber: customer.taxNumber ?? null,
+          };
+        }
+      }
+    }
+
+    if (preflightErrors.length > 0 || !sellerAddress || !buyer) {
+      const payload = {
+        ok: false,
+        profile: "zugferd" as const,
+        errors: preflightErrors,
+        warnings: preflightWarnings,
+      };
+      return c.json(
+        validateOnly ? payload : { error: "e_invoice_validation_failed", ...payload },
+        422,
+      );
+    }
+
+    const seller: EInvoiceParty = {
+      name: org.name,
+      address: sellerAddress,
+      vatId: org.vatId ?? null,
+      taxNumber: org.taxNumber ?? null,
+    };
+
+    const validation = validateCiiEInvoiceData({
       profile: "zugferd",
       invoice: snapshot,
+      seller,
+      buyer,
+      buyerReference,
+    });
+
+    if (validateOnly) {
+      return c.json({ profile: "zugferd", ...validation }, validation.ok ? 200 : 422);
+    }
+    if (!validation.ok) {
+      return c.json(
+        { error: "e_invoice_validation_failed", profile: "zugferd", ...validation },
+        422,
+      );
+    }
+
+    const xml = buildCiiEInvoiceXmlV2({
+      profile: "zugferd",
+      invoice: snapshot,
+      seller,
+      buyer,
+      buyerReference,
     });
     c.header("Content-Type", "application/xml; charset=utf-8");
     c.header(
@@ -2544,6 +2724,30 @@ export function createSalesInvoicePostHandler(getDb: () => Db | undefined) {
       return c.json({ error: "database_unavailable" }, 503);
     }
     const input = parsed.data;
+    const parentInvoiceId = input.parentInvoiceId ?? null;
+    const creditForInvoiceId = input.creditForInvoiceId ?? null;
+    if (input.billingType === "invoice") {
+      if (parentInvoiceId) {
+        return c.json({ error: "invalid_parent_invoice" }, 400);
+      }
+      if (creditForInvoiceId) {
+        return c.json({ error: "invalid_credit_reference" }, 400);
+      }
+    } else if (input.billingType === "partial" || input.billingType === "final") {
+      if (!parentInvoiceId) {
+        return c.json({ error: "invalid_parent_invoice" }, 400);
+      }
+      if (creditForInvoiceId) {
+        return c.json({ error: "invalid_credit_reference" }, 400);
+      }
+    } else if (input.billingType === "credit_note") {
+      if (!creditForInvoiceId) {
+        return c.json({ error: "invalid_credit_reference" }, 400);
+      }
+      if (parentInvoiceId) {
+        return c.json({ error: "invalid_parent_invoice" }, 400);
+      }
+    }
     if (input.projectId) {
       const ok = await assertProjectForTenant(db, auth.tenantId, input.projectId);
       if (!ok) {
@@ -2556,20 +2760,17 @@ export function createSalesInvoicePostHandler(getDb: () => Db | undefined) {
         return c.json({ error: "invalid_quote" }, 400);
       }
     }
-    if (input.parentInvoiceId) {
-      if (input.parentInvoiceId === input.creditForInvoiceId) {
-        return c.json({ error: "invalid_parent_invoice" }, 400);
-      }
-      const ok = await assertInvoiceForTenant(db, auth.tenantId, input.parentInvoiceId);
+    if (parentInvoiceId) {
+      const ok = await assertInvoiceForTenant(db, auth.tenantId, parentInvoiceId);
       if (!ok) {
         return c.json({ error: "invalid_parent_invoice" }, 400);
       }
     }
-    if (input.creditForInvoiceId) {
+    if (creditForInvoiceId) {
       const ok = await assertInvoiceForTenant(
         db,
         auth.tenantId,
-        input.creditForInvoiceId,
+        creditForInvoiceId,
       );
       if (!ok) {
         return c.json({ error: "invalid_credit_reference" }, 400);
@@ -2633,8 +2834,8 @@ export function createSalesInvoicePostHandler(getDb: () => Db | undefined) {
           currency: input.currency,
           totalCents: input.totalCents,
           quoteId: input.quoteId ?? null,
-          parentInvoiceId: input.parentInvoiceId ?? null,
-          creditForInvoiceId: input.creditForInvoiceId ?? null,
+          parentInvoiceId,
+          creditForInvoiceId,
           projectId: input.projectId ?? null,
           issuedAt: issuedAtValue,
           dueAt: dueAtValue,
@@ -2691,20 +2892,41 @@ export function createSalesInvoiceFromQuotePostHandler(
     if (!db) {
       return c.json({ error: "database_unavailable" }, 503);
     }
-    if (input.parentInvoiceId) {
-      if (input.parentInvoiceId === input.creditForInvoiceId) {
+    const parentInvoiceId = input.parentInvoiceId ?? null;
+    const creditForInvoiceId = input.creditForInvoiceId ?? null;
+    if (input.billingType === "invoice") {
+      if (parentInvoiceId) {
         return c.json({ error: "invalid_parent_invoice" }, 400);
       }
-      const ok = await assertInvoiceForTenant(db, auth.tenantId, input.parentInvoiceId);
+      if (creditForInvoiceId) {
+        return c.json({ error: "invalid_credit_reference" }, 400);
+      }
+    } else if (input.billingType === "partial" || input.billingType === "final") {
+      if (!parentInvoiceId) {
+        return c.json({ error: "invalid_parent_invoice" }, 400);
+      }
+      if (creditForInvoiceId) {
+        return c.json({ error: "invalid_credit_reference" }, 400);
+      }
+    } else if (input.billingType === "credit_note") {
+      if (!creditForInvoiceId) {
+        return c.json({ error: "invalid_credit_reference" }, 400);
+      }
+      if (parentInvoiceId) {
+        return c.json({ error: "invalid_parent_invoice" }, 400);
+      }
+    }
+    if (parentInvoiceId) {
+      const ok = await assertInvoiceForTenant(db, auth.tenantId, parentInvoiceId);
       if (!ok) {
         return c.json({ error: "invalid_parent_invoice" }, 400);
       }
     }
-    if (input.creditForInvoiceId) {
+    if (creditForInvoiceId) {
       const ok = await assertInvoiceForTenant(
         db,
         auth.tenantId,
-        input.creditForInvoiceId,
+        creditForInvoiceId,
       );
       if (!ok) {
         return c.json({ error: "invalid_credit_reference" }, 400);
@@ -2784,8 +3006,8 @@ export function createSalesInvoiceFromQuotePostHandler(
             currency: quoteRow.currency,
             totalCents: 0,
             quoteId,
-            parentInvoiceId: input.parentInvoiceId ?? null,
-            creditForInvoiceId: input.creditForInvoiceId ?? null,
+            parentInvoiceId,
+            creditForInvoiceId,
             projectId: quoteRow.projectId ?? null,
             issuedAt: issuedAtValue,
             dueAt: dueAtValue,
@@ -2965,6 +3187,14 @@ export function createSalesInvoicePatchHandler(getDb: () => Db | undefined) {
     }
     if (patch.billingType !== undefined) {
       updates.billingType = patch.billingType;
+      if (patch.billingType === "invoice") {
+        updates.parentInvoiceId = null;
+        updates.creditForInvoiceId = null;
+      } else if (patch.billingType === "partial" || patch.billingType === "final") {
+        updates.creditForInvoiceId = null;
+      } else if (patch.billingType === "credit_note") {
+        updates.parentInvoiceId = null;
+      }
     }
     if (patch.currency !== undefined) {
       updates.currency = patch.currency;
@@ -3328,7 +3558,7 @@ function mapSalesReminderEmailJobRow(
     subject: row.subject,
     bodyText: row.bodyText,
     locale: row.locale === "en" ? "en" as const : "de" as const,
-    status: row.status as "pending" | "sent" | "failed",
+    status: row.status as "pending" | "processing" | "sent" | "failed",
     attempts: row.attempts,
     maxAttempts: row.maxAttempts,
     lastError: row.lastError ?? null,
@@ -3342,6 +3572,28 @@ function mapSalesReminderEmailJobRow(
     return null;
   }
   return safe.data;
+}
+
+async function claimReminderEmailJobForProcessing(
+  db: Db,
+  row: typeof salesReminderEmailJobs.$inferSelect,
+): Promise<typeof salesReminderEmailJobs.$inferSelect | null> {
+  const now = new Date();
+  const [updated] = await db
+    .update(salesReminderEmailJobs)
+    .set({
+      status: "processing",
+      updatedAt: now,
+    })
+    .where(
+      and(
+        eq(salesReminderEmailJobs.id, row.id),
+        eq(salesReminderEmailJobs.tenantId, row.tenantId),
+        eq(salesReminderEmailJobs.status, "pending"),
+      ),
+    )
+    .returning();
+  return updated ?? null;
 }
 
 async function markReminderEmailJobAttempt(
@@ -3363,7 +3615,7 @@ async function markReminderEmailJobAttempt(
       and(
         eq(salesReminderEmailJobs.id, row.id),
         eq(salesReminderEmailJobs.tenantId, row.tenantId),
-        eq(salesReminderEmailJobs.status, "pending"),
+        eq(salesReminderEmailJobs.status, "processing"),
       ),
     )
     .returning();
@@ -3388,6 +3640,7 @@ async function deliverReminderEmailJob(
         and(
           eq(salesReminderEmailJobs.id, row.id),
           eq(salesReminderEmailJobs.tenantId, row.tenantId),
+          eq(salesReminderEmailJobs.status, "processing"),
         ),
       )
       .returning();
@@ -3449,7 +3702,9 @@ async function processPendingReminderEmailJobs(
   let sent = 0;
   let failed = 0;
   for (const row of pending) {
-    const updated = await deliverReminderEmailJob(db, row);
+    const claimed = await claimReminderEmailJobForProcessing(db, row);
+    if (!claimed) continue;
+    const updated = await deliverReminderEmailJob(db, claimed);
     if (!updated) continue;
     rows.push(updated);
     if (updated.status === "sent") sent += 1;
@@ -3726,6 +3981,73 @@ export function createSalesReminderEmailJobRetryPostHandler(
   };
 }
 
+export function createSalesReminderEmailJobReplayPostHandler(
+  getDb: () => Db | undefined,
+) {
+  return async (c: Context) => {
+    const auth = c.get("auth");
+    if (!auth) return c.json({ error: "missing_auth" }, 500);
+    if (!canEditSalesDocuments(auth)) return c.json({ error: "forbidden" }, 403);
+    const jobIdParse = z.string().uuid().safeParse(c.req.param("jobId"));
+    if (!jobIdParse.success) return c.json({ error: "invalid_id" }, 400);
+    const jobId = jobIdParse.data;
+
+    const db = getDb();
+    if (!db) return c.json({ error: "database_unavailable" }, 503);
+
+    const [existing] = await db
+      .select()
+      .from(salesReminderEmailJobs)
+      .where(
+        and(
+          eq(salesReminderEmailJobs.id, jobId),
+          eq(salesReminderEmailJobs.tenantId, auth.tenantId),
+        ),
+      )
+      .limit(1);
+    if (!existing) return c.json({ error: "not_found" }, 404);
+    if (existing.status !== "failed") {
+      return c.json({ error: "invalid_state" }, 409);
+    }
+
+    const now = new Date();
+    const [inserted] = await db
+      .insert(salesReminderEmailJobs)
+      .values({
+        tenantId: auth.tenantId,
+        invoiceId: existing.invoiceId,
+        reminderId: existing.reminderId,
+        toEmail: existing.toEmail,
+        subject: existing.subject,
+        bodyText: existing.bodyText,
+        locale: existing.locale,
+        status: "pending",
+        attempts: 0,
+        maxAttempts: existing.maxAttempts,
+        lastError: null,
+        createdBySub: auth.sub || null,
+        createdAt: now,
+        updatedAt: now,
+        sentAt: null,
+      })
+      .returning();
+
+    const row = inserted;
+    if (!row) return c.json({ error: "insert_failed" }, 500);
+    const job = mapSalesReminderEmailJobRow(row);
+    if (!job) return c.json({ error: "response_serialization" }, 500);
+
+    const payload = salesReminderEmailJobReplayResponseSchema.safeParse({
+      replayedFromJobId: existing.id,
+      job,
+    });
+    if (!payload.success) {
+      return c.json({ error: "response_serialization" }, 500);
+    }
+    return c.json(payload.data, 201);
+  };
+}
+
 export function createSalesReminderEmailJobsProcessPostHandler(
   getDb: () => Db | undefined,
 ) {
@@ -3791,6 +4113,11 @@ export function createSalesReminderEmailJobsMetricsGetHandler(
       statusCounts.set(row.status, Number(row.total ?? 0));
     }
 
+    const pendingCount =
+      (statusCounts.get("pending") ?? 0) + (statusCounts.get("processing") ?? 0);
+    const sentCount = statusCounts.get("sent") ?? 0;
+    const failedCount = statusCounts.get("failed") ?? 0;
+
     const [oldestPending] = await db
       .select({
         createdAt: min(salesReminderEmailJobs.createdAt),
@@ -3799,7 +4126,7 @@ export function createSalesReminderEmailJobsMetricsGetHandler(
       .where(
         and(
           eq(salesReminderEmailJobs.tenantId, auth.tenantId),
-          eq(salesReminderEmailJobs.status, "pending"),
+          inArray(salesReminderEmailJobs.status, ["pending", "processing"]),
         ),
       )
       .limit(1);
@@ -3831,13 +4158,10 @@ export function createSalesReminderEmailJobsMetricsGetHandler(
       .limit(1);
 
     const payload = salesReminderEmailJobsMetricsResponseSchema.safeParse({
-      pending: statusCounts.get("pending") ?? 0,
-      sent: statusCounts.get("sent") ?? 0,
-      failed: statusCounts.get("failed") ?? 0,
-      total:
-        (statusCounts.get("pending") ?? 0) +
-        (statusCounts.get("sent") ?? 0) +
-        (statusCounts.get("failed") ?? 0),
+      pending: pendingCount,
+      sent: sentCount,
+      failed: failedCount,
+      total: pendingCount + sentCount + failedCount,
       oldestPendingCreatedAt: oldestPending?.createdAt
         ? oldestPending.createdAt.toISOString()
         : null,
@@ -3850,6 +4174,132 @@ export function createSalesReminderEmailJobsMetricsGetHandler(
         : null,
       latestActivityStatus: latestActivity?.status ?? null,
       latestActivityAttempts: latestActivity?.attempts ?? null,
+    });
+    if (!payload.success) {
+      return c.json({ error: "response_serialization" }, 500);
+    }
+    return c.json(payload.data);
+  };
+}
+
+export function createSalesReminderEmailJobsTenantListGetHandler(
+  getDb: () => Db | undefined,
+) {
+  return async (c: Context) => {
+    const auth = c.get("auth");
+    if (!auth) return c.json({ error: "missing_auth" }, 500);
+    if (!canEditSalesDocuments(auth)) return c.json({ error: "forbidden" }, 403);
+
+    const db = getDb();
+    if (!db) return c.json({ error: "database_unavailable" }, 503);
+
+    const rawLimit = c.req.query("limit");
+    const rawOffset = c.req.query("offset");
+    const limit = parseListNumber(rawLimit, "limit");
+    const offset = parseListNumber(rawOffset, "offset");
+    if ((rawLimit && limit === undefined) || (rawOffset && offset === undefined)) {
+      return c.json({ error: "validation_error" }, 400);
+    }
+
+    const queryParse = salesReminderEmailJobsTenantListQuerySchema.safeParse({
+      status: c.req.query("status")?.trim() || undefined,
+      limit,
+      offset,
+    });
+    if (!queryParse.success) {
+      return c.json({ error: "validation_error" }, 400);
+    }
+    const query = queryParse.data;
+
+    const where: SQL[] = [eq(salesReminderEmailJobs.tenantId, auth.tenantId)];
+    if (query.status) {
+      where.push(eq(salesReminderEmailJobs.status, query.status));
+    }
+    const whereExpr = and(...where)!;
+
+    const [countRow] = await db
+      .select({ c: count() })
+      .from(salesReminderEmailJobs)
+      .where(whereExpr);
+
+    const rows = await db
+      .select({
+        id: salesReminderEmailJobs.id,
+        invoiceId: salesReminderEmailJobs.invoiceId,
+        reminderId: salesReminderEmailJobs.reminderId,
+        toEmail: salesReminderEmailJobs.toEmail,
+        subject: salesReminderEmailJobs.subject,
+        locale: salesReminderEmailJobs.locale,
+        status: salesReminderEmailJobs.status,
+        attempts: salesReminderEmailJobs.attempts,
+        maxAttempts: salesReminderEmailJobs.maxAttempts,
+        lastError: salesReminderEmailJobs.lastError,
+        createdBySub: salesReminderEmailJobs.createdBySub,
+        createdAt: salesReminderEmailJobs.createdAt,
+        updatedAt: salesReminderEmailJobs.updatedAt,
+        sentAt: salesReminderEmailJobs.sentAt,
+        invoiceDocumentNumber: salesInvoices.documentNumber,
+        invoiceCustomerLabel: salesInvoices.customerLabel,
+        invoiceProjectId: salesInvoices.projectId,
+        reminderLevel: salesInvoiceReminders.level,
+        reminderSentAt: salesInvoiceReminders.sentAt,
+      })
+      .from(salesReminderEmailJobs)
+      .innerJoin(
+        salesInvoices,
+        and(
+          eq(salesInvoices.id, salesReminderEmailJobs.invoiceId),
+          eq(salesInvoices.tenantId, auth.tenantId),
+        ),
+      )
+      .innerJoin(
+        salesInvoiceReminders,
+        and(
+          eq(salesInvoiceReminders.id, salesReminderEmailJobs.reminderId),
+          eq(salesInvoiceReminders.tenantId, auth.tenantId),
+        ),
+      )
+      .where(whereExpr)
+      .orderBy(
+        query.status === "pending"
+          ? asc(salesReminderEmailJobs.createdAt)
+          : desc(salesReminderEmailJobs.updatedAt),
+        query.status === "pending"
+          ? asc(salesReminderEmailJobs.id)
+          : desc(salesReminderEmailJobs.id),
+      )
+      .limit(query.limit ?? 50)
+      .offset(query.offset ?? 0);
+
+    const jobs = rows.map((row) => ({
+      id: row.id,
+      invoice: {
+        id: row.invoiceId,
+        documentNumber: row.invoiceDocumentNumber,
+        customerLabel: row.invoiceCustomerLabel,
+        projectId: row.invoiceProjectId ?? null,
+      },
+      reminder: {
+        id: row.reminderId,
+        level: row.reminderLevel,
+        sentAt: row.reminderSentAt.toISOString(),
+      },
+      toEmail: row.toEmail,
+      subject: row.subject,
+      locale: row.locale === "en" ? ("en" as const) : ("de" as const),
+      status: row.status as "pending" | "processing" | "sent" | "failed",
+      attempts: row.attempts,
+      maxAttempts: row.maxAttempts,
+      lastError: row.lastError ?? null,
+      createdBySub: row.createdBySub ?? null,
+      createdAt: row.createdAt.toISOString(),
+      updatedAt: row.updatedAt.toISOString(),
+      sentAt: row.sentAt?.toISOString() ?? null,
+    }));
+
+    const payload = salesReminderEmailJobsTenantListResponseSchema.safeParse({
+      jobs,
+      total: Number(countRow?.c ?? 0),
     });
     if (!payload.success) {
       return c.json({ error: "response_serialization" }, 500);

@@ -3,13 +3,16 @@
 **Stand:** 2026-04-07  
 **Grundlage:** [`.cursor/maler-lackierer-modul-funktionsluecken.md`](./maler-lackierer-modul-funktionsluecken.md)
 
-**Prioritätsentscheid (Umsetzung):** E-06 **Mail-Produktivität** vor E-02 Hub-v3 — Outbox-Tabelle `sales_reminder_email_jobs`, API `POST/GET …/email-jobs`, `PATCH …/reminder-email-jobs/:jobId`, BFF `/email-queue` (Audit + Versand im Request; Hintergrund-Worker/Cron optional).
+**Status-Quelle (Reifegrade):** [`.cursor/maler-lackierer-doc-code-verification.md`](./maler-lackierer-doc-code-verification.md) → **„Status-Baseline (E-01 bis E-13)“**.
+
+**Prioritätsentscheid (historisch, umgesetzt):** E-06 **Mail-Outbox/Stabilisierung** vor E-02 Hub-v3 (Details/Nachweis siehe Verifikation).
 
 ## Änderungsstand (vollständig abgeglichen)
 
-- E-06 auf **v5-Basis** aktualisiert: v4 (Templates/Gebühr) plus **E-Mail-Spike**, **CAMT-Zuordnungs-Spike**, **persistierter/idempotenter CAMT-Dateiimport** (Historie), **Sammelzahlungen/Mehrfachzuordnung** (`POST …/payments/batch` + OP-UI) und **gesammelte Übernahme** mehrerer CAMT-Zeilen in die Sammelzahlung (Auswahl + Prefill).
-- E-07 bis E-13 mit klaren Reifegraden (`teilweise umgesetzt` / `teilweise vorbereitet` / `offen`) an den Code-Stand angepasst.
-- Nächste Schritte auf echte Restlücken fokussiert: E-02 v3 (**Hub-Endpoint geliefert**, KPI/Pipeline + 30-Tage-Segmente/Trends + **KPI-UI-Polish** geliefert), E-06 optional **Cron-Mailworker** nach Outbox (2026-04-07), E-07/E-08, E-09 (XRechnung/ZUGFeRD-Standardtiefe + DATEV-Vertiefung).
+- Reifegrade E-01–E-13 an die Verifikation-Baseline angepasst.
+- E-02: Hub v3 (KPI/Pipeline + 30-Tage-Segmente/Trends + KPI-UI-Polish) dokumentiert als geliefert.
+- E-06: Mail-Outbox + CAMT/Batch/OP dokumentiert als geliefert; nächster Fokus Betriebshärtung (Monitoring/Alerting).
+- E-09: DATEV-Basis + XRechnung/ZUGFeRD-Endpunkte dokumentiert; Standardkonformität/Tiefe bleibt Backlog.
 
 **Legende**
 
@@ -34,17 +37,17 @@
 
 | Epic | Reifegrad | Kurzstatus |
 |------|-----------|------------|
-| **E-01** | **umgesetzt** | Projekt mit Kunden-/Baustellenbezug produktiv |
-| **E-02** | **in Arbeit** | Hub v1/v2 produktiv; v3 mit KPI-/Mini-Pipeline, Segmenten/Trends und **UI-Polish** (Hierarchie, Mobile) geliefert |
-| **E-03** | **in Arbeit** | Zahlungs-/Mahn-Defaults in Basis umgesetzt |
-| **E-04** | **in Arbeit** | Projektbezug + Zeitraum-Filter geliefert, Planungslogik offen |
-| **E-05** | **in Arbeit** | Zeiterfassung-Basis geliefert, Soll/Ist offen |
-| **E-06** | **in Arbeit** | v1–v5 + **CAMT-Import** (persistiert, Historie) + **Sammelzahlung** + **CAMT-Mehrfach-Prefill** + **Mahn-E-Mail-Outbox** (DB + API + BFF `email-queue`) + **Retry-UI** + **One-shot-Cron-Worker** (`worker:reminder-emails:once`) |
-| **E-07** | **teilweise umgesetzt** | Belegbasis da, Tiefe (Steuer/Rabatt/Teilrechnung) offen |
-| **E-08** | **teilweise umgesetzt** | Audit-Vorstufe da, Finalisierung/Snapshot offen |
-| **E-09** | **teilweise umgesetzt** | DATEV-Basis da; XRechnung/ZUGFeRD-Endpunkte vorhanden, Standardkonformität/Tiefe offen |
-| **E-10** | **teilweise umgesetzt** | GAEB/Assets da, End-to-End-Integration offen |
-| **E-11** | **teilweise vorbereitet** | Katalog-Backbone da, operativer Materialfluss offen |
+| **E-01** | **umgesetzt** | Kunden-/Baustellenbezug am Projekt geliefert |
+| **E-02** | **in Arbeit** | Hub v1–v3 inkl. KPI/Pipeline + Segmente/Trends + UI-Polish geliefert; Ausbau offen |
+| **E-03** | **in Arbeit** | Zahlungs-/Mahn-Defaults am Kunden geliefert; Vertiefung offen |
+| **E-04** | **in Arbeit** | Scheduling: Projektbezug + Zeitraumfilter geliefert; Konflikte/Serien offen |
+| **E-05** | **in Arbeit** | Zeiterfassung-Basis geliefert; Soll/Ist + Auswertung offen |
+| **E-06** | **in Arbeit** | OP/Mahnung/CAMT/Batch + Mail-Outbox geliefert; Monitoring/Automation offen |
+| **E-07** | **teilweise umgesetzt** | Belegbasis da; Steuer/Rabatt/Teilrechnungsketten offen |
+| **E-08** | **teilweise umgesetzt** | Audit-Vorstufe da; Finalisieren/Snapshot/Sperren offen |
+| **E-09** | **teilweise umgesetzt** | DATEV-Basis da; XRechnung/ZUGFeRD-Endpunkte vorhanden; Standardtiefe offen |
+| **E-10** | **teilweise umgesetzt** | GAEB/Assets/Module teils da; End-to-End-Integration offen |
+| **E-11** | **teilweise vorbereitet** | Katalog-Backbone da; operativer Materialfluss offen |
 | **E-12** | **offen** | optional/später |
 | **E-13** | **teilweise umgesetzt** | Rollen-/Audit-Bausteine da, zentrale Plattformreife offen |
 
@@ -52,244 +55,150 @@
 
 ## Epic E-01 — Projekt ↔ Kunde ↔ Baustelle (Stammdaten-Fundament)
 
-**Ziel:** Projekte sind nicht mehr nur Freitext-Kunde, sondern verbindlich mit dem Kundenstamm verknüpft; Baustelle/Objekt ist adressierbar und wiederverwendbar für Belege und Einsätze.
-
-**Status:** umgesetzt (2026-04-06)
-
-**Lieferumfang (Indikativ)**
-
-- Datenmodell: `customerId` am Projekt (Migration, Backfill-Strategie für bestehende `customerLabel`).
-- Optional: `project_site_addresses` oder erweiterte Projektadresse (Lieferung ≠ Rechnung).
-- UI: Auswahl Kunde aus Stammdaten, Übernahme Standard-Rechnungsadresse, Bearbeitung Baustellenadresse.
-- API + `@repo/api-contracts`: erweiterte Projekt-Payloads, Validierung.
-
-**Abhängigkeiten:** kein anderer Epic zwingend; **blockiert** E-02 (360°-Hub), E-04 (Scheduling-Bezug).
-
-**Bezug Analyse:** Abschnitte 2.1, 4, 5 (Rollen/Adressen teilweise).
+- **Ziel**: Projekte sind nicht mehr nur „Freitext-Kunde“, sondern verbindlich mit dem Kundenstamm verknüpft; die Baustelle ist adressierbar und wiederverwendbar für Belege und Einsätze.
+- **Reifegrad**: umgesetzt (Stand 2026-04-07)
+- **Geliefert (Kurz)**: Kundenbezug am Projekt + Baustellenadresse pro Projekt; UI/API unterstützen Anlage und Bearbeitung.
+- **Nächster Fokus**: Backfill/Nachpflege für Legacy-Projekte (operativ); optionale Baustellen-Metadaten (Ansprechpartner/Zugang) je nach Bedarf.
+- **Abhängigkeiten**: blockiert E-02 (Hub) und E-04 (Scheduling-Bezug).
+- **Details**: [`.cursor/maler-lackierer-epic-initiative-briefs.md`](./maler-lackierer-epic-initiative-briefs.md) · [`.cursor/maler-lackierer-doc-code-verification.md`](./maler-lackierer-doc-code-verification.md)
 
 ---
 
 ## Epic E-02 — Projekt-360° (Auftrags-Hub)
 
-**Ziel:** Eine Projekt-Detailansicht bündelt Belege, Termine, Dokumente und später Zeiten/Material — Sicht auf die Pipeline „Angebot → Ausführung → Abrechnung“.
-
-**Status:** in Arbeit (seit 2026-04-06) — **v1 + v2 geliefert:** Projekt-Hub mit Belegen/Dateien/GAEB, Terminplanung (**nächste 7 Tage**, über `GET /v1/scheduling/assignments?dateFrom&dateTo`), Zeiterfassung (Monat bis heute inkl. letzte Buchungen), Forderungen/OP (Top offene Posten, projektgefilterte OP-Liste) sowie **Mahnungs-Kontext**: Links `…/invoices/:id#invoice-reminders`, Zusammenfassung Mahnungen + Druck/PDF der letzten Mahnung in der Hub-Karte. **v3-Basis + Ausbau #2 + UI-Polish geliefert:** KPI-/Mini-Pipeline-Kacheln auf `GET /v1/projects/:id/hub` inkl. Statusstufen, Progress-/Conversion-Werte und 30-Tage-Segmente mit Trendvergleich; in der Hub-UI **KPI-Reihenfolge** (Liquidität → Volumina → Quoten → Betrieb → Pipeline → Segmente), klarere **visuelle Hierarchie** und **Mobile-UX** (u. a. Snap-Scroll für Kernzahlen und Segmentkarten).
-
-**Lieferumfang (Indikativ)**
-
-- UI: Sections für Belege (Angebote/Rechnungen), Einsätze, Dateien (`project_assets`) und Verknüpfungen GAEB/LV.
-- Hub-Karte „Terminplanung“: Einsätze **heute + 6 Tage** je Projekt; Deep-Link `/web/scheduling?project=…`.
-- Hub-Karte „Zeiterfassung“: Monat-bis-heute je Projekt, Summe + letzte Buchungen, Link nach `/web/work-time`.
-- Hub-Karte „Forderungen/OP“: Top offene Posten (Saldo > 0) je Projekt, Link nach `/web/sales/invoices/open?projectId=…`, Mahnung(en)/Stufe + Druck/PDF (letzte Mahnung).
-- OP-Liste + CSV-Export: optionaler `projectId`-Filter für konsistenten Projektkontext.
-- Dashboard-Erweiterungen: weitere projektbezogene KPIs (nach E-07/E-11 teilweise erst sinnvoll).
-- Navigation: Deep-Links von Übersicht und Sales in den Hub.
-
-**Abhängigkeiten:** **E-01** (Kunden-/Objekt-Kontext), **E-04** (Termine), **E-05** (Zeiterfassung), optional **E-06** (Forderungen/OP und Mahnungsbezug im Hub).
-
-**Bezug Analyse:** Abschnitte 2.2, 3, 4.
+- **Ziel**: Eine Projekt-Detailansicht bündelt Belege, Termine, Dokumente und später Zeit/Material — Sicht auf die Pipeline „Angebot → Ausführung → Abrechnung“.
+- **Reifegrad**: in Arbeit (Stand 2026-04-07)
+- **Geliefert (Kurz)**:
+  - Hub-Seite `/web/projects/[projectId]` bündelt Belege, Dateien/GAEB, 7-Tage-Termine, Zeiterfassung-Karte und OP-/Mahnungs-Kontext.
+  - Aggregierter Hub-Payload `GET /v1/projects/:id/hub` inkl. KPI-/Mini-Pipeline (Progress/Conversion) sowie 30-Tage-Segmente/Trends.
+  - UI-Polish: klarere KPI-Hierarchie, Reihenfolge, Mobile-UX.
+- **Nächster Fokus**: weitere projektbezogene KPIs/Widgets (z. B. Material nach E-11), Payload-Härtung/Performance nach Bedarf.
+- **Abhängigkeiten**: E-01 (Stammdaten), E-04 (Termine), E-05 (Zeit); optional E-06 (Forderungen/OP-Kontext).
+- **Details**: [`.cursor/maler-lackierer-epic-initiative-briefs.md`](./maler-lackierer-epic-initiative-briefs.md) · [`.cursor/maler-lackierer-doc-code-verification.md`](./maler-lackierer-doc-code-verification.md)
 
 ---
 
 ## Epic E-03 — Kundenstamm erweitern (Zahlung & Kommerz)
 
-**Ziel:** Rechnungsstellung und Mahnung können Standard-Zahlungsbedingungen und Kunden-Defaults nutzen; optional CRM-Light und Risiko.
-
-**Status:** in Arbeit (seit 2026-04-06) — v1 erweitert umgesetzt: Zahlungsziel/Skonto + Mahnfristen-Defaults (Stufe 1–3 Tage nach Fälligkeit) in DB/API/UI; `dueAt` kann serverseitig aus Kunden-Defaults abgeleitet werden; E-06 nutzt Prefill.
-
-**Lieferumfang (Indikativ)**
-
-- Felder: Zahlungsziel-Tage, Skonto, Mahnfristen (Defaults für neue Rechnungen/Mahnungen; Stufe 1–3).
-- Optional: Kreditlimit, Kennzeichnung „Vorkasse“, Kommunikationsnotizen mit Zeitstempel.
-- DSGVO: Einwilligungen / Löschworkflow (Minimal viable: Export + dokumentierter Löschantrag).
-
-**Abhängigkeiten:** schwach mit **E-06** (Mahnwesen nutzt Defaults).
-
-**Bezug Analyse:** Abschnitt 5.
+- **Ziel**: Rechnungsstellung und Mahnung nutzen Kunden-Defaults (Zahlungsziel/Skonto/Mahnfristen) statt manueller Eingabe je Beleg; optional CRM-light/Risiko.
+- **Reifegrad**: in Arbeit (Stand 2026-04-07)
+- **Geliefert (Kurz)**: Kunden-Defaults für Zahlungsziel/Skonto und Mahnfristen (Stufe 1–3); serverseitiges Prefill von `dueAt` bei Rechnungserstellung; Mahnungen nutzen Defaults als Prefill.
+- **Nächster Fokus**: optionale Kommerz-Vertiefung (Kreditlimit, Vorkasse-Flag, Kommunikationsnotizen) sowie DSGVO-Prozess (Export/Löschantrag) als klarer Workflow.
+- **Abhängigkeiten**: unterstützt E-06 (Mahnwesen/OP) über Prefill.
+- **Details**: [`.cursor/maler-lackierer-epic-initiative-briefs.md`](./maler-lackierer-epic-initiative-briefs.md) · [`.cursor/maler-lackierer-doc-code-verification.md`](./maler-lackierer-doc-code-verification.md)
 
 ---
 
 ## Epic E-04 — Terminplanung mit Projekt- und Kundenbezug
 
-**Ziel:** Jeder Einsatz kann optional/mandatory einem Projekt (und damit indirekt Kunde/Baustelle) zugeordnet werden; Ort kann aus Adresse vorbefüllt werden.
-
-**Status:** in Arbeit (seit 2026-04-06) — erste Iteration geliefert: DB `project_id`, API-Listenfilter `projectId` und **`dateFrom`/`dateTo`** (Zeitraum, max. 31 Tage) für Einsatz-Listen, Create/Patch/ICS, Web-Terminplanung mit Projekt-Dropdown, Projekt-Hub-Karte (**7 Tage**) + Deep-Link `/web/scheduling?project=…`.
-
-**Lieferumfang (Indikativ)**
-
-- Schema: `projectId` (optional), ggf. `customerId` denormalisiert oder über Projekt auflösbar.
-- UI: Picker für Projekt, Anzeige Kunde/Baustelle in Kalender und Liste.
-- ICS: Metadaten wo sinnvoll.
-- Später: Ressourcenkonflikte, wiederkehrende Serien (kann eigene Stories sein).
-
-**Abhängigkeiten:** **E-01** stark empfohlen.
-
-**Bezug Analyse:** Abschnitte 2.3, 8.
+- **Ziel**: Einsätze sind (mindestens) optional einem Projekt zugeordnet; Kunde/Baustelle sind dadurch ableitbar und die Planung wird projektfähig.
+- **Reifegrad**: in Arbeit (Stand 2026-04-07)
+- **Geliefert (Kurz)**: `scheduling_assignments.projectId` (optional) inkl. API-Filter `projectId` sowie Zeitraumfilter `dateFrom`/`dateTo` (max. 31 Tage); Web-Terminplanung mit Projekt-Picker; Projekt-Hub zeigt 7-Tage-Planung und verlinkt nach `/web/scheduling?project=…`.
+- **Nächster Fokus**: Policy „Pflicht vs. optional“ je Betrieb, zuverlässiges Vorbefüllen des Orts aus Baustellenadresse; Konflikte/Serien/Sollstunden als nächste Ausbauwelle.
+- **Abhängigkeiten**: E-01 stark empfohlen (Stammdaten-Kontext).
+- **Details**: [`.cursor/maler-lackierer-epic-initiative-briefs.md`](./maler-lackierer-epic-initiative-briefs.md) · [`.cursor/maler-lackierer-doc-code-verification.md`](./maler-lackierer-doc-code-verification.md)
 
 ---
 
 ## Epic E-05 — Zeiterfassung (Web, API, Projektbezug)
 
-**Ziel:** Mitarbeitende erfassen Zeiten mit Zuordnung zu Projekt (und optional Position); Grundlage für Auslastung und Nachkalkulation.
-
-**Status:** in Arbeit (seit 2026-04-06) — erste Iteration: Tabelle `work_time_entries` (Datum + Dauer in Minuten, optional `project_id`, Notiz), API CRUD unter `/v1/work-time/entries`, Web `/web/work-time` (Erfassung, Liste, Bearbeiten, Löschen). **Offen:** Soll/Ist-Vergleich zu Planung (E-04), tiefere Auswertungen und Projekt-Deep-Linking aus allen Kontexten.
-
-**Lieferumfang (Indikativ)**
-
-- Neues Domänenmodell: Zeiteinträge (Tenant, Mitarbeiter, Datum, Dauer oder Von–Bis, Projekt, optional `sales_quote_line` / freie Leistung).
-- API + BFF + UI (Listen, Erfassung, Korrektur mit Berechtigung).
-- Übersicht: Soll aus Planung vs. Ist (teilweise nach E-04).
-
-**Abhängigkeiten:** **E-01**; **E-04** für Soll-Vergleich wünschenswert.
-
-**Bezug Analyse:** Abschnitte 3, 7, 8, 9.
+- **Ziel**: Mitarbeitende erfassen Ist-Zeiten (optional mit Projektbezug) als Basis für Auslastung und Nachkalkulation.
+- **Reifegrad**: in Arbeit (Stand 2026-04-07)
+- **Geliefert (Kurz)**: `work_time_entries` + CRUD unter `/v1/work-time/entries` sowie Web `/web/work-time`; Projektbezug ist optional.
+- **Nächster Fokus**: Soll/Ist-Vergleich gegen Planung (E-04), bessere Auswertungen und konsequentes Deep-Linking (z. B. aus Projekt-Hub).
+- **Abhängigkeiten**: E-01; E-04 für Soll-Vergleich.
+- **Details**: [`.cursor/maler-lackierer-epic-initiative-briefs.md`](./maler-lackierer-epic-initiative-briefs.md) · [`.cursor/maler-lackierer-doc-code-verification.md`](./maler-lackierer-doc-code-verification.md)
 
 ---
 
 ## Epic E-06 — Forderungsmanagement: Mahnung, Zahlung, offene Posten
 
-**Ziel:** Über „paidAt“ hinaus: Teilzahlungen, Mahnlauf, OP-Liste, Zahlungszuordnung.
-
-**Status:** in Arbeit — **v1 + v2 + v3 + v4 + v5-Basis umgesetzt** (2026-04-06): wie zuvor, plus `sales_reminder_templates` (Stufe 1–10, `de`/`en`, optional Gebühr); API `GET`/`PUT /v1/sales/reminder-templates`, `GET …/resolved`; Reminder-PDF und Web-Druck nutzen aufgelösten Text/Gebühr inkl. Platzhalter (z. B. Belegnr./Betrag/Fälligkeit); Mandanten-Admins bearbeiten unter **Einstellungen**. **E-Mail-Spike** (Dry-Run + optional SMTP-Send; Legacy-Route) und **produktiver Pfad** `sales_reminder_email_jobs` + `POST/GET …/email-jobs` + `PATCH …/reminder-email-jobs/:jobId` + BFF **`/email-queue`** (Outbox, Versand im Request, Status/Audit). **CAMT-Zuordnungs-Spike** (`POST /v1/sales/invoices/camt-match` + UI „Match und Zahlung buchen“). **Persistierter/idempotenter CAMT-Dateiimport** — `POST /v1/sales/invoices/camt-import` dedupliziert über Datei-Hash, Tabellen `sales_camt_import_batches`/`lines`, Historie (`GET /v1/sales/invoices/camt-imports`, `GET /v1/sales/invoices/camt-imports/:id`) mit erneutem Matching; weiterhin **keine** automatische Zahlungsbuchung aus dem Import. **Sammelzahlungen:** `POST /v1/sales/invoices/payments/batch` + OP-UI (Mehrfachauswahl, Beträge); **CAMT → Sammelzahlung** zeilenweise oder **mehrere Zeilen gesammelt** (Checkboxen, „Alle Treffer“, Prefill inkl. Summe pro Rechnung bei Duplikaten). **Neu:** One-shot-Hintergrundworker für Cron (`pnpm --filter api run worker:reminder-emails:once`) und Retry-Flow im Rechnungsdetail.
-
-**Lieferumfang (Indikativ)**
-
-- ~~Teilzahlungen / Salden; OP-Liste; CSV; Löschen Zahlungszeile.~~ → **v1/v2 erledigt.** **CAMT-Matching-Spike** (Score/Confidence, Top-Kandidat + Buchung im Rechnungsdetail) und **CAMT-Dateiimport** (XML-Upload, Vorschau/Kandidaten, Persistenz/Idempotenz, Historie, ohne Auto-Buchung) sind geliefert. ~~Mehrfachzuordnung/Sammelzahlung~~ → **geliefert** (`…/payments/batch` + UI). Optional später: PATCH statt Löschen+Neu bei Zahlungszeilen.
-- ~~Mahnwesen MVP (Historie + PDF/Druck + Prefill)~~ → **v3 erledigt.** ~~Mahntext-Templates/Gebühren (pro Mandant, mehrsprachig)~~ → **v4 erledigt.** **E-Mail-Spike** (Preview + optional SMTP-Send) ist geliefert; **Mahn-E-Mail-Outbox** (DB + API + BFF `email-queue`, Retry-Zähler, Lieferstatus) **v6-Basis (2026-04-07)**; **Retry-UI + Cron-Worker-Entrypoint** sind geliefert.
-- Verknüpfung mit Kunden-Defaults (**E-03**).
-
-**Abhängigkeiten:** Basis-Sales vorhanden; **E-03** für komfortable Mahn-Defaults.
-
-**Bezug Analyse:** Abschnitte 3, 5, 6 (Punkte 7–8).
-
-**Als Nächstes (v7+):** Monitoring/Alerting für Outbox-Lauf (z. B. Failed/Backlog-Schwellen), ggf. automatische Eskalationsregeln; CAMT-Workflows (z. B. Status „gebucht“ nur nach manueller Bestätigung bleibt Policy).
+- **Ziel**: Über „paidAt“ hinaus: Teilzahlungen, Mahnlauf, OP-Liste und nachvollziehbare Zahlungszuordnung.
+- **Reifegrad**: in Arbeit (Stand 2026-04-07)
+- **Geliefert (Kurz)**:
+  - OP-Liste + CSV, Teilzahlungen/Saldo und Mahnhistorie inkl. PDF/Druck.
+  - Mahntext-Templates (mehrsprachig) inkl. optionaler Gebühr.
+  - CAMT-Matching + persistierter CAMT-Import (idempotent, Historie; ohne Auto-Buchung) sowie Sammelzahlungen (Batch).
+  - Mahn-E-Mail-Outbox inkl. Retry-Flow und One-shot-Processing-Entrypoint.
+- **Nächster Fokus**: Betriebshärtung der Outbox (Monitoring/Alerting, Backlog/Failed-Schwellen), optional automatisierter Lauf (Cron/Worker), klare Eskalationsregeln (falls gewünscht).
+- **Abhängigkeiten**: E-03 (Kunden-Defaults/Prefill) und E-13 (Audit/Permissions) als Querschnitt.
+- **Details**: [`.cursor/maler-lackierer-epic-initiative-briefs.md`](./maler-lackierer-epic-initiative-briefs.md) · [`.cursor/maler-lackierer-doc-code-verification.md`](./maler-lackierer-doc-code-verification.md)
 
 ---
 
 ## Epic E-07 — Belegtiefe: Steuern, Rabatte, Teilabrechnung, Storno
 
-**Ziel:** Handwerks- und DE-taugliche Belege: Steuersätze, Rabatte/Skonto, Abschlags- und Schlussrechnungen, Gutschriften, Leistungsnachweise/Lieferscheine soweit Scope.
-
-**Status:** teilweise umgesetzt (Basis, 2026-04-06) — Kern-Belegfluss mit Angeboten/Rechnungen, Positionen, PDF/Druck und Storno-Flow ist vorhanden; **offen** sind v. a. Steuer-Engine, Rabatte/Skonto auf Beleg-/Positionsniveau, Teilrechnungsketten und Gutschrift-Logik.
-
-**Lieferumfang (Indikativ)**
-
-- Steuer-Engine (mindestens Mehrwertsteuer-Split, Konfiguration pro Organisation).
-- Rabatte auf Kopf/Position; Abschlagsreihen mit Verweis auf Auftrag/Projekt.
-- Neuer oder erweiterter Belegtyp „Leistungsnachweis/Lieferschein“ (optional ausgelagert in E-11).
-- Storno/Gutschrift mit nachvollziehbarer Kette (nicht nur löschen).
-
-**Abhängigkeiten:** **E-01** für konsistente Adress-/Steuerdaten; **E-08** für GoBD-Schnittmenge abstimmen.
-
-**Bezug Analyse:** Abschnitt 6 (Punkte 1–6, 12–13).
+- **Ziel**: DE-taugliche Belege (Steuern, Rabatte/Skonto, Abschlags-/Schlussrechnungen, Gutschriften) auf bestehender Sales-Basis.
+- **Reifegrad**: teilweise umgesetzt (Stand 2026-04-07)
+- **Geliefert (Kurz)**: Angebots-/Rechnungsfluss mit Positionen, PDF/Druck und Storno-Basis.
+- **Nächster Fokus**: Steuer-Engine (z. B. 7 % / 19 %), Rabatte/Skonto, Teilrechnungsketten + Saldoüberblick, Gutschrift-Logik; optional Leistungsnachweis/Lieferschein.
+- **Abhängigkeiten**: E-01 (Stammdaten) und E-08 (GoBD-Finalisierung/Snapshot) eng koordinieren.
+- **Details**: [`.cursor/maler-lackierer-epic-initiative-briefs.md`](./maler-lackierer-epic-initiative-briefs.md) · [`.cursor/maler-lackierer-doc-code-verification.md`](./maler-lackierer-doc-code-verification.md)
 
 ---
 
 ## Epic E-08 — GoBD & Revisionssicherheit (Belege)
 
-**Ziel:** Finalisierte Belege sind unveränderbar archiviert; Änderungen nur über Revision/Storno mit Audit.
-
-**Status:** teilweise umgesetzt (Vorstufe, 2026-04-06) — Lifecycle-Events/Audit-Bausteine sind vorhanden; **offen** sind Finalisierungs-/Sperrlogik, unveränderliche Snapshot-Strategie und durchgängige GoBD-Flows.
-
-**Lieferumfang (Indikativ)**
-
-- Status „final“ / Sperre; unveränderlicher PDF-/XML-Snapshot wo gefordert.
-- Audit-Events (wer, wann, was) für Belege und kritische Stammdaten (**E-13** Schnittmenge).
-
-**Abhängigkeiten:** mit **E-07** koordinieren (welche Felder wann frozen).
-
-**Bezug Analyse:** Abschnitte 6.10, 11.2.
+- **Ziel**: Finalisierte Belege sind unveränderbar; Änderungen nur über Revision/Storno mit Audit.
+- **Reifegrad**: teilweise umgesetzt (Stand 2026-04-07)
+- **Geliefert (Kurz)**: Lifecycle-/Audit-Vorstufe vorhanden.
+- **Nächster Fokus**: Finalisieren/Sperren, unveränderliche PDF/XML-Snapshots, konsistente Audit-Events und UI-Sperrlogik.
+- **Abhängigkeiten**: E-07 (welche Felder wann frozen) und E-13 (Audit-Querschnitt).
+- **Details**: [`.cursor/maler-lackierer-epic-initiative-briefs.md`](./maler-lackierer-epic-initiative-briefs.md) · [`.cursor/maler-lackierer-doc-code-verification.md`](./maler-lackierer-doc-code-verification.md)
 
 ---
 
 ## Epic E-09 — Export: XRechnung / ZUGFeRD & DATEV-Buchungsstapel
 
-**Ziel:** Ausgangsrechnungen elektronisch übergeben; DATEV-Export fachlich vollständig (Kontenrahmen, Steuerschlüssel, Perioden).
-
-**Status:** teilweise umgesetzt (2026-04-06) — DATEV-Settings + Buchungs-CSV sind produktiv angebunden; **XRechnung/ZUGFeRD** sind noch offen.
-
-**Lieferumfang (Indikativ)**
-
-- XRechnung/ZUGFeRD-Generierung aus Rechnungsdomäne (Minimum Viable Profile).
-- DATEV: Mapping UI oder Config, Validierung, Fehlerreport (bestehende BFF-Routen ausbauen).
-- Abstimmung mit **E-07** (Steuerfelder).
-
-**Abhängigkeiten:** **E-07**, **E-08** für stabile Export-Snapshots.
-
-**Bezug Analyse:** Abschnitte 6.9–6.11, 10 (DATEV-Zeile).
+- **Ziel**: Ausgangsrechnungen elektronisch übergeben; DATEV-Export fachlich vollständig (Mapping, Validierung, Fehlerreport).
+- **Reifegrad**: teilweise umgesetzt (Stand 2026-04-07)
+- **Geliefert (Kurz)**: DATEV Settings + Buchungs-CSV; XRechnung/ZUGFeRD-Endpunkte/Downloadpfade vorhanden.
+- **Nächster Fokus**: Standardkonformität/Profil-Tiefe (XRechnung/ZUGFeRD), Validierung/Fehlerreporting, DATEV-Mapping/Tiefe (z. B. Konten/Steuerschlüssel) ausbauen.
+- **Abhängigkeiten**: E-07 (Steuerfelder) und E-08 (stabile Snapshots).
+- **Details**: [`.cursor/maler-lackierer-epic-initiative-briefs.md`](./maler-lackierer-epic-initiative-briefs.md) · [`.cursor/maler-lackierer-doc-code-verification.md`](./maler-lackierer-doc-code-verification.md)
 
 ---
 
 ## Epic E-10 — Maler-Module produktiv integrieren
 
-**Ziel:** Flächenberechnung, Farben, GAEB, digitale Mappe usw. sind mandanten- und projektbezogen serverseitig nutzbar; Übernahme in Angebote wo sinnvoll.
-
-**Status:** teilweise umgesetzt (2026-04-06) — GAEB/LV und Projekt-Assets sind serverseitig angebunden; mehrere Maler-Module sind UI-seitig vorhanden. **Offen:** durchgängige End-to-End-Verknüpfung (z. B. Aufmaß/Material direkt in Angebots-/Rechnungsfluss).
-
-**Lieferumfang (Indikativ)**
-
-- Flächenberechnung: Persistenz Server, Verknüpfung Projekt/Angebot, Wegfall reiner `localStorage`-Pflicht.
-- GAEB/LV: durchgängiger Workflow bis Positionsübernahme (bestehende `lv_documents` / Parser im Blick).
-- `project_assets`: UI + API vollständig für Produktivbetrieb.
-- Farbmanagement: Nutzung in Belegtexten / Team-Palette in Angeboten.
-
-**Abhängigkeiten:** **E-01**, **E-02**; **E-07** für Positionsübernahme.
-
-**Bezug Analyse:** Abschnitte 2.4, 10.
+- **Ziel**: Maler-Tools (Aufmaß, GAEB, Mappe, Farben) sind mandanten- und projektbezogen serverseitig nutzbar und fließen in Angebote/Rechnungen ein.
+- **Reifegrad**: teilweise umgesetzt (Stand 2026-04-07)
+- **Geliefert (Kurz)**: GAEB/LV und Projekt-Assets angebunden; UI-Module vorhanden.
+- **Nächster Fokus**: End-to-End-Verknüpfung (Aufmaß/Material → Angebotspositionen), Server-Persistenz statt `localStorage`, stabile Workflows (Upload/Übernahme/Revision).
+- **Abhängigkeiten**: E-01/E-02 (Projektkontext) und E-07 (Positions-/Beleglogik).
+- **Details**: [`.cursor/maler-lackierer-epic-initiative-briefs.md`](./maler-lackierer-epic-initiative-briefs.md) · [`.cursor/maler-lackierer-doc-code-verification.md`](./maler-lackierer-doc-code-verification.md)
 
 ---
 
 ## Epic E-11 — Materialwirtschaft & Nachkalkulation (MVP)
 
-**Ziel:** Materialbedarf aus LV/Aufmaß, Bestellung, Zuordnung zum Projekt; grobe Nachkalkulation Angebot vs. Ist (Material + Zeit).
-
-**Status:** teilweise vorbereitet (2026-04-06) — Katalog-/Import-Bausteine (u. a. DATANORM/BMEcat-Pipeline) sind vorhanden; **offen** ist der operative Bestell-/Wareneingangs- und Nachkalkulationsfluss.
-
-**Lieferumfang (Indikativ)**
-
-- Integration DATANORM/BMEcat-Kataloge in Bestell-/Positionsauswahl (Bibliotheken existieren im Monorepo).
-- Wareneingang minimal; Zuordnung zu Projekt.
-- Nachkalkulations-Report (Deckungsbeitrag grob).
-
-**Abhängigkeiten:** **E-01**, **E-05**; **E-10** für bessere Mengenbasis.
-
-**Bezug Analyse:** Abschnitte 3, 9, 10 (Großhandel-Zeile).
+- **Ziel**: Materialbedarf, Bestellung/Wareneingang und grobe Nachkalkulation pro Projekt (Material + Zeit).
+- **Reifegrad**: teilweise vorbereitet (Stand 2026-04-07)
+- **Geliefert (Kurz)**: Katalog-/Import-Bausteine (DATANORM/BMEcat) vorhanden; operativer Prozess fehlt.
+- **Nächster Fokus**: Minimaler Bestell-/WE-Flow, Projektkosten-Aggregation, Nachkalkulations-Report.
+- **Abhängigkeiten**: E-01 (Projekt), E-05 (Zeit) und E-10 (Mengenbasis) empfohlen.
+- **Details**: [`.cursor/maler-lackierer-epic-initiative-briefs.md`](./maler-lackierer-epic-initiative-briefs.md)
 
 ---
 
 ## Epic E-12 — Subunternehmer & Eingangsrechnungen (optional / später)
 
-**Ziel:** Fremdleistungen planen, abnehmen und mit Eingangsrechnungen abbilden.
-
-**Status:** offen (2026-04-06) — als späteres/optionales Epic.
-
-**Lieferumfang (Indikativ)**
-
-- Lieferanten/Sub-Stammdaten light, Auftrag an Sub, Abnahmeprotokoll.
-- Eingangsrechnung erfassen, optional DATEV-Eingang.
-
-**Abhängigkeiten:** **E-01**, **E-07** (Steuer/Beleglogik), **E-09** (DATEV).
-
-**Bezug Analyse:** Abschnitt 9 (letzter Punkt).
+- **Ziel**: Fremdleistungen inkl. Eingangsrechnungen mit Projektbezug abbilden.
+- **Reifegrad**: offen (Stand 2026-04-07)
+- **Nächster Fokus**: Scope/Minimalfluss definieren (Supplier light, Eingangsrechnung, ggf. DATEV-Eingang).
+- **Abhängigkeiten**: E-01 (Projekt), E-07 (Steuer/Beleglogik) und E-09 (DATEV).
+- **Details**: [`.cursor/maler-lackierer-epic-initiative-briefs.md`](./maler-lackierer-epic-initiative-briefs.md)
 
 ---
 
 ## Epic E-13 — Plattform: Rollen fein, Audit quer, Performance, Offline-Strategie
 
-**Ziel:** Skalierbare Berechtigungen, nachvollziehbare Änderungen, große LV performant, klare Offline-/Sync-Story für Baustelle.
-
-**Status:** teilweise umgesetzt (2026-04-06) — Rollenmatrix und verteilte Audit-Bausteine sind vorhanden; **offen** sind zentrale Audit-Sicht, feingranulare Actions quer durch alle Domänen, sowie eine verbindliche Offline-/Sync-Produktstrategie.
-
-**Lieferumfang (Indikativ)**
-
-- Feingranulare Permissions pro Aktion (Buchhaltung vs. Ausführung).
-- Zentraler Audit-Service für kritische Entitäten.
-- Hintergrundverarbeitung / Jobs für große Imports.
-- Produktentscheid + technische Spike: Sync (`syncMutationReceipts`) vs. reine Online-Web-App.
-
-**Abhängigkeiten:** querschnittlich; mit **E-08** abstimmen.
-
-**Bezug Analyse:** Abschnitt 11.
+- **Ziel**: Skalierbare Berechtigungen, zentrale Audit-Nachvollziehbarkeit, Performance für große Imports/LVs und klare Offline-/Sync-Strategie.
+- **Reifegrad**: teilweise umgesetzt (Stand 2026-04-07)
+- **Geliefert (Kurz)**: Rollenmatrix + einzelne Audit-/Lifecycle-Bausteine; Sync-Schema-Baustein vorhanden.
+- **Nächster Fokus**: zentrale Audit-Sicht, feinere Action-Permissions, Background-Jobs/Progress/Retry, Produktentscheid Offline/Sync.
+- **Abhängigkeiten**: querschnittlich (insb. E-06/E-08).
+- **Details**: [`.cursor/maler-lackierer-epic-initiative-briefs.md`](./maler-lackierer-epic-initiative-briefs.md) · [`.cursor/maler-lackierer-doc-code-verification.md`](./maler-lackierer-doc-code-verification.md)
 
 ---
 
@@ -316,25 +225,16 @@ Pro Epic: Problem, Messgröße, Nicht-Ziele, Spikes (Schema / API / UI), MVP vs.
 
 ---
 
----
-
 ## Nächste Schritte (Stand 2026-04-07)
 
 | Priorität | Thema | Wo |
 |-----------|--------|-----|
-| **E-02** | **v2/v3 inkl. UI-Polish geliefert** (wie zuvor: Hub-Aggregation, KPI-/Mini-Pipeline, Progress/Conversion, 30-Tage-Segmente/Trends; **Polish:** Sektionen, KPI-Reihenfolge, Mobile); nächster Schnitt: weitere projektbezogene KPIs / Material-Widgets (E-11) / Hub-Payload-Härtung nach Bedarf | Projekt-360° |
-| **E-06** | **v5 + CAMT + Sammelzahlung** geliefert; **Mahn-E-Mail-Outbox (v6)** + **Retry-UI + One-shot-Cron-Worker** geliefert; nächster Schnitt: Monitoring/Alerting | Rechnungswesen |
+| **E-06** | **v5 + CAMT + Sammelzahlung** geliefert; **Mahn-E-Mail-Outbox (v6)** + **Retry-Flow + One-shot-Processing** geliefert; nächster Schnitt: Monitoring/Alerting | Rechnungswesen |
+| **E-02** | **v2/v3 inkl. UI-Polish geliefert**; nächster Schnitt: weitere projektbezogene KPIs / Material-Widgets (E-11) / Hub-Payload-Härtung nach Bedarf | Projekt-360° |
 | **E-07** | Belegtiefe ausbauen (Steuer, Rabatte/Skonto, Teilrechnungsketten, Gutschrift), auf bestehender Sales-Basis | Belege |
 | **E-08** | GoBD-Sperren/Finalisieren + Snapshot-Konzept auf vorhandene Audit-Bausteine setzen | Compliance |
-| **E-09** | DATEV fachlich vertiefen und XRechnung/ZUGFeRD starten | Export |
+| **E-09** | DATEV fachlich vertiefen und XRechnung/ZUGFeRD auf Standardtiefe/Profil-Konformität bringen | Export |
 | **Optional** | Playwright E2E: OP-Seite + Mahnung-PDF; API-Tests (Reminders/Payments) | QA |
-
-### Empfohlene Implementierungsreihenfolge (kurz)
-
-1. **E-02 v3 (Fortsetzung):** Basis, Segmentausbau und KPI-UI-Polish sind geliefert; optional weitere KPI-Feinsegmente, Material-Widgets oder weniger parallele Requests (Hub-Endpunkt).
-2. **E-06 Stabilisierung:** Outbox-Monitoring/Alerting und Betriebshärtung (Sammelzahlung, CAMT-Persistenz und CAMT-Mehrfach-Prefill sind geliefert).
-3. **E-07/E-08:** Belegtiefe und GoBD-Sperren koordiniert nachziehen (nicht parallel zu großen Sales-Refactors).
-4. **E-09:** DATEV-Ausbau + XRechnung/ZUGFeRD als eigener Export-Track.
 
 ---
 

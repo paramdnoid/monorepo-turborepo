@@ -17,10 +17,10 @@ function noStoreInit(init?: ResponseInit): ResponseInit {
   };
 }
 
-type RouteContext = { params: Promise<{ id: string }> };
+type RouteContext = { params: Promise<{ jobId: string }> };
 
-export async function GET(request: Request, context: RouteContext) {
-  const { id } = await context.params;
+export async function POST(request: Request, context: RouteContext) {
+  const { jobId } = await context.params;
   const locale = getRequestLocale(request);
   const text = getUiText(locale);
   const session = await validateWebAccessTokenSession();
@@ -32,12 +32,15 @@ export async function GET(request: Request, context: RouteContext) {
   }
 
   try {
-    const url = new URL(request.url);
-    const qs = url.searchParams.toString();
     const res = await fetch(
-      `${API_BASE}/v1/sales/invoices/${encodeURIComponent(id)}/zugferd${qs ? `?${qs}` : ""}`,
+      `${API_BASE}/v1/sales/reminder-email-jobs/${encodeURIComponent(jobId)}/replay`,
       {
-        headers: { Authorization: `Bearer ${session.token}` },
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.token}`,
+          "Content-Type": "application/json",
+        },
+        body: "{}",
         cache: "no-store",
       },
     );
@@ -45,10 +48,7 @@ export async function GET(request: Request, context: RouteContext) {
     return new NextResponse(bodyText, {
       status: res.status,
       headers: {
-        "Content-Type":
-          res.headers.get("content-type") ?? "application/xml; charset=utf-8",
-        "Content-Disposition":
-          res.headers.get("content-disposition") ?? "attachment; filename=zugferd.xml",
+        "Content-Type": res.headers.get("content-type") ?? "application/json",
         "Cache-Control": "private, no-store",
       },
     });
@@ -59,3 +59,4 @@ export async function GET(request: Request, context: RouteContext) {
     );
   }
 }
+

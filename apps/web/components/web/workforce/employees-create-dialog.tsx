@@ -4,6 +4,12 @@ import { useEffect, useId, useMemo, useState } from "react";
 
 import type { EmployeeAvailabilityRuleInput, EmployeeGeocodeSource } from "@repo/api-contracts";
 import { employeeDetailResponseSchema } from "@repo/api-contracts";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@repo/ui/accordion";
 import { Button } from "@repo/ui/button";
 import {
   Dialog,
@@ -15,6 +21,7 @@ import {
 } from "@repo/ui/dialog";
 import { Input } from "@repo/ui/input";
 import { Label } from "@repo/ui/label";
+import { Separator } from "@repo/ui/separator";
 import { Textarea } from "@repo/ui/textarea";
 import {
   Select,
@@ -36,6 +43,7 @@ import {
   summarizeEmployeeValidationIssues,
   weekdayOptions,
 } from "@/content/employees-module";
+import { normalizeAddressFields } from "@/lib/address-normalization";
 import type { Locale } from "@/lib/i18n/locale";
 import { parseResponseJson } from "@/lib/parse-response-json";
 import { toast } from "sonner";
@@ -158,7 +166,9 @@ export function EmployeesCreateDialog({
   const [notes, setNotes] = useState("");
   const [privateLabel, setPrivateLabel] = useState("");
   const [privateLine2, setPrivateLine2] = useState("");
+  const [privateLine2Expanded, setPrivateLine2Expanded] = useState(false);
   const [privateRecipient, setPrivateRecipient] = useState("");
+  const [privateRecipientEdited, setPrivateRecipientEdited] = useState(false);
   const [privateStreet, setPrivateStreet] = useState("");
   const [privatePostal, setPrivatePostal] = useState("");
   const [privateCity, setPrivateCity] = useState("");
@@ -197,9 +207,11 @@ export function EmployeesCreateDialog({
     setEmploymentType("FULL_TIME");
     setRoleLabel("");
     setNotes("");
-    setPrivateLabel("");
+    setPrivateLabel(t.defaultAddressLabel);
     setPrivateLine2("");
+    setPrivateLine2Expanded(false);
     setPrivateRecipient("");
+    setPrivateRecipientEdited(false);
     setPrivateStreet("");
     setPrivatePostal("");
     setPrivateCity("");
@@ -210,7 +222,14 @@ export function EmployeesCreateDialog({
     setAvailability([]);
     setSubmitError(null);
     setNameError(null);
-  }, [open]);
+  }, [open, t.defaultAddressLabel]);
+
+  useEffect(() => {
+    if (!open || privateRecipientEdited) {
+      return;
+    }
+    setPrivateRecipient(displayName.trim());
+  }, [displayName, open, privateRecipientEdited]);
 
   useEffect(() => {
     if (!open) {
@@ -275,12 +294,7 @@ export function EmployeesCreateDialog({
     const latN = parseCoord(latitude);
     const lngN = parseCoord(longitude);
     if ((latN === null) !== (lngN === null)) {
-      const coordMsg =
-        locale === "en"
-          ? "Enter both coordinates or neither."
-          : "Bitte beide Koordinaten angeben oder leer lassen.";
-      setSubmitError(coordMsg);
-      toast.error(coordMsg);
+      setSubmitError(t.coordinatesBothOrNeitherError);
       setStep(1);
       return;
     }
@@ -288,13 +302,11 @@ export function EmployeesCreateDialog({
     const slotCheck = validateAvailabilitySlots(availability);
     if (slotCheck.timeOrder) {
       setSubmitError(t.availabilityTimeOrderError);
-      toast.error(t.availabilityTimeOrderError);
       setStep(2);
       return;
     }
     if (slotCheck.overlap) {
       setSubmitError(t.availabilityOverlapError);
-      toast.error(t.availabilityOverlapError);
       setStep(2);
       return;
     }
@@ -438,7 +450,28 @@ export function EmployeesCreateDialog({
                 >
                   {t.sectionMain}
                 </h2>
-                <div className="grid gap-3 sm:max-w-lg">
+                <div className="grid gap-4 sm:max-w-lg">
+                  <div className="grid gap-2">
+                    <Label htmlFor={nameFieldId}>{t.fieldDisplayName}</Label>
+                    <Input
+                      id={nameFieldId}
+                      value={displayName}
+                      onChange={(ev) => {
+                        setDisplayName(ev.target.value);
+                        if (nameError) {
+                          setNameError(null);
+                        }
+                      }}
+                      autoComplete="name"
+                      required
+                      aria-invalid={Boolean(nameError)}
+                    />
+                    {nameError ? (
+                      <p className="text-xs text-destructive" role="alert">
+                        {nameError}
+                      </p>
+                    ) : null}
+                  </div>
                   <div className="grid gap-2">
                     <Label htmlFor={`${formId}-eno`}>{t.fieldEmployeeNo}</Label>
                     <Input
@@ -535,25 +568,6 @@ export function EmployeesCreateDialog({
                     </div>
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor={nameFieldId}>{t.fieldDisplayName}</Label>
-                    <Input
-                      id={nameFieldId}
-                      value={displayName}
-                      onChange={(ev) => {
-                        setDisplayName(ev.target.value);
-                        if (nameError) {
-                          setNameError(null);
-                        }
-                      }}
-                      autoComplete="name"
-                    />
-                    {nameError ? (
-                      <p className="text-xs text-destructive" role="alert">
-                        {nameError}
-                      </p>
-                    ) : null}
-                  </div>
-                  <div className="grid gap-2">
                     <Label htmlFor={`${formId}-role`}>{t.fieldRole}</Label>
                     <Input
                       id={`${formId}-role`}
@@ -569,8 +583,8 @@ export function EmployeesCreateDialog({
                       value={notes}
                       onChange={(ev) => setNotes(ev.target.value)}
                       maxLength={EMPLOYEE_NOTES_MAX_LENGTH}
-                      rows={3}
-                      className="min-h-18 resize-y"
+                      rows={4}
+                      className="min-h-20 resize-y"
                     />
                     <p className="text-xs text-muted-foreground">
                       {formatEmployeesNotesCharCount(
@@ -604,16 +618,17 @@ export function EmployeesCreateDialog({
                   locale={locale}
                   defaultQuery={geocodeQuery}
                   onApply={(s) => {
-                    setPrivateRecipient(s.recipientName);
-                    setPrivateStreet(s.street);
+                    const normalizedAddress = normalizeAddressFields(
+                      s.recipientName,
+                      s.street,
+                    );
+                    setPrivateStreet(normalizedAddress.street);
                     setPrivatePostal(s.postalCode);
                     setPrivateCity(s.city);
                     setPrivateCountry(s.country);
-                    if (s.label?.trim()) {
-                      setPrivateLabel(s.label.trim());
-                    }
-                    if (s.addressLine2?.trim()) {
+                    if (s.addressLine2?.trim() && privateLine2.trim() === "") {
                       setPrivateLine2(s.addressLine2.trim());
+                      setPrivateLine2Expanded(true);
                     }
                     if (s.latitude != null && s.longitude != null) {
                       setLatitude(String(s.latitude));
@@ -622,7 +637,8 @@ export function EmployeesCreateDialog({
                     }
                   }}
                 />
-                <div className="grid gap-3 sm:grid-cols-2">
+                <Separator />
+                <div className="grid gap-4 sm:grid-cols-2">
                   <div className="grid gap-2">
                     <Label htmlFor={`${formId}-pal`}>{t.fieldAddressLabel}</Label>
                     <Input
@@ -631,20 +647,15 @@ export function EmployeesCreateDialog({
                       onChange={(ev) => setPrivateLabel(ev.target.value)}
                     />
                   </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor={`${formId}-pa2`}>{t.fieldAddressLine2}</Label>
-                    <Input
-                      id={`${formId}-pa2`}
-                      value={privateLine2}
-                      onChange={(ev) => setPrivateLine2(ev.target.value)}
-                    />
-                  </div>
                   <div className="grid gap-2 sm:col-span-2">
                     <Label htmlFor={`${formId}-prec`}>{t.fieldRecipient}</Label>
                     <Input
                       id={`${formId}-prec`}
                       value={privateRecipient}
-                      onChange={(ev) => setPrivateRecipient(ev.target.value)}
+                      onChange={(ev) => {
+                        setPrivateRecipientEdited(true);
+                        setPrivateRecipient(ev.target.value);
+                      }}
                     />
                   </div>
                   <div className="grid gap-2 sm:col-span-2">
@@ -654,6 +665,36 @@ export function EmployeesCreateDialog({
                       value={privateStreet}
                       onChange={(ev) => setPrivateStreet(ev.target.value)}
                     />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <Accordion
+                      type="single"
+                      collapsible
+                      value={privateLine2Expanded ? "address-line-2" : undefined}
+                      onValueChange={(value) =>
+                        setPrivateLine2Expanded(value === "address-line-2")
+                      }
+                      className="w-full rounded-lg border border-border/60 bg-muted/10 px-3"
+                    >
+                      <AccordionItem value="address-line-2" className="border-none">
+                        <AccordionTrigger className="py-2.5 text-sm font-medium hover:no-underline">
+                          {privateLine2Expanded ? t.addressLine2Hide : t.addressLine2Show}
+                        </AccordionTrigger>
+                        <AccordionContent className="pb-0">
+                          <div className="grid gap-2 pb-3">
+                            <Label htmlFor={`${formId}-pa2`} className="sr-only">
+                              {t.fieldAddressLine2}
+                            </Label>
+                            <Input
+                              id={`${formId}-pa2`}
+                              value={privateLine2}
+                              onChange={(ev) => setPrivateLine2(ev.target.value)}
+                              placeholder={t.addressLine2Placeholder}
+                            />
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    </Accordion>
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor={`${formId}-pplz`}>{t.fieldPostal}</Label>
@@ -729,7 +770,7 @@ export function EmployeesCreateDialog({
                   </Button>
                 </div>
                 {availability.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">—</p>
+                  <p className="text-xs text-muted-foreground">{t.availabilityEmpty}</p>
                 ) : (
                   <ul className="space-y-3">
                     {availability.map((r) => (

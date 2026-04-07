@@ -7,6 +7,22 @@ export type OrganizationBrandingCopy = {
   companyNameHint: string;
   senderAddress: string;
   senderAddressHint: string;
+  senderAddressSearchPlaceholder: string;
+  senderAddressNotConfiguredHint: string;
+  senderAddressAutoFilledHint: string;
+  senderAddressLocateTitle: string;
+  senderAddressLocateUnsupported: string;
+  senderAddressLocateDenied: string;
+  senderAddressLocateUnavailable: string;
+  senderAddressLocateTimeout: string;
+  senderAddressLocateFailed: string;
+  senderStreet: string;
+  senderHouseNumber: string;
+  senderPostalCode: string;
+  senderCity: string;
+  senderCountry: string;
+  senderCoordinatesLabel: string;
+  senderAddressIncompleteError: string;
   vatId: string;
   taxNumber: string;
   logoLabel: string;
@@ -33,7 +49,30 @@ const de: OrganizationBrandingCopy = {
   companyName: "Firmenname",
   companyNameHint: "Wird prominent im Briefkopf verwendet.",
   senderAddress: "Absenderadresse",
-  senderAddressHint: "Mehrzeilig moeglich (Strasse, PLZ Ort, Land).",
+  senderAddressHint:
+    "Suche, GPS-Ortung oder manuelle Eingabe. Die Daten erscheinen im Briefkopf (Strasse, PLZ Ort, Land).",
+  senderAddressSearchPlaceholder: "Adresse suchen…",
+  senderAddressNotConfiguredHint:
+    "Adresssuche ist nicht konfiguriert. Felder koennen manuell befuellt werden.",
+  senderAddressAutoFilledHint:
+    "Automatisch ermittelt – bitte pruefen und ggf. korrigieren.",
+  senderAddressLocateTitle: "GPS-Standort ermitteln",
+  senderAddressLocateUnsupported: "Ihr Browser unterstuetzt keine GPS-Ortung.",
+  senderAddressLocateDenied:
+    "GPS-Zugriff wurde verweigert. Bitte aktivieren Sie die Standortfreigabe in Ihren Browser-Einstellungen.",
+  senderAddressLocateUnavailable:
+    "Position nicht verfuegbar. Standortdienste sind moeglicherweise deaktiviert.",
+  senderAddressLocateTimeout:
+    "Zeitueberschreitung bei der Standortermittlung. Bitte versuchen Sie es erneut.",
+  senderAddressLocateFailed: "Standort konnte nicht ermittelt werden.",
+  senderStreet: "Strasse",
+  senderHouseNumber: "Hausnummer",
+  senderPostalCode: "PLZ",
+  senderCity: "Stadt",
+  senderCountry: "Land",
+  senderCoordinatesLabel: "Koordinaten",
+  senderAddressIncompleteError:
+    "Bitte Strasse, PLZ und Stadt vollstaendig ausfuellen (oder Felder leeren).",
   vatId: "USt-IdNr.",
   taxNumber: "Steuernummer",
   logoLabel: "Logo",
@@ -61,7 +100,30 @@ const en: OrganizationBrandingCopy = {
   companyName: "Company name",
   companyNameHint: "Shown prominently in the letterhead.",
   senderAddress: "Sender address",
-  senderAddressHint: "Multiple lines supported (street, postal code, country).",
+  senderAddressHint:
+    "Lookup, GPS, or manual entry. These details appear in the letterhead (street, postal code + city, country).",
+  senderAddressSearchPlaceholder: "Search address…",
+  senderAddressNotConfiguredHint:
+    "Address lookup is not configured. You can fill in the fields manually.",
+  senderAddressAutoFilledHint:
+    "Filled automatically — please verify and adjust if needed.",
+  senderAddressLocateTitle: "Use GPS location",
+  senderAddressLocateUnsupported: "Your browser does not support geolocation.",
+  senderAddressLocateDenied:
+    "Location access was denied. Please allow location access in your browser settings.",
+  senderAddressLocateUnavailable:
+    "Location unavailable. Location services might be disabled.",
+  senderAddressLocateTimeout:
+    "Location lookup timed out. Please try again.",
+  senderAddressLocateFailed: "Could not determine location.",
+  senderStreet: "Street",
+  senderHouseNumber: "House no.",
+  senderPostalCode: "Postal code",
+  senderCity: "City",
+  senderCountry: "Country",
+  senderCoordinatesLabel: "Coordinates",
+  senderAddressIncompleteError:
+    "Please fill in street, postal code, and city (or clear the fields).",
   vatId: "VAT ID",
   taxNumber: "Tax number",
   logoLabel: "Logo",

@@ -576,6 +576,7 @@ export type SalesReminderEmailJobCreateInput = z.infer<
 
 export const salesReminderEmailJobStatusSchema = z.enum([
   "pending",
+  "processing",
   "sent",
   "failed",
 ]);
@@ -630,6 +631,16 @@ export const salesReminderEmailJobRetryResponseSchema = z.object({
   job: salesReminderEmailJobRecordSchema,
 });
 
+/** POST /v1/sales/reminder-email-jobs/:jobId/replay */
+export const salesReminderEmailJobReplayResponseSchema = z.object({
+  replayedFromJobId: z.string().uuid(),
+  job: salesReminderEmailJobRecordSchema,
+});
+
+export type SalesReminderEmailJobReplayResponse = z.infer<
+  typeof salesReminderEmailJobReplayResponseSchema
+>;
+
 /** POST /v1/sales/reminder-email-jobs/process */
 export const salesReminderEmailJobsProcessRequestSchema = z.object({
   jobId: z.string().uuid().optional(),
@@ -661,12 +672,63 @@ export const salesReminderEmailJobsMetricsResponseSchema = z.object({
   latestFailedAt: z.string().nullable(),
   latestFailedError: z.string().nullable(),
   latestActivityAt: z.string().nullable(),
-  latestActivityStatus: z.enum(["pending", "sent", "failed"]).nullable(),
+  latestActivityStatus: z.enum(["pending", "processing", "sent", "failed"]).nullable(),
   latestActivityAttempts: z.number().int().nonnegative().nullable(),
 });
 
 export type SalesReminderEmailJobsMetricsResponse = z.infer<
   typeof salesReminderEmailJobsMetricsResponseSchema
+>;
+
+/** GET /v1/sales/reminder-email-jobs — Query (tenant ops view). */
+export const salesReminderEmailJobsTenantListQuerySchema = z.object({
+  status: salesReminderEmailJobStatusSchema.optional(),
+  limit: z.number().int().min(1).max(200).optional(),
+  offset: z.number().int().min(0).optional(),
+});
+
+export type SalesReminderEmailJobsTenantListQuery = z.infer<
+  typeof salesReminderEmailJobsTenantListQuerySchema
+>;
+
+/** GET /v1/sales/reminder-email-jobs — Records without full bodyText. */
+export const salesReminderEmailJobOpsRecordSchema = z.object({
+  id: z.string().uuid(),
+  invoice: z.object({
+    id: z.string().uuid(),
+    documentNumber: z.string(),
+    customerLabel: z.string(),
+    projectId: z.string().uuid().nullable(),
+  }),
+  reminder: z.object({
+    id: z.string().uuid(),
+    level: z.number().int().min(1).max(10),
+    sentAt: z.string(),
+  }),
+  toEmail: z.string().email(),
+  subject: z.string(),
+  locale: z.enum(["de", "en"]),
+  status: salesReminderEmailJobStatusSchema,
+  attempts: z.number().int().nonnegative(),
+  maxAttempts: z.number().int().positive(),
+  lastError: z.string().nullable(),
+  createdBySub: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  sentAt: z.string().nullable(),
+});
+
+export type SalesReminderEmailJobOpsRecord = z.infer<
+  typeof salesReminderEmailJobOpsRecordSchema
+>;
+
+export const salesReminderEmailJobsTenantListResponseSchema = z.object({
+  jobs: z.array(salesReminderEmailJobOpsRecordSchema),
+  total: z.number().int().nonnegative(),
+});
+
+export type SalesReminderEmailJobsTenantListResponse = z.infer<
+  typeof salesReminderEmailJobsTenantListResponseSchema
 >;
 
 /** BFF: Produktivpfad mit Outbox-Audit (ersetzt reinen Spike bei Versand). */

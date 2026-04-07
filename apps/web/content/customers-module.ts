@@ -150,6 +150,13 @@ type CustomersCopy = {
     suggestionsHeading: string;
     applyThis: string;
     notConfiguredHint: string;
+    locateTitle: string;
+    autoFilledHint: string;
+    locateUnsupported: string;
+    locateDenied: string;
+    locateUnavailable: string;
+    locateTimeout: string;
+    locateFailed: string;
   };
   overview: {
     stampTitle: string;
@@ -324,6 +331,16 @@ const de: CustomersCopy = {
     applyThis: "Uebernehmen",
     notConfiguredHint:
       "Adresssuche ist nicht konfiguriert. Felder koennen manuell befuellt werden.",
+    locateTitle: "GPS-Standort ermitteln",
+    autoFilledHint: "Automatisch ermittelt – bitte pruefen und ggf. korrigieren.",
+    locateUnsupported: "Ihr Browser unterstuetzt keine GPS-Ortung.",
+    locateDenied:
+      "GPS-Zugriff wurde verweigert. Bitte aktivieren Sie die Standortfreigabe in Ihren Browser-Einstellungen.",
+    locateUnavailable:
+      "Position nicht verfuegbar. Standortdienste sind moeglicherweise deaktiviert.",
+    locateTimeout:
+      "Zeitueberschreitung bei der Standortermittlung. Bitte versuchen Sie es erneut.",
+    locateFailed: "Standort konnte nicht ermittelt werden.",
   },
   overview: {
     stampTitle: "Stammdaten",
@@ -496,6 +513,15 @@ const en: CustomersCopy = {
     applyThis: "Apply",
     notConfiguredHint:
       "Address lookup is not configured. You can fill in the fields manually.",
+    locateTitle: "Use GPS location",
+    autoFilledHint: "Filled automatically — please verify and adjust if needed.",
+    locateUnsupported: "Your browser does not support geolocation.",
+    locateDenied:
+      "Location access was denied. Please allow location access in your browser settings.",
+    locateUnavailable:
+      "Location unavailable. Location services might be disabled.",
+    locateTimeout: "Location lookup timed out. Please try again.",
+    locateFailed: "Could not determine location.",
   },
   overview: {
     stampTitle: "Master data",

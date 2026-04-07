@@ -12,6 +12,7 @@ import {
   removeAssetFile,
   writeAssetFile,
 } from "../project-assets-storage.js";
+import { parseMultilineAddress } from "../sales-e-invoice.js";
 
 type OrganizationRow = typeof organizations.$inferSelect;
 
@@ -30,12 +31,77 @@ function extForLogoContentType(ct: string): string {
   return "";
 }
 
+function composeSenderAddress(data: {
+  senderStreet: string | null;
+  senderHouseNumber: string | null;
+  senderPostalCode: string | null;
+  senderCity: string | null;
+  senderCountry: string | null;
+}): string | null {
+  const street = (data.senderStreet ?? "").trim();
+  const houseNumber = (data.senderHouseNumber ?? "").trim();
+  const postalCode = (data.senderPostalCode ?? "").trim();
+  const city = (data.senderCity ?? "").trim();
+  const country = (data.senderCountry ?? "").trim();
+
+  if (!street || !postalCode || !city) return null;
+
+  const line1 = [street, houseNumber].filter(Boolean).join(" ").trim();
+  const line2 = `${postalCode} ${city}`.trim();
+  const lines = [line1, line2];
+  if (country) lines.push(country);
+  return lines.filter(Boolean).join("\n");
+}
+
 export function mapOrgToMeOrganization(org: OrganizationRow) {
+  const senderStreet = org.senderStreet ?? null;
+  const senderHouseNumber = org.senderHouseNumber ?? null;
+  const senderPostalCode = org.senderPostalCode ?? null;
+  const senderCity = org.senderCity ?? null;
+  const senderCountry = org.senderCountry ?? null;
+  const senderLatitude = org.senderLatitude ?? null;
+  const senderLongitude = org.senderLongitude ?? null;
+
+  const hasStructured =
+    Boolean(senderStreet) ||
+    Boolean(senderHouseNumber) ||
+    Boolean(senderPostalCode) ||
+    Boolean(senderCity) ||
+    Boolean(senderCountry);
+
+  const fallbackStructured = !hasStructured && org.senderAddress
+    ? parseMultilineAddress(org.senderAddress)
+    : null;
+
+  const effectiveSenderStreet = senderStreet ?? fallbackStructured?.street ?? null;
+  const effectiveSenderPostalCode =
+    senderPostalCode ?? fallbackStructured?.postalCode ?? null;
+  const effectiveSenderCity = senderCity ?? fallbackStructured?.city ?? null;
+  const effectiveSenderCountry =
+    senderCountry ?? fallbackStructured?.country ?? null;
+
+  const derivedSenderAddress =
+    org.senderAddress ??
+    composeSenderAddress({
+      senderStreet: effectiveSenderStreet,
+      senderHouseNumber,
+      senderPostalCode: effectiveSenderPostalCode,
+      senderCity: effectiveSenderCity,
+      senderCountry: effectiveSenderCountry,
+    });
+
   return {
     id: org.id,
     name: org.name,
     tradeSlug: org.tradeSlug,
-    senderAddress: org.senderAddress ?? null,
+    senderAddress: derivedSenderAddress ?? null,
+    senderStreet: effectiveSenderStreet,
+    senderHouseNumber,
+    senderPostalCode: effectiveSenderPostalCode,
+    senderCity: effectiveSenderCity,
+    senderCountry: effectiveSenderCountry,
+    senderLatitude,
+    senderLongitude,
     vatId: org.vatId ?? null,
     taxNumber: org.taxNumber ?? null,
     hasLogo: Boolean(org.logoStorageRelativePath),
@@ -73,6 +139,13 @@ export function createOrganizationPatchHandler(getDb: () => Db | undefined) {
     const updates: Partial<{
       name: string;
       senderAddress: string | null;
+      senderStreet: string | null;
+      senderHouseNumber: string | null;
+      senderPostalCode: string | null;
+      senderCity: string | null;
+      senderCountry: string | null;
+      senderLatitude: number | null;
+      senderLongitude: number | null;
       vatId: string | null;
       taxNumber: string | null;
       logoStorageRelativePath: string | null;
@@ -80,9 +153,97 @@ export function createOrganizationPatchHandler(getDb: () => Db | undefined) {
     }> = {};
 
     if (patch.name !== undefined) updates.name = patch.name;
-    if (patch.senderAddress !== undefined) {
-      updates.senderAddress = patch.senderAddress;
+    let nextSenderStreet = orgCtx.senderStreet ?? null;
+    let nextSenderHouseNumber = orgCtx.senderHouseNumber ?? null;
+    let nextSenderPostalCode = orgCtx.senderPostalCode ?? null;
+    let nextSenderCity = orgCtx.senderCity ?? null;
+    let nextSenderCountry = orgCtx.senderCountry ?? null;
+
+    const patchTouchesStructuredAddressFields =
+      patch.senderStreet !== undefined ||
+      patch.senderHouseNumber !== undefined ||
+      patch.senderPostalCode !== undefined ||
+      patch.senderCity !== undefined ||
+      patch.senderCountry !== undefined;
+
+    const structuredAddressInUse =
+      Boolean(nextSenderStreet) ||
+      Boolean(nextSenderHouseNumber) ||
+      Boolean(nextSenderPostalCode) ||
+      Boolean(nextSenderCity) ||
+      Boolean(nextSenderCountry);
+
+    if (patch.senderStreet !== undefined) {
+      nextSenderStreet = patch.senderStreet;
+      updates.senderStreet = patch.senderStreet;
     }
+    if (patch.senderHouseNumber !== undefined) {
+      nextSenderHouseNumber = patch.senderHouseNumber;
+      updates.senderHouseNumber = patch.senderHouseNumber;
+    }
+    if (patch.senderPostalCode !== undefined) {
+      nextSenderPostalCode = patch.senderPostalCode;
+      updates.senderPostalCode = patch.senderPostalCode;
+    }
+    if (patch.senderCity !== undefined) {
+      nextSenderCity = patch.senderCity;
+      updates.senderCity = patch.senderCity;
+    }
+    if (patch.senderCountry !== undefined) {
+      nextSenderCountry = patch.senderCountry;
+      updates.senderCountry = patch.senderCountry;
+    }
+    if (patch.senderLatitude !== undefined) {
+      updates.senderLatitude = patch.senderLatitude;
+    }
+    if (patch.senderLongitude !== undefined) {
+      updates.senderLongitude = patch.senderLongitude;
+    }
+
+    const legacyOnlyPatch =
+      patch.senderAddress !== undefined &&
+      !patchTouchesStructuredAddressFields &&
+      patch.senderLatitude === undefined &&
+      patch.senderLongitude === undefined &&
+      !structuredAddressInUse;
+
+    if (legacyOnlyPatch) {
+      const legacySenderAddress = patch.senderAddress;
+      if (legacySenderAddress === undefined) {
+        updates.senderAddress = null;
+      } else if (legacySenderAddress === null) {
+        updates.senderAddress = null;
+        updates.senderStreet = null;
+        updates.senderHouseNumber = null;
+        updates.senderPostalCode = null;
+        updates.senderCity = null;
+        updates.senderCountry = null;
+        updates.senderLatitude = null;
+        updates.senderLongitude = null;
+      } else {
+        updates.senderAddress = legacySenderAddress;
+        const parsedLegacy = parseMultilineAddress(legacySenderAddress);
+        if (parsedLegacy) {
+          updates.senderStreet = parsedLegacy.street;
+          updates.senderHouseNumber = null;
+          updates.senderPostalCode = parsedLegacy.postalCode;
+          updates.senderCity = parsedLegacy.city;
+          updates.senderCountry = parsedLegacy.country;
+        }
+      }
+    } else if (patchTouchesStructuredAddressFields || structuredAddressInUse) {
+      const composed = composeSenderAddress({
+        senderStreet: nextSenderStreet,
+        senderHouseNumber: nextSenderHouseNumber,
+        senderPostalCode: nextSenderPostalCode,
+        senderCity: nextSenderCity,
+        senderCountry: nextSenderCountry,
+      });
+      if (composed !== null || patchTouchesStructuredAddressFields) {
+        updates.senderAddress = composed;
+      }
+    }
+
     if (patch.vatId !== undefined) updates.vatId = patch.vatId;
     if (patch.taxNumber !== undefined) updates.taxNumber = patch.taxNumber;
 

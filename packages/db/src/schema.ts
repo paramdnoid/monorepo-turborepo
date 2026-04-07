@@ -26,6 +26,15 @@ export const organizations = pgTable("organizations", {
   tradeSlug: text("trade_slug").notNull(),
   /** Mehrzeilige Absenderadresse für Belege (optional). */
   senderAddress: text("sender_address"),
+  /** Strukturierte Absenderadresse (Quelle der Wahrheit in Settings). */
+  senderStreet: text("sender_street"),
+  senderHouseNumber: text("sender_house_number"),
+  senderPostalCode: text("sender_postal_code"),
+  senderCity: text("sender_city"),
+  /** ISO 3166-1 alpha-2 */
+  senderCountry: text("sender_country"),
+  senderLatitude: doublePrecision("sender_latitude"),
+  senderLongitude: doublePrecision("sender_longitude"),
   vatId: text("vat_id"),
   taxNumber: text("tax_number"),
   /** Relativ zu PROJECT_ASSETS_ROOT; gemeinsam mit Projekt-Assets-Pfadlogik. */

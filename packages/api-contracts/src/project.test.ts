@@ -120,6 +120,9 @@ test("projectHubResponseSchema parses aggregated hub payload", () => {
       overdueOpenCount: 0,
       next7AssignmentsCount: 0,
       workTimeMinutesMonthToDate: 0,
+      assetCount: 0,
+      assetBytesTotal: 0,
+      gaebDocumentCount: 0,
     },
     segments: {
       last30Days: {

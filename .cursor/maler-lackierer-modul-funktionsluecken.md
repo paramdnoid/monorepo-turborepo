@@ -1,24 +1,26 @@
 # Funktionslücken-Analyse: Maler & Lackierer (Auftragsbearbeitung & Rechnungswesen)
 
 **Stand der Analyse:** 2026-04-07  
+**Status-Quelle (Reifegrade):** [`.cursor/maler-lackierer-doc-code-verification.md`](./maler-lackierer-doc-code-verification.md) → „Status-Baseline (E-01 bis E-13)“  
 **Bezug:** Screenshot-Navigation (Gruppen *Navigation*, *Stammdaten*, *Belege*, *Team & Planung*) sowie Code unter `apps/web/app/web/`, Shell `apps/web/components/web/shell/web-shell.tsx`, BFF `apps/web/app/api/web/`, Schema `packages/db/src/schema.ts`.
 
 ## Änderungsstand (vollständig abgeglichen)
 
-- Forderungsmanagement auf tatsächlichen Umfang gehoben (E-06 v5-Basis + **persistierter** CAMT-Dateiimport + **Sammelzahlungen** + **Mehrfach-CAMT-Zeilen → Sammelzahlung** auf der OP-Seite).
-- DATEV von „nur Schnittstelle“ auf „Basis produktiv vorhanden“ präzisiert (Settings + Buchungs-CSV; fachliche Tiefe offen).
-- Zeiterfassung/Scheduling/Audit als „teilweise umgesetzt“ differenziert, statt pauschal offen.
+- E-06 aktualisiert: OP/CAMT/Batch inkl. **Mahn-E-Mail-Outbox**; offen bleibt v. a. Betriebshärtung (Monitoring/Alerting, Automatisierung).
+- E-09 präzisiert: DATEV-Basis + XRechnung/ZUGFeRD-Endpunkte vorhanden; Standardkonformität/Profil-Tiefe offen.
+- Scheduling/Zeiterfassung/Audit differenziert (teilweise umgesetzt) statt pauschal offen.
 
 **Ziel dieses Dokuments:** Vollständige, modulweise Liste **fehlender oder nur teilweise vorhandener** Funktionalitäten für ein branchentaugliches Produkt mit **paralleler Frontend-/Backend-Integration**. Bereits vorhandene Bausteine werden kurz benannt, damit Lücken und Beziehungen zwischen Modulen klar werden.
 
 ---
 
-## Nicht mehr als Lücke zu werten (Stand jetzt)
+## Bereits geliefert (Kurz, kein „Gap“)
 
-- E-01-Basis: Projekt-Kunden-/Baustellenbezug (mit Legacy-Fallback) ist geliefert.
-- E-02-Basis: Projekt-Hub mit Belegen/Dateien/GAEB/7-Tage-Termine/Zeiterfassung/OP ist geliefert; **v3:** `GET /v1/projects/:id/hub` mit KPI-/Mini-Pipeline, 30-Tage-Segmenten/Trends und aufgeraeumter KPI-Karten-UI (Hierarchie, Mobile).
-- E-06-v5-Basis: Mahntext-Templates + optionale Gebühr + PDF/Druck + Einstellungs-UI sowie E-Mail-/CAMT-Spike; **CAMT-XML-Upload** mit Vorschau, **Persistenz/Idempotenz** (Hash) und **Import-Historie**; **keine** automatische Zahlungsbuchung aus CAMT; **Sammelzahlung** mehrerer OP-Rechnungen in einem Buchungslauf (`POST …/payments/batch`) inkl. UI; **Übernahme mehrerer CAMT-Zeilen** in die Sammelwahl (Auswahl + Prefill, Summe pro Rechnung bei mehrfachen Treffern).
-- DATEV-Basis: Settings + Ausgangs-Buchungs-CSV sind geliefert (Vertiefung bleibt Backlog).
+- **E-01**: Projekt ↔ Kunde ↔ Baustelle (Basis) geliefert.
+- **E-02**: Projekt-Hub v1–v3 (inkl. KPI/Pipeline + 30-Tage-Segmente/Trends + UI-Polish) geliefert.
+- **E-03/E-04/E-05**: Kunden-Defaults, Scheduling-Projektbezug/Zeitraumfilter und Zeiterfassung-Basis geliefert.
+- **E-06**: OP/Mahnung/CAMT/Batch + Mahn-E-Mail-Outbox geliefert (Betriebshärtung/Automatisierung Backlog).
+- **E-09**: DATEV Settings + Buchungs-CSV sowie XRechnung/ZUGFeRD-Endpunkte vorhanden (Standardtiefe Backlog).
 
 ---
 
@@ -72,7 +74,7 @@
 ### Fehlende / zu vertiefende Funktionalitäten
 
 1. **Pipeline Auftragsbearbeitung:** Conversion-Rate Angebot → Auftrag, gewichtete Pipeline, erwarteter Umsatz nach Phase.
-2. **Liquidität & Forderungen:** Teilzahlungen/Saldo **pro Rechnung** sind erfasst; mandantenweite **OP-Liste** inkl. CSV unter `/web/sales/invoices/open` umgesetzt (optional `projectId`-Filter fuer Projektkontext); **Mahnwesen (manuell)** inkl. Historie + PDF/Druck ist umgesetzt; **Mahntexte und optionale Mahngebuehr** pro Mandant (Stufe 1–10, `de`/`en`) unter Einstellungen, genutzt in PDF/Druck inkl. Platzhalter-Auflösung (z. B. Belegnr./Betrag/Fälligkeit). Zudem sind **E-Mail-Spike** (Dry-Run + optional SMTP-Send), **CAMT-Matching-Spike** (Top-Kandidat + Buchung im Rechnungsdetail), **CAMT-Dateiimport** (XML-Upload, Vorschau, Persistenz/Idempotenz, Historie) und **Sammelzahlungen/Mehrfachzuordnung** (Batch-API + OP-UI; mehrere CAMT-Zeilen → Sammelzahlung) umgesetzt. Projekt-Hub zeigt eine projektbezogene OP-Karte. Weiterhin offen: Forecast (Zinslauf, Skonto), produktiver Mailversand (Queue/Retry).
+2. **Liquidität & Forderungen (Dashboard-Ebene):** Forecast/Trend-Kennzahlen (z. B. DSO, Überfälligkeit), Skonto-/Cashflow-Vorschau sowie Outbox-/Versand-Kennzahlen (Backlog, Failed) inkl. Alerting; Details zu OP/Mahnung/CAMT siehe Modul 6 und Verifikation.
 3. **Projekt-/Baustellen-KPIs:** Budget vs. Ist (wenn Kosten/Zeiten ergänzt werden), Deckungsbeitrag.
 4. **Team-Auslastung:** Kapazität vs. geplante Stunden (benötigt Verknüpfung Planung ↔ Projekt und ggf. Zeiterfassung).
 5. **Material & Bestellungen:** (falls eingeführt) kritische Liefertermine, Nachbestellungen — aktuell kein Modul im Screenshot, fachlich aber relevant.
@@ -89,13 +91,12 @@
 
 ### Fehlende Funktionalitäten
 
-1. **Verbindlicher Kundenbezug:** umgesetzt (E-01) — `projects.customerId` + UI-Auswahl aus Kundenstamm. (Adressen-Übernahme in Belege folgt in nachgelagerten Epics.)
-2. **Baustellen-/Objekt-Stammdaten:** teilweise umgesetzt (E-01) — pro Projekt eine Referenz auf Kundenadresse (`projects.siteAddressId`). Offene Punkte: zusaetzliche Felder (Zugriff/Schluessel/Ansprechpartner) und ggf. eigene Projektadresse unabhängig vom Kundenstamm.
-3. **Auftragsarten:** Innen/Außen, Neubau/Renovierung, Subunternehmer-Anteile — für Planung und Abrechnung.
-4. **Leistungsbeschreibung / Leistungsverzeichnis-Light:** nicht nur LV-Import (GAEB), sondern **interne** strukturierte Leistung für wiederkehrende Maler-Pakete.
-5. **Budget & Kostenstellen:** auch wenn nur „einfach“ — Schätzung vs. Ist für Handwerker-KMU üblich.
-6. **Digitale Baustellenmappe:** `project_assets` existiert im Schema — **UI/Workflow** zur strukturierten Ablage (Fotos, Pläne, Abnahmen) und Verknüpfung mit Belegen/Einsätzen (falls API/UI noch nicht vollständig).
-7. **Meilensteine / Checklisten:** Abnahme, Zwischentermin, „lackierfertig“ — operative Steuerung.
+1. **Baustellen-/Objekt-Stammdaten (Vertiefung):** zusätzliche Felder (Zugriff/Schlüssel/Ansprechpartner) und ggf. eigene Projektadresse unabhängig vom Kundenstamm.
+2. **Auftragsarten:** Innen/Außen, Neubau/Renovierung, Subunternehmer-Anteile — für Planung und Abrechnung.
+3. **Leistungsbeschreibung / Leistungsverzeichnis-Light:** nicht nur LV-Import (GAEB), sondern interne strukturierte Leistung für wiederkehrende Maler-Pakete.
+4. **Budget & Kostenstellen:** auch wenn nur „einfach“ — Schätzung vs. Ist für Handwerker-KMU üblich.
+5. **Digitale Baustellenmappe (Produktiv-Workflow/Struktur):** strukturierte Ablage (Tags/Kategorien, Abnahmen/Protokolle) und Verknüpfung mit Belegen/Einsätzen.
+6. **Meilensteine / Checklisten:** Abnahme, Zwischentermin, „lackierfertig“ — operative Steuerung.
 
 ---
 
@@ -104,15 +105,15 @@
 ### Vorhanden (Kurz)
 
 - Kunden CRUD, Kategorien, Archiv, Batch, CSV-Export; Adressarten; Detailseiten inkl. Karten/Geocoding (soweit angebunden).
+- Kommerz-Defaults: Zahlungsziel/Skonto und Mahnfristen-Defaults pro Kunde (Prefill für Rechnungen/Mahnungen).
 
 ### Fehlende Funktionalitäten
 
-1. **Zahlungsbedingungen & Mahnstufen** pro Kunde (Default für neue Rechnungen/Mahnungen). **Status:** umgesetzt als Basis (E-03) — `paymentTermsDays` + Skonto-Felder im Kundenstamm; `dueAt` wird bei neuer Rechnung serverseitig vorbelegt, wenn nicht ueberschrieben; Mahnfristen-Defaults (`reminderLevel1DaysAfterDue`/`reminderLevel2DaysAfterDue`/`reminderLevel3DaysAfterDue`) sind editierbar und werden bei Mahnungen als Prefill genutzt.
-2. **Kreditlimit / Risiko-Flags** (optional, aber im B2B-Rechnungswesen üblich).
-3. **Mehrere Rollen:** Auftraggeber vs. Rechnungsempfänger vs. Objekteigentümer (Maler-Alltag: Vermieter/Mieter, Generalunternehmer).
-4. **SEPA-Mandate / Bankverbindung** (sensible Daten — nur mit klarer Security-Story).
-5. **Kommunikationsprotokoll:** dokumentierte Anrufe/Mails (CRM-light) — Verknüpfung zu Angebot/Auftrag.
-6. **DSGVO:** Einwilligungen, Datenminimierung, Löschkonzept pro Kunde (Prozess + UI).
+1. **Kreditlimit / Risiko-Flags** (optional, aber im B2B-Rechnungswesen üblich).
+2. **Mehrere Rollen:** Auftraggeber vs. Rechnungsempfänger vs. Objekteigentümer (Maler-Alltag: Vermieter/Mieter, Generalunternehmer).
+3. **SEPA-Mandate / Bankverbindung** (sensible Daten — nur mit klarer Security-Story).
+4. **Kommunikationsprotokoll:** dokumentierte Anrufe/Mails (CRM-light) — Verknüpfung zu Angebot/Auftrag.
+5. **DSGVO:** Einwilligungen, Datenminimierung, Löschkonzept pro Kunde (Prozess + UI).
 
 ---
 
@@ -121,6 +122,7 @@
 ### Vorhanden (Kurz)
 
 - Positionen, Beträge, Währung, Status, PDF/Druck, Archivierung, Verknüpfung Angebot → Rechnung, Projekt- und Kundenbezug, `paidAt` bei Rechnungen.
+- Forderungsmanagement-Basis: Teilzahlungen/Saldo, OP-Liste + CSV, Mahnhistorie + PDF/Druck, Mahntext-Templates/Gebühr, CAMT-Matching/Import (persistiert) + Sammelzahlungen sowie Mahn-E-Mail-Outbox.
 
 ### Fehlende / typische Handwerks-/DE-Funktionalitäten
 
@@ -130,11 +132,11 @@
 4. **Gutschriften / Stornos** mit nachvollziehbarer Buchhaltungslogik (nicht nur „cancel“).
 5. **Lieferscheine / Leistungsnachweise** als eigener Belegtyp (Material und/oder Stunden/Leistung) — oft **Voraussetzung** für spätere Rechnung und Streitbeilegung.
 6. **Auftragsbestätigung** (vom angenommenen Angebot) als eigener Schritt inkl. Bedingungen.
-7. **Mahnwesen:** manuelle Mahnstufen + Historie + PDF/Druck sind umgesetzt; **Templates + optionale Gebuehr** (PDF/Druck, Einstellungen) umgesetzt; Platzhalter im Text sind umgesetzt; **Mahn-E-Mail-Outbox** (`sales_reminder_email_jobs`, API, BFF `email-queue`) ist umgesetzt — Audit und Lieferstatus im Request; optional: Cron-Worker ohne Browser-Session, UI „erneut senden“. Legacy **E-Mail-Spike**-Route bleibt. Offen: automatische Eskalation nach Regeln.
-8. **Zahlungsabgleich:** **Teilzahlungen und Saldo pro Rechnung** sind umgesetzt (API + UI); **einzelne Zahlungszeilen löschen** (Korrektur) umgesetzt; **CAMT-Zuordnungs-Spike** (Kandidaten-Ranking + Top-Match-Buchung), **CAMT-Dateiimport** (Vorschau, Persistenz/Idempotenz, Historie; keine Massen-Auto-Buchung) und **Sammelzahlungen** (eine Buchung, mehrere Rechnungen/Teilbeträge) sind umgesetzt. Weiterhin offen: Ausgleich gegen **Kundenkonto** (außerhalb der OP-Sammelzahlung), produktiver Bankimport **ohne** manuelle OP-Zuordnung (z. B. HBCI/PSD2), falls gewünscht.
-9. **Elektronische Rechnung:** **XRechnung / ZUGFeRD** (Deutschland/EU-Trend) — Basis-Endpunkte/Downloadpfad vorhanden, Standardkonformität und Profil-Tiefe weiter ausbauen.
+7. **Mahnwesen (Betrieb & Automatisierung):** Monitoring/Alerting für Outbox (Backlog/Failed), automatisierter Lauf (Cron/Worker) und Eskalationsregeln (falls gewünscht).
+8. **Zahlungsabgleich (optional vertiefen):** Ausgleich gegen Kundenkonto/Überzahlungen (außerhalb Batch), automatischer Bankimport (PSD2/HBCI) und weniger manuelle Zuordnung (nur falls gewünscht).
+9. **Elektronische Rechnung (Vertiefung):** XRechnung/ZUGFeRD-Endpunkte sind vorhanden; Standardkonformität und Profil-Tiefe weiter ausbauen.
 10. **GoBD / Unveränderbarkeit:** revisionssichere Ablage, Revisionen von Belegen, Löschverbote nach Finalisierung.
-11. **DATEV-Export:** im System angebunden (Settings + Buchungs-CSV fuer Ausgangsrechnungen) — fachliche Vollständigkeit Buchungsstapel (z. B. Zahlungsbuchungen/erweiterte Mapping-Faelle) bleibt offen.
+11. **DATEV-Export (Vertiefung):** Settings + Buchungs-CSV für Ausgangsrechnungen vorhanden; fachliche Vollständigkeit (z. B. Zahlungsbuchungen/erweiterte Mapping-Fälle) bleibt offen.
 12. **Leistungszeiträume / §13b-Hinweise** wo relevant (Schnittstelle zu Steuer-Fachkonzept).
 13. **Angebots-Vergleich / Versionierung:** mehrere Versionen eines Angebots, Nachverhandlung dokumentiert.
 
@@ -159,10 +161,11 @@
 ### Vorhanden (Kurz)
 
 - Kalenderansicht, Einsätze, Abhängigkeiten/Warnungen (z. B. Urlaub), ICS-Export.
+- Projektbezug je Einsatz ist als Basis vorhanden (optional `project_id` inkl. Filter/Zeitraum in API/UI).
 
 ### Fehlende Funktionalitäten
 
-1. **Projekt-/Kundenbezug** pro Termin — **teilweise umgesetzt** (optional `project_id`, E-04 v1); offen: Pflicht-Policy, bessere Defaults aus Baustelle.
+1. **Projekt-/Kundenbezug (Vertiefung):** Pflicht-Policy, bessere Defaults aus Baustelle, konsistente Anzeige Kunde/Baustelle im Kalender.
 2. **Routen / Mehr-Baustellen-Tag** (optimierte Reihenfolge — später).
 3. **Ressourcenkonflikte:** Überschneidungen, Doppelbuchung, Kapazität pro Team.
 4. **Soll-/Ist-Stunden** je Einsatz (Brücke zur Zeiterfassung).
@@ -217,9 +220,9 @@ Für **Auftragsbearbeitung + Rechnungswesen** Maler/Lackierer typischerweise:
 1. **Stammdaten konsolidieren:** Projekt ↔ Kunde ↔ Baustelle.  
 2. **Scheduling mit Projekt/Baustelle verknüpfen.**  
 3. **Zeiterfassung** mit Projektbezug.  
-4. **Mahn- und Zahlungsabgleich** bei Rechnungen — Teilzahlungen/Saldo **v1**, OP-Liste/CSV und Korrektur Zahlungszeile **v2**, Mahnung/Historie + PDF/Druck **v3**, Mahntext-Templates/Gebuehr **v4**, E-Mail-/CAMT-Spike **v5-Basis**, **CAMT-Dateiimport** (inkl. Persistenz/Historie) und **Sammelzahlungen** (inkl. CAMT-Mehrfach-Prefill) erledigt; produktiver Mailversand **offen**.  
+4. **Mahn- und Zahlungsabgleich (E-06):** OP/Teilzahlungen/Mahnungen/Templates/CAMT/Batch + Mahn-E-Mail-Outbox geliefert; offen: Monitoring/Alerting, ggf. automatisierter Lauf und Eskalationsregeln.  
 5. **Steuer/Belegtiefe** nach Zielmarkt (DE).  
-6. **XRechnung / ZUGFeRD starten** und **DATEV** qualitativ vertiefen.  
+6. **XRechnung / ZUGFeRD standardisieren** (Profil-Tiefe) und **DATEV** qualitativ vertiefen.  
 7. **Material/Purchase** anbinden, sobald Kataloge im Produkt genutzt werden.
 
 ---

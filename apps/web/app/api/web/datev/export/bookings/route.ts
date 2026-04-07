@@ -33,6 +33,10 @@ export async function GET(request: Request) {
   const from = url.searchParams.get("from") ?? "";
   const to = url.searchParams.get("to") ?? "";
   const qs = new URLSearchParams({ from, to });
+  const dryRun = url.searchParams.get("dryRun");
+  const strict = url.searchParams.get("strict");
+  if (dryRun) qs.set("dryRun", dryRun);
+  if (strict) qs.set("strict", strict);
 
   try {
     const res = await fetch(

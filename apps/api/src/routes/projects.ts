@@ -1,5 +1,18 @@
 import type { SQL } from "drizzle-orm";
-import { and, asc, desc, eq, gt, gte, inArray, isNull, lte, sql, sum } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  gt,
+  gte,
+  inArray,
+  isNull,
+  lte,
+  sql,
+  sum,
+} from "drizzle-orm";
 import type { Context } from "hono";
 
 import {
@@ -512,7 +525,9 @@ export function createProjectHubDetailHandler(getDb: () => Db | undefined) {
       quoteRows,
       invoiceRows,
       assetRows,
+      assetAggRows,
       gaebRows,
+      gaebAggRows,
       schedulingRows,
       workTimeRows,
       quoteAllRows,
@@ -569,6 +584,16 @@ export function createProjectHubDetailHandler(getDb: () => Db | undefined) {
         .limit(8),
       db
         .select({
+          assetCount: count(),
+          assetBytesTotal: sum(projectAssets.byteSize),
+        })
+        .from(projectAssets)
+        .where(
+          and(eq(projectAssets.tenantId, auth.tenantId), eq(projectAssets.projectId, id)),
+        )
+        .limit(1),
+      db
+        .select({
           id: lvDocuments.id,
           filename: lvDocuments.filename,
           status: lvDocuments.status,
@@ -584,6 +609,17 @@ export function createProjectHubDetailHandler(getDb: () => Db | undefined) {
         )
         .orderBy(desc(lvDocuments.updatedAt))
         .limit(8),
+      db
+        .select({ gaebDocumentCount: count() })
+        .from(lvDocuments)
+        .where(
+          and(
+            eq(lvDocuments.tenantId, auth.tenantId),
+            eq(lvDocuments.projectId, id),
+            gt(lvDocuments.purgeAfterAt, now),
+          ),
+        )
+        .limit(1),
       db
         .select({
           id: schedulingAssignments.id,
@@ -657,6 +693,10 @@ export function createProjectHubDetailHandler(getDb: () => Db | undefined) {
       (sum, row) => sum + row.durationMinutes,
       0,
     );
+    const assetAgg = assetAggRows[0] ?? { assetCount: 0, assetBytesTotal: 0 };
+    const assetCount = toInt(assetAgg.assetCount);
+    const assetBytesTotal = toInt(assetAgg.assetBytesTotal);
+    const gaebDocumentCount = toInt(gaebAggRows[0]?.gaebDocumentCount ?? 0);
     const invoiceIds = invoiceAllRows.map((row) => row.id);
     const paymentData =
       invoiceIds.length > 0
@@ -1010,6 +1050,9 @@ export function createProjectHubDetailHandler(getDb: () => Db | undefined) {
         overdueOpenCount,
         next7AssignmentsCount: schedulingRows.length,
         workTimeMinutesMonthToDate: workTimeTotalMinutes,
+        assetCount,
+        assetBytesTotal,
+        gaebDocumentCount,
       },
       segments: {
         last30Days: segmentLast30,

@@ -253,6 +253,9 @@ export const projectHubResponseSchema = z.object({
     overdueOpenCount: z.number().int().nonnegative(),
     next7AssignmentsCount: z.number().int().nonnegative(),
     workTimeMinutesMonthToDate: z.number().int().nonnegative(),
+    assetCount: z.number().int().nonnegative(),
+    assetBytesTotal: z.number().int().nonnegative(),
+    gaebDocumentCount: z.number().int().nonnegative(),
   }),
   segments: z.object({
     last30Days: z.object({

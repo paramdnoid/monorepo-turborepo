@@ -33,19 +33,68 @@ function normalizeCountry(raw: unknown): string {
   return "DE";
 }
 
-function streetFromProperties(p: Record<string, unknown>): string {
-  const h = typeof p.housenumber === "string" ? p.housenumber.trim() : "";
-  const s = typeof p.street === "string" ? p.street.trim() : "";
-  if (h && s) {
-    return `${h} ${s}`.trim();
+function composeStreet(streetName: string, houseNumber: string): string {
+  return [streetName, houseNumber].filter(Boolean).join(" ").trim();
+}
+
+function normalizeAddressComparable(raw: string): string {
+  return raw
+    .toLowerCase()
+    .replace(/[.,/\\-]+/g, " ")
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b))
+    .join("|");
+}
+
+function streetPartsFromProperties(p: Record<string, unknown>): {
+  street: string;
+  streetName: string;
+  houseNumber: string;
+} {
+  const houseNumber = typeof p.housenumber === "string" ? p.housenumber.trim() : "";
+  const explicitStreet =
+    (typeof p.street === "string" && p.street.trim()) ||
+    (typeof p.street_name === "string" && p.street_name.trim()) ||
+    "";
+  if (explicitStreet) {
+    return {
+      street: composeStreet(explicitStreet, houseNumber),
+      streetName: explicitStreet,
+      houseNumber,
+    };
   }
-  if (s) {
-    return s;
+  const fallbackStreet = typeof p.name === "string" ? p.name.trim() : "";
+  return {
+    street: fallbackStreet,
+    streetName: fallbackStreet,
+    houseNumber: "",
+  };
+}
+
+function isDuplicateRecipientCandidate(
+  candidate: string,
+  street: string,
+  streetName: string,
+  houseNumber: string,
+): boolean {
+  const candidateKey = normalizeAddressComparable(candidate);
+  if (!candidateKey) {
+    return false;
   }
-  if (typeof p.street_name === "string" && p.street_name.trim()) {
-    return (h ? `${h} ${p.street_name}` : p.street_name).trim();
+  const comparable = new Set<string>();
+  if (street) {
+    comparable.add(normalizeAddressComparable(street));
   }
-  return typeof p.name === "string" ? p.name.trim() : "";
+  if (streetName) {
+    comparable.add(normalizeAddressComparable(streetName));
+    if (houseNumber) {
+      comparable.add(normalizeAddressComparable(composeStreet(streetName, houseNumber)));
+      comparable.add(normalizeAddressComparable(`${houseNumber} ${streetName}`));
+    }
+  }
+  return comparable.has(candidateKey);
 }
 
 function pointWgs84FromFeature(feature: unknown): {
@@ -85,7 +134,7 @@ function mapOrsFeature(feature: unknown): GeocodeSuggestionPayload | null {
   if (!p || typeof p !== "object") {
     return null;
   }
-  const street = streetFromProperties(p);
+  const { street, streetName, houseNumber } = streetPartsFromProperties(p);
   const city =
     (typeof p.locality === "string" && p.locality.trim()) ||
     (typeof p.localadmin === "string" && p.localadmin.trim()) ||
@@ -100,17 +149,22 @@ function mapOrsFeature(feature: unknown): GeocodeSuggestionPayload | null {
   );
   const fullLabel =
     typeof p.label === "string" && p.label.trim() ? p.label.trim() : null;
-  const recipientName =
-    (typeof p.name === "string" && p.name.trim()) ||
-    fullLabel?.split(",")[0]?.trim() ||
-    street ||
-    city;
+  const recipientCandidate =
+    (typeof p.name === "string" && p.name.trim()) || fullLabel?.split(",")[0]?.trim() || "";
+  const recipientName = isDuplicateRecipientCandidate(
+    recipientCandidate,
+    street,
+    streetName,
+    houseNumber,
+  )
+    ? ""
+    : recipientCandidate;
   if (!street && !city) {
     return null;
   }
   const ll = pointWgs84FromFeature(feature);
   return {
-    recipientName: recipientName || street || "—",
+    recipientName,
     street: street || "—",
     postalCode,
     city: city || "—",
@@ -136,7 +190,12 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const q = url.searchParams.get("q")?.trim() ?? "";
-  if (q.length < 2) {
+  const latRaw = url.searchParams.get("lat")?.trim() ?? "";
+  const lonRaw = (url.searchParams.get("lon") ?? url.searchParams.get("lng"))?.trim() ?? "";
+  const wantsReverse = latRaw !== "" || lonRaw !== "";
+  const lat = wantsReverse ? Number(latRaw) : null;
+  const lon = wantsReverse ? Number(lonRaw) : null;
+  if (!wantsReverse && q.length < 2) {
     return NextResponse.json(
       { configured: true, suggestions: [] satisfies GeocodeSuggestionPayload[] },
       noStoreInit(),
@@ -162,10 +221,34 @@ export async function GET(request: Request) {
     ? Math.min(Math.max(timeoutRaw, 1000), 15_000)
     : 4000;
 
-  const target = `${base}/search?${new URLSearchParams({
-    text: q,
-    size: "5",
-  })}`;
+  let target: string;
+  if (wantsReverse) {
+    if (
+      lat === null ||
+      lon === null ||
+      !Number.isFinite(lat) ||
+      !Number.isFinite(lon) ||
+      lat < -90 ||
+      lat > 90 ||
+      lon < -180 ||
+      lon > 180
+    ) {
+      return NextResponse.json(
+        { configured: true, suggestions: [], upstreamError: true },
+        noStoreInit({ status: 200 }),
+      );
+    }
+    target = `${base}/reverse?${new URLSearchParams({
+      "point.lat": String(lat),
+      "point.lon": String(lon),
+      size: "1",
+    })}`;
+  } else {
+    target = `${base}/search?${new URLSearchParams({
+      text: q,
+      size: "5",
+    })}`;
+  }
 
   const ac = new AbortController();
   const t = setTimeout(() => ac.abort(), timeoutMs);

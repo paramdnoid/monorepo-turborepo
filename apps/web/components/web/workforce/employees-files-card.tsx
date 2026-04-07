@@ -211,7 +211,7 @@ export function EmployeesFilesCard({
                 ref={profileInputRef}
                 type="file"
                 accept="image/png,image/jpeg,image/webp"
-                className="max-w-xs"
+                className="w-full max-w-xs"
                 aria-label={t.filesProfileUploadAria}
                 onChange={(ev) => {
                   const file = ev.currentTarget.files?.[0];
@@ -236,7 +236,7 @@ export function EmployeesFilesCard({
                   setAttachmentKind(v as "document" | "certificate" | "other")
                 }
               >
-                <SelectTrigger className="sm:w-44">
+                <SelectTrigger className="w-full sm:w-44">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -266,7 +266,7 @@ export function EmployeesFilesCard({
               {attachments.map((a) => (
                 <li
                   key={a.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-background/50 px-3 py-2"
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/60 bg-muted/10 px-3 py-2"
                 >
                   <div>
                     <p className="text-sm font-medium">{a.filename}</p>

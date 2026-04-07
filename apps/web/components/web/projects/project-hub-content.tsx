@@ -125,6 +125,9 @@ type HubData = {
     overdueOpenCount: number;
     next7AssignmentsCount: number;
     workTimeMinutesMonthToDate: number;
+    assetCount: number;
+    assetBytesTotal: number;
+    gaebDocumentCount: number;
   };
   segments: {
     last30Days: {
@@ -331,6 +334,8 @@ export function ProjectHubContent({
             kpiOverdue: "Overdue open items",
             kpiAssignments: "Assignments (7 days)",
             kpiWorkTime: "Work time (month to date)",
+            kpiAssets: "Files (total)",
+            kpiGaebDocuments: "GAEB docs (total)",
             segmentTitle: "30-day segments and trends",
             segmentLast30: "Last 30 days",
             segmentPrevious30: "Previous 30 days",
@@ -430,6 +435,8 @@ export function ProjectHubContent({
             kpiOverdue: "Ueberfaellige OP",
             kpiAssignments: "Einsaetze (7 Tage)",
             kpiWorkTime: "Zeiten (Monat bis heute)",
+            kpiAssets: "Dateien (gesamt)",
+            kpiGaebDocuments: "GAEB/LV (gesamt)",
             segmentTitle: "30-Tage-Segmente und Trends",
             segmentLast30: "Letzte 30 Tage",
             segmentPrevious30: "Vorherige 30 Tage",
@@ -721,7 +728,7 @@ export function ProjectHubContent({
                 >
                   {copy.kpiSectionOperations}
                 </h2>
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-3 sm:grid-cols-4">
                   <div className="rounded-md border bg-background/40 p-3">
                     <div className="text-xs text-muted-foreground">{copy.kpiAssignments}</div>
                     <div className="font-medium tabular-nums">{data.kpis.next7AssignmentsCount}</div>
@@ -731,6 +738,17 @@ export function ProjectHubContent({
                     <div className="font-medium tabular-nums">
                       {formatDuration(locale, data.kpis.workTimeMinutesMonthToDate)}
                     </div>
+                  </div>
+                  <div className="rounded-md border bg-background/40 p-3">
+                    <div className="text-xs text-muted-foreground">{copy.kpiAssets}</div>
+                    <div className="font-medium tabular-nums">{data.kpis.assetCount}</div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {formatBytes(data.kpis.assetBytesTotal)}
+                    </div>
+                  </div>
+                  <div className="rounded-md border bg-background/40 p-3">
+                    <div className="text-xs text-muted-foreground">{copy.kpiGaebDocuments}</div>
+                    <div className="font-medium tabular-nums">{data.kpis.gaebDocumentCount}</div>
                   </div>
                 </div>
               </section>

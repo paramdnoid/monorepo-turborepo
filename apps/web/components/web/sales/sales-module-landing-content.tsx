@@ -75,6 +75,7 @@ export function SalesModuleLandingContent() {
             quickSubtitle: "Start recurring sales tasks with one click.",
             toQuotes: "Open quotes",
             toInvoices: "Open invoices",
+            toOutbox: "Reminder outbox",
             toProjects: "Open projects",
             toDashboard: "Back to dashboard",
           }
@@ -101,6 +102,7 @@ export function SalesModuleLandingContent() {
             quickSubtitle: "Wiederkehrende Sales-Aufgaben mit einem Klick starten.",
             toQuotes: "Angebote oeffnen",
             toInvoices: "Rechnungen oeffnen",
+            toOutbox: "Mahn-Outbox",
             toProjects: "Projekte oeffnen",
             toDashboard: "Zur Uebersicht",
           },
@@ -317,6 +319,9 @@ export function SalesModuleLandingContent() {
                 <ReceiptText className="mr-2 size-4" aria-hidden />
                 {copy.toInvoices}
               </Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href="/web/sales/outbox">{copy.toOutbox}</Link>
             </Button>
             <Button variant="outline" asChild>
               <Link href="/web/projects">{copy.toProjects}</Link>

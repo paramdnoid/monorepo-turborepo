@@ -32,8 +32,10 @@ export async function GET(request: Request, context: RouteContext) {
   }
 
   try {
+    const url = new URL(request.url);
+    const qs = url.searchParams.toString();
     const res = await fetch(
-      `${API_BASE}/v1/sales/invoices/${encodeURIComponent(id)}/xrechnung`,
+      `${API_BASE}/v1/sales/invoices/${encodeURIComponent(id)}/xrechnung${qs ? `?${qs}` : ""}`,
       {
         headers: { Authorization: `Bearer ${session.token}` },
         cache: "no-store",

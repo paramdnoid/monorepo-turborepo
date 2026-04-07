@@ -14,7 +14,7 @@ import {
   salesReminderEmailQueueResponseSchema,
   salesQuoteDetailResponseSchema,
 } from "@repo/api-contracts";
-import type { z } from "zod";
+import { z } from "zod";
 import { Alert, AlertDescription, AlertTitle } from "@repo/ui/alert";
 import {
   AlertDialog,
@@ -35,8 +35,25 @@ import {
   CardHeader,
   CardTitle,
 } from "@repo/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@repo/ui/dialog";
 import { Input } from "@repo/ui/input";
 import { Label } from "@repo/ui/label";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@repo/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@repo/ui/tabs";
 
 import {
   getSalesPrintCopy,
@@ -145,22 +162,24 @@ function formatAgeLabel(minutes: number, locale: Locale): string {
 }
 
 function reminderJobStatusLabel(
-  status: "pending" | "sent" | "failed" | null,
+  status: "pending" | "processing" | "sent" | "failed" | null,
   locale: Locale,
 ): string {
   if (!status) return "—";
   if (locale === "en") {
     if (status === "pending") return "Pending";
+    if (status === "processing") return "Processing";
     if (status === "sent") return "Sent";
     return "Failed";
   }
   if (status === "pending") return "Pending";
+  if (status === "processing") return "In Verarbeitung";
   if (status === "sent") return "Versendet";
   return "Fehlgeschlagen";
 }
 
 function reminderJobStatusBadgeVariant(
-  status: "pending" | "sent" | "failed" | null,
+  status: "pending" | "processing" | "sent" | "failed" | null,
 ): "outline" | "default" | "destructive" {
   if (status === "failed") return "destructive";
   if (status === "sent") return "default";
@@ -178,6 +197,91 @@ function DetailLine({
     <div className="grid grid-cols-1 gap-1 sm:grid-cols-[minmax(0,12rem)_1fr] sm:gap-4">
       <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
       <dd className="text-sm text-foreground">{value}</dd>
+    </div>
+  );
+}
+
+const eInvoiceIssueSchema = z.object({
+  level: z.enum(["error", "warning"]),
+  code: z.string(),
+  message: z.string(),
+  path: z.array(z.string()).optional(),
+});
+
+const eInvoiceValidationReportSchema = z.object({
+  profile: z.enum(["xrechnung", "zugferd"]),
+  ok: z.boolean(),
+  errors: z.array(eInvoiceIssueSchema),
+  warnings: z.array(eInvoiceIssueSchema),
+});
+
+type EInvoiceIssue = z.infer<typeof eInvoiceIssueSchema>;
+type EInvoiceValidationReport = z.infer<typeof eInvoiceValidationReportSchema>;
+
+function formatEInvoiceIssuePath(path: string[] | undefined): string {
+  if (!path || path.length === 0) return "—";
+  return path.join(".");
+}
+
+function EInvoiceIssuesTable({
+  locale,
+  issues,
+}: {
+  locale: Locale;
+  issues: EInvoiceIssue[];
+}) {
+  if (issues.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        {locale === "en" ? "None." : "Keine."}
+      </p>
+    );
+  }
+
+  return (
+    <div className="overflow-x-auto rounded-md border border-border/80">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-28">
+              {locale === "en" ? "Level" : "Stufe"}
+            </TableHead>
+            <TableHead className="w-56">
+              {locale === "en" ? "Code" : "Code"}
+            </TableHead>
+            <TableHead className="w-56">
+              {locale === "en" ? "Path" : "Pfad"}
+            </TableHead>
+            <TableHead>{locale === "en" ? "Message" : "Nachricht"}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {issues.map((issue, idx) => (
+            <TableRow key={`${issue.code}-${idx}`}>
+              <TableCell className="align-top">
+                <Badge
+                  variant={issue.level === "error" ? "destructive" : "secondary"}
+                >
+                  {issue.level === "error"
+                    ? locale === "en"
+                      ? "Error"
+                      : "Fehler"
+                    : locale === "en"
+                      ? "Warning"
+                      : "Warnung"}
+                </Badge>
+              </TableCell>
+              <TableCell className="align-top font-mono text-xs">
+                {issue.code}
+              </TableCell>
+              <TableCell className="align-top font-mono text-xs text-muted-foreground">
+                {formatEInvoiceIssuePath(issue.path)}
+              </TableCell>
+              <TableCell className="align-top">{issue.message}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </div>
   );
 }
@@ -259,7 +363,7 @@ export function SalesDetail({
         string,
         {
           jobId: string;
-          status: "pending" | "sent" | "failed";
+          status: "pending" | "processing" | "sent" | "failed";
           attempts: number;
           maxAttempts: number;
           lastError: string | null;
@@ -267,6 +371,58 @@ export function SalesDetail({
         }
       >
     >(() => new Map());
+
+  const [eInvoiceDialogOpen, setEInvoiceDialogOpen] = useState(false);
+  const [eInvoiceBusy, setEInvoiceBusy] = useState(false);
+  const [eInvoiceError, setEInvoiceError] = useState<string | null>(null);
+  const [eInvoiceXReport, setEInvoiceXReport] =
+    useState<EInvoiceValidationReport | null>(null);
+  const [eInvoiceZReport, setEInvoiceZReport] =
+    useState<EInvoiceValidationReport | null>(null);
+
+  const loadEInvoiceValidationReports = useCallback(
+    async (invoiceId: string) => {
+      setEInvoiceBusy(true);
+      setEInvoiceError(null);
+      try {
+        const idEsc = encodeURIComponent(invoiceId);
+        const [xRes, zRes] = await Promise.all([
+          fetch(`/api/web/sales/invoices/${idEsc}/xrechnung?validate=1`, {
+            cache: "no-store",
+            credentials: "include",
+          }),
+          fetch(`/api/web/sales/invoices/${idEsc}/zugferd?validate=1`, {
+            cache: "no-store",
+            credentials: "include",
+          }),
+        ]);
+        const [xText, zText] = await Promise.all([xRes.text(), zRes.text()]);
+        const xJson = parseResponseJson(xText);
+        const zJson = parseResponseJson(zText);
+        const xParsed = eInvoiceValidationReportSchema.safeParse(xJson);
+        const zParsed = eInvoiceValidationReportSchema.safeParse(zJson);
+        setEInvoiceXReport(xParsed.success ? xParsed.data : null);
+        setEInvoiceZReport(zParsed.success ? zParsed.data : null);
+
+        if (!xParsed.success || !zParsed.success) {
+          setEInvoiceError(
+            locale === "en"
+              ? "Could not read validation report."
+              : "Validierungsreport konnte nicht gelesen werden.",
+          );
+        }
+      } catch {
+        setEInvoiceError(
+          locale === "en"
+            ? "Validation failed."
+            : "Validierung fehlgeschlagen.",
+        );
+      } finally {
+        setEInvoiceBusy(false);
+      }
+    },
+    [locale],
+  );
 
   useEffect(() => {
     if (mode !== "invoices") return;
@@ -668,7 +824,7 @@ export function SalesDetail({
       string,
       {
         jobId: string;
-        status: "pending" | "sent" | "failed";
+        status: "pending" | "processing" | "sent" | "failed";
         attempts: number;
         maxAttempts: number;
         lastError: string | null;
@@ -1287,6 +1443,18 @@ export function SalesDetail({
                 ZUGFeRD
               </a>
             </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={eInvoiceBusy}
+              onClick={() => {
+                setEInvoiceDialogOpen(true);
+                void loadEInvoiceValidationReports(inv.id);
+              }}
+            >
+              {locale === "en" ? "Validate e-invoice" : "E‑Rechnung prüfen"}
+            </Button>
           </>
         ) : null}
         <Button
@@ -1349,6 +1517,174 @@ export function SalesDetail({
           {lifecycleCopy.deleteInvoice}
         </Button>
       </div>
+      <Dialog open={eInvoiceDialogOpen} onOpenChange={setEInvoiceDialogOpen}>
+        <DialogContent className="sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>
+              {locale === "en" ? "E‑invoice validation" : "E‑Rechnung prüfen"}
+            </DialogTitle>
+            <DialogDescription>
+              {locale === "en"
+                ? `Validation report for ${inv.documentNumber}.`
+                : `Validierungsreport für ${inv.documentNumber}.`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[70vh] space-y-4 overflow-y-auto pr-1">
+            {eInvoiceError ? (
+              <Alert variant="destructive">
+                <AlertTitle>
+                  {locale === "en" ? "Validation failed" : "Validierung fehlgeschlagen"}
+                </AlertTitle>
+                <AlertDescription>{eInvoiceError}</AlertDescription>
+              </Alert>
+            ) : null}
+            {eInvoiceBusy && !eInvoiceXReport && !eInvoiceZReport ? (
+              <p className="text-sm text-muted-foreground">
+                {locale === "en" ? "Checking…" : "Prüfe…"}
+              </p>
+            ) : null}
+
+            <Tabs defaultValue="xrechnung">
+              <TabsList className="w-full justify-start">
+                <TabsTrigger value="xrechnung" className="gap-2">
+                  XRechnung
+                  {eInvoiceXReport ? (
+                    <Badge
+                      variant={eInvoiceXReport.ok ? "secondary" : "destructive"}
+                    >
+                      {eInvoiceXReport.ok
+                        ? locale === "en"
+                          ? "OK"
+                          : "OK"
+                        : locale === "en"
+                          ? "Issues"
+                          : "Probleme"}
+                    </Badge>
+                  ) : null}
+                </TabsTrigger>
+                <TabsTrigger value="zugferd" className="gap-2">
+                  ZUGFeRD
+                  {eInvoiceZReport ? (
+                    <Badge
+                      variant={eInvoiceZReport.ok ? "secondary" : "destructive"}
+                    >
+                      {eInvoiceZReport.ok
+                        ? locale === "en"
+                          ? "OK"
+                          : "OK"
+                        : locale === "en"
+                          ? "Issues"
+                          : "Probleme"}
+                    </Badge>
+                  ) : null}
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="xrechnung" className="space-y-4">
+                {eInvoiceXReport ? (
+                  <>
+                    <Alert variant={eInvoiceXReport.ok ? "default" : "destructive"}>
+                      <AlertTitle>
+                        {eInvoiceXReport.ok
+                          ? locale === "en"
+                            ? "OK"
+                            : "OK"
+                          : locale === "en"
+                            ? "Issues found"
+                            : "Probleme gefunden"}
+                      </AlertTitle>
+                      <AlertDescription>
+                        {locale === "en"
+                          ? `${eInvoiceXReport.errors.length} errors, ${eInvoiceXReport.warnings.length} warnings.`
+                          : `${eInvoiceXReport.errors.length} Fehler, ${eInvoiceXReport.warnings.length} Warnungen.`}
+                      </AlertDescription>
+                    </Alert>
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground">
+                        {locale === "en" ? "Errors" : "Fehler"}
+                      </p>
+                      <EInvoiceIssuesTable locale={locale} issues={eInvoiceXReport.errors} />
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground">
+                        {locale === "en" ? "Warnings" : "Warnungen"}
+                      </p>
+                      <EInvoiceIssuesTable locale={locale} issues={eInvoiceXReport.warnings} />
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    {locale === "en"
+                      ? "No report loaded yet."
+                      : "Noch kein Report geladen."}
+                  </p>
+                )}
+              </TabsContent>
+
+              <TabsContent value="zugferd" className="space-y-4">
+                {eInvoiceZReport ? (
+                  <>
+                    <Alert variant={eInvoiceZReport.ok ? "default" : "destructive"}>
+                      <AlertTitle>
+                        {eInvoiceZReport.ok
+                          ? locale === "en"
+                            ? "OK"
+                            : "OK"
+                          : locale === "en"
+                            ? "Issues found"
+                            : "Probleme gefunden"}
+                      </AlertTitle>
+                      <AlertDescription>
+                        {locale === "en"
+                          ? `${eInvoiceZReport.errors.length} errors, ${eInvoiceZReport.warnings.length} warnings.`
+                          : `${eInvoiceZReport.errors.length} Fehler, ${eInvoiceZReport.warnings.length} Warnungen.`}
+                      </AlertDescription>
+                    </Alert>
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground">
+                        {locale === "en" ? "Errors" : "Fehler"}
+                      </p>
+                      <EInvoiceIssuesTable locale={locale} issues={eInvoiceZReport.errors} />
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground">
+                        {locale === "en" ? "Warnings" : "Warnungen"}
+                      </p>
+                      <EInvoiceIssuesTable locale={locale} issues={eInvoiceZReport.warnings} />
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    {locale === "en"
+                      ? "No report loaded yet."
+                      : "Noch kein Report geladen."}
+                  </p>
+                )}
+              </TabsContent>
+            </Tabs>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={eInvoiceBusy}
+              onClick={() => void loadEInvoiceValidationReports(inv.id)}
+            >
+              {locale === "en" ? "Re-check" : "Neu prüfen"}
+            </Button>
+            <Button variant="outline" asChild>
+              <a href={`/api/web/sales/invoices/${encodeURIComponent(inv.id)}/xrechnung`}>
+                {locale === "en" ? "Download XRechnung" : "XRechnung herunterladen"}
+              </a>
+            </Button>
+            <Button variant="outline" asChild>
+              <a href={`/api/web/sales/invoices/${encodeURIComponent(inv.id)}/zugferd`}>
+                {locale === "en" ? "Download ZUGFeRD" : "ZUGFeRD herunterladen"}
+              </a>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       {inv.isFinalized ? (
         <Alert>
           <AlertTitle>{locale === "en" ? "Finalized document" : "Finalisiertes Dokument"}</AlertTitle>
@@ -1605,6 +1941,11 @@ export function SalesDetail({
                 : locale === "en"
                   ? "Process queue now"
                   : "Queue jetzt verarbeiten"}
+            </Button>
+            <Button variant="outline" size="xs" asChild>
+              <Link href="/web/sales/outbox">
+                {locale === "en" ? "Outbox" : "Mahn-Outbox"}
+              </Link>
             </Button>
             {reminderOutboxLastRun ? (
               <span className="text-xs text-muted-foreground">

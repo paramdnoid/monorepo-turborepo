@@ -23,6 +23,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@repo/ui/alert-dialog";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@repo/ui/accordion";
 import { Button } from "@repo/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@repo/ui/card";
 import { Checkbox } from "@repo/ui/checkbox";
@@ -54,6 +60,7 @@ import {
   summarizeEmployeeValidationIssues,
   weekdayOptions,
 } from "@/content/employees-module";
+import { normalizeAddressFields } from "@/lib/address-normalization";
 import type { Locale } from "@/lib/i18n/locale";
 import { parseResponseJson } from "@/lib/parse-response-json";
 import { toast } from "sonner";
@@ -283,6 +290,7 @@ export function EmployeesDetailContent({
   const [notes, setNotes] = useState("");
   const [privateLabel, setPrivateLabel] = useState("");
   const [privateLine2, setPrivateLine2] = useState("");
+  const [privateLine2Expanded, setPrivateLine2Expanded] = useState(false);
   const [privateRecipient, setPrivateRecipient] = useState("");
   const [privateStreet, setPrivateStreet] = useState("");
   const [privatePostal, setPrivatePostal] = useState("");
@@ -362,10 +370,16 @@ export function EmployeesDetailContent({
       setEmploymentType(e.employmentType);
       setRoleLabel(e.roleLabel ?? "");
       setNotes(e.notes ?? "");
-      setPrivateLabel(e.privateAddressLabel ?? "");
-      setPrivateLine2(e.privateAddressLine2 ?? "");
-      setPrivateRecipient(e.privateRecipientName ?? "");
-      setPrivateStreet(e.privateStreet ?? "");
+      setPrivateLabel((e.privateAddressLabel ?? "").trim() || t.defaultAddressLabel);
+      const loadedPrivateLine2 = e.privateAddressLine2 ?? "";
+      setPrivateLine2(loadedPrivateLine2);
+      setPrivateLine2Expanded(loadedPrivateLine2.trim().length > 0);
+      const normalizedAddress = normalizeAddressFields(
+        e.privateRecipientName ?? "",
+        e.privateStreet ?? "",
+      );
+      setPrivateRecipient(normalizedAddress.recipientName || e.displayName);
+      setPrivateStreet(normalizedAddress.street);
       setPrivatePostal(e.privatePostalCode ?? "");
       setPrivateCity(e.privateCity ?? "");
       setPrivateCountry(e.privateCountry ?? "");
@@ -401,7 +415,7 @@ export function EmployeesDetailContent({
       setCanDeleteEmployee(parsed.data.permissions.canDelete);
       setLoadError(null);
     },
-    [t.detailLoadError],
+    [t.defaultAddressLabel, t.detailLoadError],
   );
 
   const load = useCallback(async () => {
@@ -504,11 +518,7 @@ export function EmployeesDetailContent({
     const latN = parseCoord(latitude);
     const lngN = parseCoord(longitude);
     if ((latN === null) !== (lngN === null)) {
-      toast.error(
-        locale === "en"
-          ? "Enter both coordinates or neither."
-          : "Bitte beide Koordinaten angeben oder leer lassen.",
-      );
+      toast.error(t.coordinatesBothOrNeitherError);
       return;
     }
 
@@ -675,7 +685,7 @@ export function EmployeesDetailContent({
     return (
       <div className="space-y-2">
         <p className="sr-only" role="status">
-          {locale === "en" ? "Loading employee…" : "Mitarbeiter wird geladen…"}
+          {t.detailLoadingAria}
         </p>
         {detailLoadingSkeleton()}
       </div>
@@ -696,7 +706,7 @@ export function EmployeesDetailContent({
       <div className="space-y-4">
         <p className="text-sm text-destructive">{loadError}</p>
         <Button type="button" variant="outline" size="sm" onClick={() => void load()}>
-          {locale === "en" ? "Retry" : "Erneut versuchen"}
+          {t.actionRetry}
         </Button>
       </div>
     );
@@ -730,7 +740,7 @@ export function EmployeesDetailContent({
             <AlertDialogDescription>{t.deleteDialogDescription}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteBusy}>{t.archiveDialogCancel}</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleteBusy}>{t.deleteDialogCancel}</AlertDialogCancel>
             <AlertDialogAction
               disabled={deleteBusy}
               variant="destructive"
@@ -767,280 +777,308 @@ export function EmployeesDetailContent({
 
         {activeTab === "main" ? (
           <>
-            <Card className="border-border/80 bg-muted/15 shadow-none">
-              <CardHeader>
-                <CardTitle className="text-base">{t.sectionMain}</CardTitle>
-              </CardHeader>
-              <CardContent className="grid gap-4 sm:max-w-xl">
-                <div className="grid gap-3 sm:grid-cols-2">
+            <fieldset disabled={!canEditEmployee} className="space-y-6">
+              <Card className="border-border/80 bg-muted/15 shadow-none">
+                <CardHeader>
+                  <CardTitle className="text-base">{t.sectionMain}</CardTitle>
+                </CardHeader>
+                <CardContent className="grid gap-4 sm:max-w-xl">
                   <div className="grid gap-2">
-                    <Label htmlFor={`${formId}-eno`}>{t.fieldEmployeeNo}</Label>
+                    <Label htmlFor={`${formId}-name`}>{t.fieldDisplayName}</Label>
                     <Input
-                      id={`${formId}-eno`}
-                      value={employeeNo}
-                      onChange={(ev) => setEmployeeNo(ev.target.value)}
-                      autoComplete="off"
+                      id={`${formId}-name`}
+                      value={displayName}
+                      onChange={(ev) => setDisplayName(ev.target.value)}
+                      required
+                      autoComplete="name"
                     />
                   </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="grid gap-2">
+                      <Label htmlFor={`${formId}-eno`}>{t.fieldEmployeeNo}</Label>
+                      <Input
+                        id={`${formId}-eno`}
+                        value={employeeNo}
+                        onChange={(ev) => setEmployeeNo(ev.target.value)}
+                        autoComplete="off"
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor={`${formId}-st`}>{t.fieldStatus}</Label>
+                      <Select
+                        value={status}
+                        onValueChange={(v) =>
+                          setStatus(v as "ACTIVE" | "ONBOARDING" | "INACTIVE")
+                        }
+                      >
+                        <SelectTrigger id={`${formId}-st`} className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="ACTIVE">{t.statusActive}</SelectItem>
+                          <SelectItem value="ONBOARDING">{t.statusOnboarding}</SelectItem>
+                          <SelectItem value="INACTIVE">{t.statusInactive}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="grid gap-2">
+                      <Label htmlFor={`${formId}-fn`}>{t.fieldFirstName}</Label>
+                      <Input
+                        id={`${formId}-fn`}
+                        value={firstName}
+                        onChange={(ev) => setFirstName(ev.target.value)}
+                        autoComplete="given-name"
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor={`${formId}-ln`}>{t.fieldLastName}</Label>
+                      <Input
+                        id={`${formId}-ln`}
+                        value={lastName}
+                        onChange={(ev) => setLastName(ev.target.value)}
+                        autoComplete="family-name"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="grid gap-2">
+                      <Label htmlFor={`${formId}-em`}>{t.fieldEmail}</Label>
+                      <Input
+                        id={`${formId}-em`}
+                        value={email}
+                        onChange={(ev) => setEmail(ev.target.value)}
+                        type="email"
+                        autoComplete="email"
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor={`${formId}-ph`}>{t.fieldPhone}</Label>
+                      <Input
+                        id={`${formId}-ph`}
+                        value={phone}
+                        onChange={(ev) => setPhone(ev.target.value)}
+                        autoComplete="tel"
+                      />
+                    </div>
+                  </div>
                   <div className="grid gap-2">
-                    <Label htmlFor={`${formId}-st`}>{t.fieldStatus}</Label>
+                    <Label htmlFor={`${formId}-et`}>{t.fieldEmploymentType}</Label>
                     <Select
-                      value={status}
+                      value={employmentType}
                       onValueChange={(v) =>
-                        setStatus(v as "ACTIVE" | "ONBOARDING" | "INACTIVE")
+                        setEmploymentType(
+                          v as
+                            | "FULL_TIME"
+                            | "PART_TIME"
+                            | "CONTRACTOR"
+                            | "APPRENTICE",
+                        )
                       }
                     >
-                      <SelectTrigger id={`${formId}-st`} className="w-full">
+                      <SelectTrigger id={`${formId}-et`} className="w-full">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="ACTIVE">{t.statusActive}</SelectItem>
-                        <SelectItem value="ONBOARDING">{t.statusOnboarding}</SelectItem>
-                        <SelectItem value="INACTIVE">{t.statusInactive}</SelectItem>
+                        <SelectItem value="FULL_TIME">{t.employmentFullTime}</SelectItem>
+                        <SelectItem value="PART_TIME">{t.employmentPartTime}</SelectItem>
+                        <SelectItem value="CONTRACTOR">{t.employmentContractor}</SelectItem>
+                        <SelectItem value="APPRENTICE">{t.employmentApprentice}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2">
                   <div className="grid gap-2">
-                    <Label htmlFor={`${formId}-fn`}>{t.fieldFirstName}</Label>
+                    <Label htmlFor={`${formId}-role`}>{t.fieldRole}</Label>
                     <Input
-                      id={`${formId}-fn`}
-                      value={firstName}
-                      onChange={(ev) => setFirstName(ev.target.value)}
-                      autoComplete="given-name"
+                      id={`${formId}-role`}
+                      value={roleLabel}
+                      onChange={(ev) => setRoleLabel(ev.target.value)}
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor={`${formId}-ln`}>{t.fieldLastName}</Label>
-                    <Input
-                      id={`${formId}-ln`}
-                      value={lastName}
-                      onChange={(ev) => setLastName(ev.target.value)}
-                      autoComplete="family-name"
+                    <Label htmlFor={`${formId}-notes`}>{t.fieldNotes}</Label>
+                    <Textarea
+                      id={`${formId}-notes`}
+                      value={notes}
+                      onChange={(ev) => setNotes(ev.target.value)}
+                      maxLength={EMPLOYEE_NOTES_MAX_LENGTH}
+                      rows={4}
+                      className="min-h-20 resize-y"
                     />
+                    <p className="text-xs text-muted-foreground">
+                      {formatEmployeesNotesCharCount(
+                        locale,
+                        notes.length,
+                        EMPLOYEE_NOTES_MAX_LENGTH,
+                      )}
+                    </p>
                   </div>
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="grid gap-2">
-                    <Label htmlFor={`${formId}-em`}>{t.fieldEmail}</Label>
-                    <Input
-                      id={`${formId}-em`}
-                      value={email}
-                      onChange={(ev) => setEmail(ev.target.value)}
-                      type="email"
-                      autoComplete="email"
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id={`${formId}-arch`}
+                      checked={archived}
+                      onCheckedChange={(v) => {
+                        if (v === true) {
+                          setArchiveDialogOpen(true);
+                        } else {
+                          setArchived(false);
+                        }
+                      }}
                     />
+                    <Label htmlFor={`${formId}-arch`} className="font-normal">
+                      {t.archiveLabel}
+                    </Label>
                   </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor={`${formId}-ph`}>{t.fieldPhone}</Label>
-                    <Input
-                      id={`${formId}-ph`}
-                      value={phone}
-                      onChange={(ev) => setPhone(ev.target.value)}
-                      autoComplete="tel"
-                    />
+                  <p className="text-xs text-muted-foreground">{t.archivedHint}</p>
+                </CardContent>
+              </Card>
+
+              <Card className="border-border/80 bg-muted/15 shadow-none">
+                <CardHeader>
+                  <CardTitle className="text-base">{t.sectionPrivateAddress}</CardTitle>
+                  <CardDescription className="text-xs">{t.privacyHint}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid gap-1 rounded-md border border-border/50 bg-muted/20 px-3 py-2 text-xs sm:max-w-xl">
+                    <span className="font-medium text-muted-foreground">
+                      {t.fieldGeocodedAt}
+                    </span>
+                    <span className="text-foreground">{geocodedAtLabel}</span>
                   </div>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor={`${formId}-et`}>{t.fieldEmploymentType}</Label>
-                  <Select
-                    value={employmentType}
-                    onValueChange={(v) =>
-                      setEmploymentType(
-                        v as
-                          | "FULL_TIME"
-                          | "PART_TIME"
-                          | "CONTRACTOR"
-                          | "APPRENTICE",
-                      )
-                    }
-                  >
-                    <SelectTrigger id={`${formId}-et`} className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="FULL_TIME">{t.employmentFullTime}</SelectItem>
-                      <SelectItem value="PART_TIME">{t.employmentPartTime}</SelectItem>
-                      <SelectItem value="CONTRACTOR">{t.employmentContractor}</SelectItem>
-                      <SelectItem value="APPRENTICE">{t.employmentApprentice}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor={`${formId}-name`}>{t.fieldDisplayName}</Label>
-                  <Input
-                    id={`${formId}-name`}
-                    value={displayName}
-                    onChange={(ev) => setDisplayName(ev.target.value)}
-                    required
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor={`${formId}-role`}>{t.fieldRole}</Label>
-                  <Input
-                    id={`${formId}-role`}
-                    value={roleLabel}
-                    onChange={(ev) => setRoleLabel(ev.target.value)}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor={`${formId}-notes`}>{t.fieldNotes}</Label>
-                  <Textarea
-                    id={`${formId}-notes`}
-                    value={notes}
-                    onChange={(ev) => setNotes(ev.target.value)}
-                    maxLength={EMPLOYEE_NOTES_MAX_LENGTH}
-                    rows={4}
-                    className="min-h-20 resize-y"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {formatEmployeesNotesCharCount(
-                      locale,
-                      notes.length,
-                      EMPLOYEE_NOTES_MAX_LENGTH,
-                    )}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id={`${formId}-arch`}
-                    checked={archived}
-                    onCheckedChange={(v) => {
-                      if (v === true) {
-                        setArchiveDialogOpen(true);
-                      } else {
-                        setArchived(false);
+                  <CustomerAddressGeocodeControls
+                    locale={locale}
+                    defaultQuery={geocodeQuery}
+                    onApply={(s) => {
+                      const normalizedAddress = normalizeAddressFields(
+                        s.recipientName,
+                        s.street,
+                      );
+                      setPrivateStreet(normalizedAddress.street);
+                      setPrivatePostal(s.postalCode);
+                      setPrivateCity(s.city);
+                      setPrivateCountry(s.country);
+                      if (s.addressLine2?.trim() && privateLine2.trim() === "") {
+                        setPrivateLine2(s.addressLine2.trim());
+                        setPrivateLine2Expanded(true);
+                      }
+                      if (s.latitude != null && s.longitude != null) {
+                        setLatitude(String(s.latitude));
+                        setLongitude(String(s.longitude));
+                        setGeocodeSource("ors");
                       }
                     }}
                   />
-                  <Label htmlFor={`${formId}-arch`} className="font-normal">
-                    {t.archiveLabel}
-                  </Label>
-                </div>
-                <p className="text-xs text-muted-foreground">{t.archivedHint}</p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-border/80 bg-muted/15 shadow-none">
-              <CardHeader>
-                <CardTitle className="text-base">{t.sectionPrivateAddress}</CardTitle>
-                <CardDescription className="text-xs">{t.privacyHint}</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-1 rounded-md border border-border/50 bg-muted/20 px-3 py-2 text-xs sm:max-w-xl">
-                  <span className="font-medium text-muted-foreground">{t.fieldGeocodedAt}</span>
-                  <span className="text-foreground">{geocodedAtLabel}</span>
-                </div>
-                <CustomerAddressGeocodeControls
-                  locale={locale}
-                  defaultQuery={geocodeQuery}
-                  onApply={(s) => {
-                    setPrivateRecipient(s.recipientName);
-                    setPrivateStreet(s.street);
-                    setPrivatePostal(s.postalCode);
-                    setPrivateCity(s.city);
-                    setPrivateCountry(s.country);
-                    if (s.label?.trim()) {
-                      setPrivateLabel(s.label.trim());
-                    }
-                    if (s.addressLine2?.trim()) {
-                      setPrivateLine2(s.addressLine2.trim());
-                    }
-                    if (s.latitude != null && s.longitude != null) {
-                      setLatitude(String(s.latitude));
-                      setLongitude(String(s.longitude));
-                      setGeocodeSource("ors");
-                    }
-                  }}
-                />
-                <Separator />
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="grid gap-2">
-                    <Label htmlFor={`${formId}-pal`}>{t.fieldAddressLabel}</Label>
-                    <Input
-                      id={`${formId}-pal`}
-                      value={privateLabel}
-                      onChange={(ev) => setPrivateLabel(ev.target.value)}
-                    />
+                  <Separator />
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="grid gap-2">
+                      <Label htmlFor={`${formId}-pal`}>{t.fieldAddressLabel}</Label>
+                      <Input
+                        id={`${formId}-pal`}
+                        value={privateLabel}
+                        onChange={(ev) => setPrivateLabel(ev.target.value)}
+                      />
+                    </div>
+                    <div className="grid gap-2 sm:col-span-2">
+                      <Label htmlFor={`${formId}-prec`}>{t.fieldRecipient}</Label>
+                      <Input
+                        id={`${formId}-prec`}
+                        value={privateRecipient}
+                        onChange={(ev) => setPrivateRecipient(ev.target.value)}
+                      />
+                    </div>
+                    <div className="grid gap-2 sm:col-span-2">
+                      <Label htmlFor={`${formId}-pst`}>{t.fieldStreet}</Label>
+                      <Input
+                        id={`${formId}-pst`}
+                        value={privateStreet}
+                        onChange={(ev) => setPrivateStreet(ev.target.value)}
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <Accordion
+                        type="single"
+                        collapsible
+                        value={privateLine2Expanded ? "address-line-2" : undefined}
+                        onValueChange={(value) =>
+                          setPrivateLine2Expanded(value === "address-line-2")
+                        }
+                        className="w-full rounded-lg border border-border/60 bg-muted/10 px-3"
+                      >
+                        <AccordionItem value="address-line-2" className="border-none">
+                          <AccordionTrigger className="py-2.5 text-sm font-medium hover:no-underline">
+                            {privateLine2Expanded ? t.addressLine2Hide : t.addressLine2Show}
+                          </AccordionTrigger>
+                          <AccordionContent className="pb-0">
+                            <div className="grid gap-2 pb-3">
+                              <Label htmlFor={`${formId}-pa2`} className="sr-only">
+                                {t.fieldAddressLine2}
+                              </Label>
+                              <Input
+                                id={`${formId}-pa2`}
+                                value={privateLine2}
+                                onChange={(ev) => setPrivateLine2(ev.target.value)}
+                                placeholder={t.addressLine2Placeholder}
+                              />
+                            </div>
+                          </AccordionContent>
+                        </AccordionItem>
+                      </Accordion>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor={`${formId}-pplz`}>{t.fieldPostal}</Label>
+                      <Input
+                        id={`${formId}-pplz`}
+                        value={privatePostal}
+                        onChange={(ev) => setPrivatePostal(ev.target.value)}
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor={`${formId}-pct`}>{t.fieldCity}</Label>
+                      <Input
+                        id={`${formId}-pct`}
+                        value={privateCity}
+                        onChange={(ev) => setPrivateCity(ev.target.value)}
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor={`${formId}-pcc`}>{t.fieldCountry}</Label>
+                      <Input
+                        id={`${formId}-pcc`}
+                        value={privateCountry}
+                        onChange={(ev) => setPrivateCountry(ev.target.value)}
+                        maxLength={2}
+                        className="uppercase"
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor={`${formId}-lat`}>{t.fieldLatitude}</Label>
+                      <Input
+                        id={`${formId}-lat`}
+                        value={latitude}
+                        onChange={(ev) => {
+                          setLatitude(ev.target.value);
+                          setGeocodeSource("manual");
+                        }}
+                        inputMode="decimal"
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor={`${formId}-lng`}>{t.fieldLongitude}</Label>
+                      <Input
+                        id={`${formId}-lng`}
+                        value={longitude}
+                        onChange={(ev) => {
+                          setLongitude(ev.target.value);
+                          setGeocodeSource("manual");
+                        }}
+                        inputMode="decimal"
+                      />
+                    </div>
                   </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor={`${formId}-pa2`}>{t.fieldAddressLine2}</Label>
-                    <Input
-                      id={`${formId}-pa2`}
-                      value={privateLine2}
-                      onChange={(ev) => setPrivateLine2(ev.target.value)}
-                    />
-                  </div>
-                  <div className="grid gap-2 sm:col-span-2">
-                    <Label htmlFor={`${formId}-prec`}>{t.fieldRecipient}</Label>
-                    <Input
-                      id={`${formId}-prec`}
-                      value={privateRecipient}
-                      onChange={(ev) => setPrivateRecipient(ev.target.value)}
-                    />
-                  </div>
-                  <div className="grid gap-2 sm:col-span-2">
-                    <Label htmlFor={`${formId}-pst`}>{t.fieldStreet}</Label>
-                    <Input
-                      id={`${formId}-pst`}
-                      value={privateStreet}
-                      onChange={(ev) => setPrivateStreet(ev.target.value)}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor={`${formId}-pplz`}>{t.fieldPostal}</Label>
-                    <Input
-                      id={`${formId}-pplz`}
-                      value={privatePostal}
-                      onChange={(ev) => setPrivatePostal(ev.target.value)}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor={`${formId}-pct`}>{t.fieldCity}</Label>
-                    <Input
-                      id={`${formId}-pct`}
-                      value={privateCity}
-                      onChange={(ev) => setPrivateCity(ev.target.value)}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor={`${formId}-pcc`}>{t.fieldCountry}</Label>
-                    <Input
-                      id={`${formId}-pcc`}
-                      value={privateCountry}
-                      onChange={(ev) => setPrivateCountry(ev.target.value)}
-                      maxLength={2}
-                      className="uppercase"
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor={`${formId}-lat`}>{t.fieldLatitude}</Label>
-                    <Input
-                      id={`${formId}-lat`}
-                      value={latitude}
-                      onChange={(ev) => {
-                        setLatitude(ev.target.value);
-                        setGeocodeSource("manual");
-                      }}
-                      inputMode="decimal"
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor={`${formId}-lng`}>{t.fieldLongitude}</Label>
-                    <Input
-                      id={`${formId}-lng`}
-                      value={longitude}
-                      onChange={(ev) => {
-                        setLongitude(ev.target.value);
-                        setGeocodeSource("manual");
-                      }}
-                      inputMode="decimal"
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </fieldset>
 
             <EmployeesSkillsCard
               employeeId={employeeId}
@@ -1087,14 +1125,15 @@ export function EmployeesDetailContent({
         ) : null}
 
         {activeTab === "availability" ? (
-          <Card className="border-border/80 bg-muted/15 shadow-none">
-            <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <CardTitle className="text-base">{t.sectionAvailability}</CardTitle>
-              <Button type="button" variant="secondary" size="sm" onClick={addSlot}>
-                {t.addSlot}
-              </Button>
-            </CardHeader>
-            <CardContent className="space-y-4">
+          <fieldset disabled={!canEditEmployee}>
+            <Card className="border-border/80 bg-muted/15 shadow-none">
+              <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <CardTitle className="text-base">{t.sectionAvailability}</CardTitle>
+                <Button type="button" variant="secondary" size="sm" onClick={addSlot}>
+                  {t.addSlot}
+                </Button>
+              </CardHeader>
+              <CardContent className="space-y-4">
               <div className="grid gap-2 sm:max-w-sm">
                 <Label htmlFor={`${formId}-tz`}>{t.fieldAvailabilityTimeZone}</Label>
                 <Input
@@ -1106,13 +1145,13 @@ export function EmployeesDetailContent({
                 />
               </div>
               {availability.length === 0 ? (
-                <p className="text-xs text-muted-foreground">—</p>
+                <p className="text-xs text-muted-foreground">{t.availabilityEmpty}</p>
               ) : (
                 <ul className="space-y-3">
                   {availability.map((r) => (
                     <li
                       key={r.clientId}
-                      className="flex flex-col gap-3 rounded-lg border border-border/60 bg-background/50 p-3 sm:flex-row sm:flex-wrap sm:items-end"
+                      className="flex flex-col gap-3 rounded-lg border border-border/60 bg-muted/10 p-3 sm:flex-row sm:flex-wrap sm:items-end"
                     >
                       <div className="grid gap-2 sm:w-40">
                         <Label>{t.weekdayLabel}</Label>
@@ -1215,13 +1254,13 @@ export function EmployeesDetailContent({
                 </Button>
               </div>
               {availabilityOverrides.length === 0 ? (
-                <p className="text-xs text-muted-foreground">—</p>
+                <p className="text-xs text-muted-foreground">{t.availabilityOverridesEmpty}</p>
               ) : (
                 <ul className="space-y-3">
                   {availabilityOverrides.map((o) => (
                     <li
                       key={o.clientId}
-                      className="space-y-3 rounded-lg border border-border/60 bg-background/50 p-3"
+                      className="space-y-3 rounded-lg border border-border/60 bg-muted/10 p-3"
                     >
                       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                         <div className="grid gap-2">
@@ -1324,7 +1363,8 @@ export function EmployeesDetailContent({
                 </ul>
               )}
             </CardContent>
-          </Card>
+            </Card>
+          </fieldset>
         ) : null}
 
         {activeTab === "vacation" ? (
@@ -1338,7 +1378,7 @@ export function EmployeesDetailContent({
         ) : null}
 
         {activeTab === "main" || activeTab === "availability" ? (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
             <Button type="submit" disabled={saveBusy || !canEditEmployee}>
               {saveBusy ? t.saving : t.save}
             </Button>

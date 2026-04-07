@@ -177,7 +177,7 @@ export function EmployeesRelationshipsCard({
                   setKind(v as "MUTUALLY_EXCLUSIVE" | "MENTOR_TRAINEE")
                 }
               >
-                <SelectTrigger aria-label={t.relationshipKindLabel}>
+                <SelectTrigger className="w-full" aria-label={t.relationshipKindLabel}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -189,7 +189,7 @@ export function EmployeesRelationshipsCard({
             <div className="grid gap-2">
               <Label>{t.relationshipCounterpartLabel}</Label>
               <Select value={targetId} onValueChange={setTargetId}>
-                <SelectTrigger aria-label={t.relationshipCounterpartLabel}>
+                <SelectTrigger className="w-full" aria-label={t.relationshipCounterpartLabel}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -207,9 +207,14 @@ export function EmployeesRelationshipsCard({
                 id="relationship-note"
                 value={note}
                 onChange={(ev) => setNote(ev.target.value)}
+                onKeyDown={(ev) => {
+                  if (ev.key !== "Enter") return;
+                  ev.preventDefault();
+                  void addRelationship();
+                }}
               />
             </div>
-            <div>
+            <div className="flex justify-end">
               <Button type="button" onClick={() => void addRelationship()} disabled={busy || !targetId}>
                 {t.relationshipAdd}
               </Button>
@@ -224,7 +229,7 @@ export function EmployeesRelationshipsCard({
             {rows.map((r) => (
               <li
                 key={r.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-background/50 px-3 py-2"
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/60 bg-muted/10 px-3 py-2"
               >
                 <div className="min-w-0">
                   <p className="text-sm font-medium">

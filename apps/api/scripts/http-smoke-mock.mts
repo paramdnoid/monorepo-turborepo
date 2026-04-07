@@ -762,3 +762,35 @@ console.log(
 if (!datevExport.ok || !datevExportCsv.includes("Umsatz")) {
   process.exit(1);
 }
+
+const datevDryRun = await app.request(
+  "http://localhost/v1/datev/export/bookings.csv?from=2020-01-01&to=2030-12-31&dryRun=1&strict=1",
+  { headers: { Authorization: "Bearer mock" } },
+);
+const datevDryRunText = await datevDryRun.text();
+console.log(
+  "GET /v1/datev/export/bookings.csv (dryRun)",
+  datevDryRun.status,
+  datevDryRunText.slice(0, 160).replace(/\r?\n/g, "\\n"),
+);
+if (!datevDryRun.ok) {
+  process.exit(1);
+}
+try {
+  const json = JSON.parse(datevDryRunText) as {
+    ok?: boolean;
+    invoiceCount?: number;
+    bookingRowCount?: number;
+  };
+  if (
+    typeof json.ok !== "boolean" ||
+    typeof json.invoiceCount !== "number" ||
+    typeof json.bookingRowCount !== "number"
+  ) {
+    console.error("Smoke: DATEV dryRun response shape unexpected", json);
+    process.exit(1);
+  }
+} catch (e) {
+  console.error("Smoke: DATEV dryRun response is not JSON", e);
+  process.exit(1);
+}

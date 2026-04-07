@@ -12,6 +12,13 @@ declare module "hono" {
       name: string;
       tradeSlug: string;
       senderAddress: string | null;
+      senderStreet: string | null;
+      senderHouseNumber: string | null;
+      senderPostalCode: string | null;
+      senderCity: string | null;
+      senderCountry: string | null;
+      senderLatitude: number | null;
+      senderLongitude: number | null;
       vatId: string | null;
       taxNumber: string | null;
       logoStorageRelativePath: string | null;
