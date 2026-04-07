@@ -1,6 +1,6 @@
 # Funktionslücken-Analyse: Maler & Lackierer (Auftragsbearbeitung & Rechnungswesen)
 
-**Stand der Analyse:** 2026-04-06  
+**Stand der Analyse:** 2026-04-07  
 **Bezug:** Screenshot-Navigation (Gruppen *Navigation*, *Stammdaten*, *Belege*, *Team & Planung*) sowie Code unter `apps/web/app/web/`, Shell `apps/web/components/web/shell/web-shell.tsx`, BFF `apps/web/app/api/web/`, Schema `packages/db/src/schema.ts`.
 
 ## Änderungsstand (vollständig abgeglichen)
@@ -49,7 +49,7 @@
 ### 2.2 Projekte ↔ Belege (Angebote/Rechnungen)
 
 - **Ist:** `salesQuotes` / `salesInvoices` haben `projectId` (optional); UI kann Projekte auswählen.
-- **Status:** in Arbeit (E-02) — Hub unter `/web/projects/[projectId]` liefert Stammdaten + projektbezogene Belege/Dateien/GAEB, **Terminplanung naechste 7 Tage**, Zeiterfassung (Monat bis heute + letzte Buchungen), Forderungen/OP (Top-OP, Mahnungs-Kurzinfo + Druck/PDF letzte Mahnung, Link `…#invoice-reminders`). Rest: Mini-Pipeline/KPIs, Material (E-11), optional Hub-Aggregations-API.
+- **Status:** in Arbeit (E-02) — Hub unter `/web/projects/[projectId]` liefert Stammdaten + projektbezogene Belege/Dateien/GAEB, **Terminplanung naechste 7 Tage**, Zeiterfassung (Monat bis heute + letzte Buchungen), Forderungen/OP (Top-OP, Mahnungs-Kurzinfo + Druck/PDF letzte Mahnung, Link `…#invoice-reminders`). Aggregierter API-Pfad (`GET /v1/projects/:id/hub`) ist vorhanden; Rest: Mini-Pipeline/KPIs und Material (E-11).
 
 ### 2.3 Terminplanung ↔ Projekt / Auftrag / Baustelle
 
@@ -130,9 +130,9 @@
 4. **Gutschriften / Stornos** mit nachvollziehbarer Buchhaltungslogik (nicht nur „cancel“).
 5. **Lieferscheine / Leistungsnachweise** als eigener Belegtyp (Material und/oder Stunden/Leistung) — oft **Voraussetzung** für spätere Rechnung und Streitbeilegung.
 6. **Auftragsbestätigung** (vom angenommenen Angebot) als eigener Schritt inkl. Bedingungen.
-7. **Mahnwesen:** manuelle Mahnstufen + Historie + PDF/Druck sind umgesetzt; **Templates + optionale Gebuehr** (PDF/Druck, Einstellungen) umgesetzt; Platzhalter im Text sind umgesetzt; **E-Mail-Spike** im Rechnungsdetail ist umgesetzt. Offen: produktiver Versandprozess (Queue/Retry/Audit), automatische Eskalation.
+7. **Mahnwesen:** manuelle Mahnstufen + Historie + PDF/Druck sind umgesetzt; **Templates + optionale Gebuehr** (PDF/Druck, Einstellungen) umgesetzt; Platzhalter im Text sind umgesetzt; **Mahn-E-Mail-Outbox** (`sales_reminder_email_jobs`, API, BFF `email-queue`) ist umgesetzt — Audit und Lieferstatus im Request; optional: Cron-Worker ohne Browser-Session, UI „erneut senden“. Legacy **E-Mail-Spike**-Route bleibt. Offen: automatische Eskalation nach Regeln.
 8. **Zahlungsabgleich:** **Teilzahlungen und Saldo pro Rechnung** sind umgesetzt (API + UI); **einzelne Zahlungszeilen löschen** (Korrektur) umgesetzt; **CAMT-Zuordnungs-Spike** (Kandidaten-Ranking + Top-Match-Buchung), **CAMT-Dateiimport** (Vorschau, Persistenz/Idempotenz, Historie; keine Massen-Auto-Buchung) und **Sammelzahlungen** (eine Buchung, mehrere Rechnungen/Teilbeträge) sind umgesetzt. Weiterhin offen: Ausgleich gegen **Kundenkonto** (außerhalb der OP-Sammelzahlung), produktiver Bankimport **ohne** manuelle OP-Zuordnung (z. B. HBCI/PSD2), falls gewünscht.
-9. **Elektronische Rechnung:** **XRechnung / ZUGFeRD** (Deutschland/EU-Trend) — Architektur früh mitdenken.
+9. **Elektronische Rechnung:** **XRechnung / ZUGFeRD** (Deutschland/EU-Trend) — Basis-Endpunkte/Downloadpfad vorhanden, Standardkonformität und Profil-Tiefe weiter ausbauen.
 10. **GoBD / Unveränderbarkeit:** revisionssichere Ablage, Revisionen von Belegen, Löschverbote nach Finalisierung.
 11. **DATEV-Export:** im System angebunden (Settings + Buchungs-CSV fuer Ausgangsrechnungen) — fachliche Vollständigkeit Buchungsstapel (z. B. Zahlungsbuchungen/erweiterte Mapping-Faelle) bleibt offen.
 12. **Leistungszeiträume / §13b-Hinweise** wo relevant (Schnittstelle zu Steuer-Fachkonzept).

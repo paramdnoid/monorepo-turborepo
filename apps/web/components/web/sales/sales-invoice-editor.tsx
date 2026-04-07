@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   SALES_INVOICE_STATUS_OPTIONS,
+  salesInvoiceBillingTypeSchema,
+  type SalesInvoiceBillingType,
   type SalesInvoiceStatus,
   salesInvoiceDetailResponseSchema,
   salesInvoiceDetailSchema,
@@ -45,6 +47,7 @@ import {
   recipientLabelFromCustomerId,
 } from "./sales-customer-master";
 import {
+  fetchSalesInvoiceLinkOptions,
   fetchSalesProjectOptions,
   fetchSalesQuoteLinkOptions,
 } from "./sales-lookups";
@@ -70,6 +73,28 @@ function invoiceStatusLabel(locale: Locale, s: SalesInvoiceStatus): string {
     cancelled: "Storniert",
   };
   return m[s];
+}
+
+function invoiceBillingTypeLabel(
+  locale: Locale,
+  type: SalesInvoiceBillingType,
+): string {
+  if (locale === "en") {
+    const map: Record<SalesInvoiceBillingType, string> = {
+      invoice: "Invoice",
+      partial: "Partial invoice",
+      final: "Final invoice",
+      credit_note: "Credit note",
+    };
+    return map[type];
+  }
+  const map: Record<SalesInvoiceBillingType, string> = {
+    invoice: "Rechnung",
+    partial: "Teilrechnung",
+    final: "Schlussrechnung",
+    credit_note: "Gutschrift",
+  };
+  return map[type];
 }
 
 type SalesInvoiceCreateDialogProps = {
@@ -98,8 +123,11 @@ export function SalesInvoiceCreateDialog({
   const [documentNumber, setDocumentNumber] = useState("");
   const [customerLabel, setCustomerLabel] = useState("");
   const [status, setStatus] = useState<SalesInvoiceStatus>("draft");
+  const [billingType, setBillingType] = useState<SalesInvoiceBillingType>("invoice");
   const [totalStr, setTotalStr] = useState("");
   const [quoteId, setQuoteId] = useState<string>("");
+  const [parentInvoiceId, setParentInvoiceId] = useState("");
+  const [creditForInvoiceId, setCreditForInvoiceId] = useState("");
   const [projectId, setProjectId] = useState("");
   const [issuedYmd, setIssuedYmd] = useState("");
   const [dueYmd, setDueYmd] = useState("");
@@ -107,6 +135,9 @@ export function SalesInvoiceCreateDialog({
   const [quoteOptions, setQuoteOptions] = useState<{ id: string; label: string }[]>(
     [],
   );
+  const [invoiceOptions, setInvoiceOptions] = useState<
+    { id: string; label: string }[]
+  >([]);
   const [projectOptions, setProjectOptions] = useState<
     { id: string; title: string }[]
   >([]);
@@ -122,8 +153,11 @@ export function SalesInvoiceCreateDialog({
     setDocumentNumber("");
     setCustomerLabel("");
     setStatus("draft");
+    setBillingType("invoice");
     setTotalStr("");
     setQuoteId(presetQuoteId?.trim() ? presetQuoteId : "");
+    setParentInvoiceId("");
+    setCreditForInvoiceId("");
     setProjectId("");
     setIssuedYmd("");
     setDueYmd("");
@@ -131,12 +165,14 @@ export function SalesInvoiceCreateDialog({
     setMasterCustomerId("");
     setError(null);
     void (async () => {
-      const [quotes, projects, customers] = await Promise.all([
+      const [quotes, invoices, projects, customers] = await Promise.all([
         fetchSalesQuoteLinkOptions(),
+        fetchSalesInvoiceLinkOptions(),
         fetchSalesProjectOptions(),
         fetchSalesCustomerOptions(),
       ]);
       setQuoteOptions(quotes);
+      setInvoiceOptions(invoices);
       setProjectOptions(projects);
       setCustomerStammOptions(customers);
     })();
@@ -167,6 +203,18 @@ export function SalesInvoiceCreateDialog({
         setError(fc.saveFailed);
         return;
       }
+      if ((billingType === "partial" || billingType === "final") && !parentInvoiceId) {
+        setError(locale === "en" ? "Select a parent invoice." : "Bitte Referenzrechnung waehlen.");
+        return;
+      }
+      if (billingType === "credit_note" && !creditForInvoiceId) {
+        setError(
+          locale === "en"
+            ? "Select the original invoice for this credit note."
+            : "Bitte Originalrechnung fuer diese Gutschrift waehlen.",
+        );
+        return;
+      }
       setBusy(true);
       try {
         const res = await fetch(
@@ -178,6 +226,13 @@ export function SalesInvoiceCreateDialog({
             body: JSON.stringify({
               documentNumber: documentNumber.trim(),
               status,
+              billingType,
+              parentInvoiceId:
+                billingType === "partial" || billingType === "final"
+                  ? parentInvoiceId
+                  : null,
+              creditForInvoiceId:
+                billingType === "credit_note" ? creditForInvoiceId : null,
               issuedAt: dateInputToIsoNoon(issuedYmd),
               dueAt: dateInputToIsoNoon(dueYmd),
               paidAt: dateInputToIsoNoon(paidYmd),
@@ -216,6 +271,18 @@ export function SalesInvoiceCreateDialog({
       setError(fc.saveFailed);
       return;
     }
+    if ((billingType === "partial" || billingType === "final") && !parentInvoiceId) {
+      setError(locale === "en" ? "Select a parent invoice." : "Bitte Referenzrechnung waehlen.");
+      return;
+    }
+    if (billingType === "credit_note" && !creditForInvoiceId) {
+      setError(
+        locale === "en"
+          ? "Select the original invoice for this credit note."
+          : "Bitte Originalrechnung fuer diese Gutschrift waehlen.",
+      );
+      return;
+    }
     setBusy(true);
     try {
       const res = await fetch("/api/web/sales/invoices", {
@@ -226,9 +293,16 @@ export function SalesInvoiceCreateDialog({
           documentNumber: documentNumber.trim(),
           customerLabel: customerLabel.trim(),
           status,
+          billingType,
           currency: "EUR",
           totalCents,
           quoteId: null,
+          parentInvoiceId:
+            billingType === "partial" || billingType === "final"
+              ? parentInvoiceId
+              : null,
+          creditForInvoiceId:
+            billingType === "credit_note" ? creditForInvoiceId : null,
           projectId: projectId === "" ? null : projectId,
           issuedAt: dateInputToIsoNoon(issuedYmd),
           dueAt: dateInputToIsoNoon(dueYmd),
@@ -363,6 +437,86 @@ export function SalesInvoiceCreateDialog({
                 </SelectContent>
               </Select>
             </div>
+            <div className="grid gap-2">
+              <Label>
+                {locale === "en" ? "Billing type" : "Belegtyp"}
+              </Label>
+              <Select
+                value={billingType}
+                onValueChange={(v) => setBillingType(v as SalesInvoiceBillingType)}
+              >
+                <SelectTrigger className="w-full" aria-label={locale === "en" ? "Billing type" : "Belegtyp"}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {salesInvoiceBillingTypeSchema.options.map((bt) => (
+                    <SelectItem key={bt} value={bt}>
+                      {invoiceBillingTypeLabel(locale, bt)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {billingType === "partial" || billingType === "final" ? (
+              <div className="grid gap-2">
+                <Label>{locale === "en" ? "Parent invoice" : "Referenzrechnung"}</Label>
+                <Select
+                  value={parentInvoiceId === "" ? "__none__" : parentInvoiceId}
+                  onValueChange={(v) =>
+                    setParentInvoiceId(v === "__none__" ? "" : v)
+                  }
+                >
+                  <SelectTrigger className="w-full" aria-label={locale === "en" ? "Parent invoice" : "Referenzrechnung"}>
+                    <SelectValue
+                      placeholder={
+                        locale === "en" ? "Select invoice" : "Rechnung waehlen"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">
+                      {locale === "en" ? "None" : "Keine"}
+                    </SelectItem>
+                    {invoiceOptions.map((inv) => (
+                      <SelectItem key={inv.id} value={inv.id}>
+                        {inv.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
+            {billingType === "credit_note" ? (
+              <div className="grid gap-2">
+                <Label>
+                  {locale === "en" ? "Original invoice" : "Originalrechnung"}
+                </Label>
+                <Select
+                  value={creditForInvoiceId === "" ? "__none__" : creditForInvoiceId}
+                  onValueChange={(v) =>
+                    setCreditForInvoiceId(v === "__none__" ? "" : v)
+                  }
+                >
+                  <SelectTrigger className="w-full" aria-label={locale === "en" ? "Original invoice" : "Originalrechnung"}>
+                    <SelectValue
+                      placeholder={
+                        locale === "en" ? "Select invoice" : "Rechnung waehlen"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">
+                      {locale === "en" ? "None" : "Keine"}
+                    </SelectItem>
+                    {invoiceOptions.map((inv) => (
+                      <SelectItem key={inv.id} value={inv.id}>
+                        {inv.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
             {copyFromQuote ? null : (
               <div className="grid gap-2">
                 <Label htmlFor="i-total">{fc.total}</Label>
@@ -498,8 +652,17 @@ export function SalesInvoiceEditForm({
   const [status, setStatus] = useState<SalesInvoiceStatus>(
     invoice.status as SalesInvoiceStatus,
   );
+  const [billingType, setBillingType] = useState<SalesInvoiceBillingType>(
+    invoice.billingType,
+  );
   const [totalStr, setTotalStr] = useState("");
   const [quoteId, setQuoteId] = useState<string>(invoice.quoteId ?? "");
+  const [parentInvoiceId, setParentInvoiceId] = useState<string>(
+    invoice.parentInvoiceId ?? "",
+  );
+  const [creditForInvoiceId, setCreditForInvoiceId] = useState<string>(
+    invoice.creditForInvoiceId ?? "",
+  );
   const [projectId, setProjectId] = useState<string>(invoice.projectId ?? "");
   const [issuedYmd, setIssuedYmd] = useState(
     isoToDateInputValue(invoice.issuedAt),
@@ -509,6 +672,9 @@ export function SalesInvoiceEditForm({
   const [quoteOptions, setQuoteOptions] = useState<{ id: string; label: string }[]>(
     [],
   );
+  const [invoiceOptions, setInvoiceOptions] = useState<
+    { id: string; label: string }[]
+  >([]);
   const [projectOptions, setProjectOptions] = useState<
     { id: string; title: string }[]
   >([]);
@@ -521,22 +687,25 @@ export function SalesInvoiceEditForm({
 
   useEffect(() => {
     void (async () => {
-      const [quotes, projects, customers] = await Promise.all([
+      const [quotes, invoices, projects, customers] = await Promise.all([
         fetchSalesQuoteLinkOptions(),
+        fetchSalesInvoiceLinkOptions(),
         fetchSalesProjectOptions(),
         fetchSalesCustomerOptions(),
       ]);
       setQuoteOptions(quotes);
+      setInvoiceOptions(invoices.filter((r) => r.id !== invoice.id));
       setProjectOptions(projects);
       setCustomerStammOptions(customers);
     })();
-  }, []);
+  }, [invoice.id]);
 
   useEffect(() => {
     setDocumentNumber(invoice.documentNumber);
     setCustomerLabel(invoice.customerLabel);
     setMasterCustomerId(invoice.customerId ?? "");
     setStatus(invoice.status as SalesInvoiceStatus);
+    setBillingType(invoice.billingType);
     setTotalStr(
       (invoice.totalCents / 100).toLocaleString(
         locale === "en" ? "en-US" : "de-DE",
@@ -547,6 +716,8 @@ export function SalesInvoiceEditForm({
       ),
     );
     setQuoteId(invoice.quoteId ?? "");
+    setParentInvoiceId(invoice.parentInvoiceId ?? "");
+    setCreditForInvoiceId(invoice.creditForInvoiceId ?? "");
     setProjectId(invoice.projectId ?? "");
     setIssuedYmd(isoToDateInputValue(invoice.issuedAt));
     setDueYmd(isoToDateInputValue(invoice.dueAt));
@@ -566,6 +737,18 @@ export function SalesInvoiceEditForm({
         return;
       }
     }
+    if ((billingType === "partial" || billingType === "final") && !parentInvoiceId) {
+      setError(locale === "en" ? "Select a parent invoice." : "Bitte Referenzrechnung waehlen.");
+      return;
+    }
+    if (billingType === "credit_note" && !creditForInvoiceId) {
+      setError(
+        locale === "en"
+          ? "Select the original invoice for this credit note."
+          : "Bitte Originalrechnung fuer diese Gutschrift waehlen.",
+      );
+      return;
+    }
     setBusy(true);
     try {
       const res = await fetch(`/api/web/sales/invoices/${invoice.id}`, {
@@ -577,9 +760,16 @@ export function SalesInvoiceEditForm({
           customerLabel: customerLabel.trim(),
           customerId: masterCustomerId === "" ? null : masterCustomerId,
           status,
+          billingType,
           currency: invoice.currency,
           ...(hasLines ? {} : { totalCents }),
           quoteId: quoteId === "" ? null : quoteId,
+          parentInvoiceId:
+            billingType === "partial" || billingType === "final"
+              ? parentInvoiceId
+              : null,
+          creditForInvoiceId:
+            billingType === "credit_note" ? creditForInvoiceId : null,
           projectId: projectId === "" ? null : projectId,
           issuedAt: dateInputToIsoNoon(issuedYmd),
           dueAt: dateInputToIsoNoon(dueYmd),
@@ -709,6 +899,72 @@ export function SalesInvoiceEditForm({
           </SelectContent>
         </Select>
       </div>
+      <div className="grid gap-2">
+        <Label>{locale === "en" ? "Billing type" : "Belegtyp"}</Label>
+        <Select
+          value={billingType}
+          onValueChange={(v) => setBillingType(v as SalesInvoiceBillingType)}
+        >
+          <SelectTrigger className="w-full" aria-label={locale === "en" ? "Billing type" : "Belegtyp"}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {salesInvoiceBillingTypeSchema.options.map((bt) => (
+              <SelectItem key={bt} value={bt}>
+                {invoiceBillingTypeLabel(locale, bt)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      {billingType === "partial" || billingType === "final" ? (
+        <div className="grid gap-2">
+          <Label>{locale === "en" ? "Parent invoice" : "Referenzrechnung"}</Label>
+          <Select
+            value={parentInvoiceId === "" ? "__none__" : parentInvoiceId}
+            onValueChange={(v) => setParentInvoiceId(v === "__none__" ? "" : v)}
+          >
+            <SelectTrigger className="w-full" aria-label={locale === "en" ? "Parent invoice" : "Referenzrechnung"}>
+              <SelectValue
+                placeholder={locale === "en" ? "Select invoice" : "Rechnung waehlen"}
+              />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">{locale === "en" ? "None" : "Keine"}</SelectItem>
+              {invoiceOptions.map((inv) => (
+                <SelectItem key={inv.id} value={inv.id}>
+                  {inv.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      ) : null}
+      {billingType === "credit_note" ? (
+        <div className="grid gap-2">
+          <Label>{locale === "en" ? "Original invoice" : "Originalrechnung"}</Label>
+          <Select
+            value={creditForInvoiceId === "" ? "__none__" : creditForInvoiceId}
+            onValueChange={(v) =>
+              setCreditForInvoiceId(v === "__none__" ? "" : v)
+            }
+          >
+            <SelectTrigger className="w-full" aria-label={locale === "en" ? "Original invoice" : "Originalrechnung"}>
+              <SelectValue
+                placeholder={locale === "en" ? "Select invoice" : "Rechnung waehlen"}
+              />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">{locale === "en" ? "None" : "Keine"}</SelectItem>
+              {invoiceOptions.map((inv) => (
+                <SelectItem key={inv.id} value={inv.id}>
+                  {inv.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      ) : null}
       <div className="grid gap-2">
         <Label htmlFor={hasLines ? "ie-total-display" : "ie-total"}>
           {hasLines ? fc.totalFromLines : fc.total}

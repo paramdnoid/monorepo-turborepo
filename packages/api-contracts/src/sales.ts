@@ -81,6 +81,9 @@ export type SalesCreateInvoiceInput = z.infer<typeof salesCreateInvoiceSchema>;
 export const salesCreateInvoiceFromQuoteSchema = z.object({
   documentNumber: z.string().trim().min(1).max(80),
   status: salesInvoiceStatusSchema.default("draft"),
+  billingType: salesInvoiceBillingTypeSchema.default("invoice"),
+  parentInvoiceId: optionalUuidOrNull,
+  creditForInvoiceId: optionalUuidOrNull,
   issuedAt: optionalInstantOrNull,
   dueAt: optionalInstantOrNull,
   paidAt: optionalInstantOrNull,
@@ -646,6 +649,24 @@ export const salesReminderEmailJobsProcessResponseSchema = z.object({
 
 export type SalesReminderEmailJobsProcessResponse = z.infer<
   typeof salesReminderEmailJobsProcessResponseSchema
+>;
+
+/** GET /v1/sales/reminder-email-jobs/metrics */
+export const salesReminderEmailJobsMetricsResponseSchema = z.object({
+  pending: z.number().int().nonnegative(),
+  sent: z.number().int().nonnegative(),
+  failed: z.number().int().nonnegative(),
+  total: z.number().int().nonnegative(),
+  oldestPendingCreatedAt: z.string().nullable(),
+  latestFailedAt: z.string().nullable(),
+  latestFailedError: z.string().nullable(),
+  latestActivityAt: z.string().nullable(),
+  latestActivityStatus: z.enum(["pending", "sent", "failed"]).nullable(),
+  latestActivityAttempts: z.number().int().nonnegative().nullable(),
+});
+
+export type SalesReminderEmailJobsMetricsResponse = z.infer<
+  typeof salesReminderEmailJobsMetricsResponseSchema
 >;
 
 /** BFF: Produktivpfad mit Outbox-Audit (ersetzt reinen Spike bei Versand). */

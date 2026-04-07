@@ -1,5 +1,6 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import type { Context } from "hono";
+import { z } from "zod";
 
 import {
   datevSettingsPatchSchema,
@@ -162,6 +163,44 @@ export function createDatevSettingsPatchHandler(getDb: () => Db | undefined) {
 
 const EXPORTABLE_INVOICE_STATUSES = ["sent", "paid", "overdue"] as const;
 
+const datevTaxBreakdownSchema = z.array(
+  z.object({
+    taxRateBps: z.number().int().min(0).max(10_000),
+    grossCents: z.number().int(),
+  }),
+);
+
+function formatTaxRateLabel(taxRateBps: number): string {
+  return `${(taxRateBps / 100).toFixed(2).replace(/\.00$/, "")}%`;
+}
+
+function extractDatevTaxRows(
+  snapshotJson: unknown,
+  fallbackTotalCents: number,
+): { taxRateBps: number; grossCents: number }[] {
+  if (!snapshotJson || typeof snapshotJson !== "object") {
+    return [{ taxRateBps: 0, grossCents: fallbackTotalCents }];
+  }
+  const candidate =
+    "taxBreakdown" in (snapshotJson as Record<string, unknown>)
+      ? (snapshotJson as Record<string, unknown>).taxBreakdown
+      : undefined;
+  const parsed = datevTaxBreakdownSchema.safeParse(candidate);
+  if (!parsed.success || parsed.data.length === 0) {
+    return [{ taxRateBps: 0, grossCents: fallbackTotalCents }];
+  }
+  const rows = parsed.data
+    .filter((row) => row.grossCents !== 0)
+    .map((row) => ({
+      taxRateBps: row.taxRateBps,
+      grossCents: row.grossCents,
+    }));
+  if (rows.length === 0) {
+    return [{ taxRateBps: 0, grossCents: fallbackTotalCents }];
+  }
+  return rows;
+}
+
 export function createDatevBookingsExportHandler(getDb: () => Db | undefined) {
   return async (c: Context) => {
     const auth = c.get("auth");
@@ -209,6 +248,7 @@ export function createDatevBookingsExportHandler(getDb: () => Db | undefined) {
         customerLabel: salesInvoices.customerLabel,
         billingType: salesInvoices.billingType,
         isFinalized: salesInvoices.isFinalized,
+        snapshotJson: salesInvoices.snapshotJson,
       })
       .from(salesInvoices)
       .where(
@@ -223,7 +263,7 @@ export function createDatevBookingsExportHandler(getDb: () => Db | undefined) {
 
     const vatKey = settings.defaultVatKey?.trim() ?? "";
 
-    const invoices = rows.map((r) => {
+    const invoices = rows.flatMap((r) => {
       const d = r.issuedAt ?? r.createdAt;
       const postingDate = d.toISOString().slice(0, 10);
       const typeLabel =
@@ -234,14 +274,15 @@ export function createDatevBookingsExportHandler(getDb: () => Db | undefined) {
             : r.billingType === "final"
               ? "Schlussrechnung"
               : "Rechnung";
-      const signedTotalCents =
-        r.billingType === "credit_note" ? -Math.abs(r.totalCents) : r.totalCents;
-      return {
-        documentNumber: r.documentNumber,
-        totalCents: signedTotalCents,
+      const sign = r.billingType === "credit_note" ? -1 : 1;
+      const taxRows = extractDatevTaxRows(r.snapshotJson, r.totalCents);
+      return taxRows.map((taxRow, idx) => ({
+        documentNumber:
+          taxRows.length > 1 ? `${r.documentNumber}-${idx + 1}` : r.documentNumber,
+        totalCents: sign * Math.abs(taxRow.grossCents),
         postingDate,
-        description: `${typeLabel} ${r.documentNumber} — ${r.customerLabel}`,
-      };
+        description: `${typeLabel} ${r.documentNumber} — ${r.customerLabel} (USt ${formatTaxRateLabel(taxRow.taxRateBps)})`,
+      }));
     });
 
     const csv = buildDatevBookingsCsv({

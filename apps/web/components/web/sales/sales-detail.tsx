@@ -9,6 +9,7 @@ import {
   customerDetailResponseSchema,
   salesInvoiceDetailResponseSchema,
   salesReminderEmailJobsListResponseSchema,
+  salesReminderEmailJobsMetricsResponseSchema,
   salesReminderEmailJobsProcessResponseSchema,
   salesReminderEmailQueueResponseSchema,
   salesQuoteDetailResponseSchema,
@@ -25,6 +26,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@repo/ui/alert-dialog";
+import { Badge } from "@repo/ui/badge";
 import { Button } from "@repo/ui/button";
 import {
   Card,
@@ -87,6 +89,13 @@ function formatDate(iso: string | null, locale: Locale): string {
   }).format(d);
 }
 
+function formatTaxRatePercent(bps: number, locale: Locale): string {
+  return `${(bps / 100).toLocaleString(locale === "en" ? "en-US" : "de-DE", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  })}%`;
+}
+
 function todayYmd(): string {
   return new Date().toISOString().slice(0, 10);
 }
@@ -113,6 +122,49 @@ function suggestedReminderLevelFromOverdue(params: {
   if (reminderLevel1DaysAfterDue != null && daysOverdue >= reminderLevel1DaysAfterDue)
     return 1;
   return 1;
+}
+
+function toAgeMinutes(iso: string | null): number | null {
+  if (!iso) return null;
+  const ts = Date.parse(iso);
+  if (!Number.isFinite(ts)) return null;
+  const ageMs = Date.now() - ts;
+  if (!Number.isFinite(ageMs) || ageMs < 0) return 0;
+  return Math.floor(ageMs / 60_000);
+}
+
+function formatAgeLabel(minutes: number, locale: Locale): string {
+  if (minutes < 60) {
+    return locale === "en" ? `${minutes} min` : `${minutes} Min`;
+  }
+  const hours = Math.floor(minutes / 60);
+  const restMinutes = minutes % 60;
+  return locale === "en"
+    ? `${hours}h ${restMinutes}m`
+    : `${hours} Std ${restMinutes} Min`;
+}
+
+function reminderJobStatusLabel(
+  status: "pending" | "sent" | "failed" | null,
+  locale: Locale,
+): string {
+  if (!status) return "—";
+  if (locale === "en") {
+    if (status === "pending") return "Pending";
+    if (status === "sent") return "Sent";
+    return "Failed";
+  }
+  if (status === "pending") return "Pending";
+  if (status === "sent") return "Versendet";
+  return "Fehlgeschlagen";
+}
+
+function reminderJobStatusBadgeVariant(
+  status: "pending" | "sent" | "failed" | null,
+): "outline" | "default" | "destructive" {
+  if (status === "failed") return "destructive";
+  if (status === "sent") return "default";
+  return "outline";
 }
 
 function DetailLine({
@@ -190,6 +242,17 @@ export function SalesDetail({
   const [reminderEmailRetryBusyId, setReminderEmailRetryBusyId] = useState<
     string | null
   >(null);
+  const [reminderOutboxProcessBusy, setReminderOutboxProcessBusy] =
+    useState(false);
+  const [reminderOutboxLastRun, setReminderOutboxLastRun] = useState<{
+    at: string;
+    processed: number;
+    sent: number;
+    failed: number;
+  } | null>(null);
+  const [reminderEmailMetrics, setReminderEmailMetrics] = useState<z.infer<
+    typeof salesReminderEmailJobsMetricsResponseSchema
+  > | null>(null);
   const [reminderEmailJobStateByReminder, setReminderEmailJobStateByReminder] =
     useState<
       Map<
@@ -561,6 +624,7 @@ export function SalesDetail({
         inv.id,
         inv.reminders.map((r) => r.id),
       );
+      await reloadReminderEmailMetrics();
       toast.success(
         locale === "en"
           ? "Reminder email queued."
@@ -576,6 +640,25 @@ export function SalesDetail({
       setReminderEmailBusyId(null);
     }
   };
+
+  const reloadReminderEmailMetrics = useCallback(async () => {
+    try {
+      const res = await fetch("/api/web/sales/reminder-email-jobs/metrics", {
+        credentials: "include",
+        cache: "no-store",
+      });
+      const text = await res.text();
+      const json = parseResponseJson(text);
+      const parsed = salesReminderEmailJobsMetricsResponseSchema.safeParse(json);
+      if (!res.ok || !parsed.success) {
+        setReminderEmailMetrics(null);
+        return;
+      }
+      setReminderEmailMetrics(parsed.data);
+    } catch {
+      setReminderEmailMetrics(null);
+    }
+  }, []);
 
   const reloadReminderEmailJobs = useCallback(async (
     invoiceId: string,
@@ -620,6 +703,51 @@ export function SalesDetail({
     setReminderEmailJobStateByReminder(byReminder);
   }, []);
 
+  const runReminderOutboxProcess = async () => {
+    if (reminderOutboxProcessBusy) return;
+    setReminderOutboxProcessBusy(true);
+    try {
+      const res = await fetch("/api/web/sales/reminder-email-jobs/process", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ limit: 20 }),
+      });
+      const text = await res.text();
+      const json = parseResponseJson(text);
+      const parsed = salesReminderEmailJobsProcessResponseSchema.safeParse(json);
+      if (!res.ok || !parsed.success) {
+        throw new Error("process_failed");
+      }
+      setReminderOutboxLastRun({
+        at: new Date().toISOString(),
+        processed: parsed.data.processed,
+        sent: parsed.data.sent,
+        failed: parsed.data.failed,
+      });
+      if (detail && detail.mode === "invoices") {
+        await reloadReminderEmailJobs(
+          detail.data.invoice.id,
+          detail.data.invoice.reminders.map((r) => r.id),
+        );
+      }
+      await reloadReminderEmailMetrics();
+      toast.success(
+        locale === "en"
+          ? `Outbox processed: ${parsed.data.processed} (sent ${parsed.data.sent}, failed ${parsed.data.failed}).`
+          : `Outbox verarbeitet: ${parsed.data.processed} (versendet ${parsed.data.sent}, fehlgeschlagen ${parsed.data.failed}).`,
+      );
+    } catch {
+      toast.error(
+        locale === "en"
+          ? "Outbox processing failed."
+          : "Outbox-Verarbeitung fehlgeschlagen.",
+      );
+    } finally {
+      setReminderOutboxProcessBusy(false);
+    }
+  };
+
   const retryReminderEmailJob = async (reminderId: string) => {
     if (!detail || detail.mode !== "invoices") return;
     const inv = detail.data.invoice;
@@ -652,6 +780,7 @@ export function SalesDetail({
         inv.id,
         inv.reminders.map((r) => r.id),
       );
+      await reloadReminderEmailMetrics();
       toast.success(
         locale === "en"
           ? "Email retry queued."
@@ -830,15 +959,25 @@ export function SalesDetail({
   useEffect(() => {
     if (!detail || detail.mode !== "invoices") {
       setReminderEmailJobStateByReminder(new Map());
+      setReminderEmailMetrics(null);
       return;
     }
+    void reloadReminderEmailMetrics();
     const reminderIds = detail.data.invoice.reminders.map((r) => r.id);
     if (reminderIds.length === 0) {
       setReminderEmailJobStateByReminder(new Map());
       return;
     }
     void reloadReminderEmailJobs(detail.data.invoice.id, reminderIds);
-  }, [detail, reloadReminderEmailJobs]);
+  }, [detail, reloadReminderEmailJobs, reloadReminderEmailMetrics]);
+
+  useEffect(() => {
+    if (!detail || detail.mode !== "invoices") return;
+    const timer = window.setInterval(() => {
+      void reloadReminderEmailMetrics();
+    }, 30_000);
+    return () => window.clearInterval(timer);
+  }, [detail, reloadReminderEmailMetrics]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1256,6 +1395,34 @@ export function SalesDetail({
                   locale,
                 )}
               />
+              {inv.taxBreakdown.length > 0 ? (
+                <div className="space-y-2 rounded-md border border-border/80 p-3">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    {locale === "en" ? "VAT breakdown" : "USt-Aufschluesselung"}
+                  </p>
+                  <ul className="space-y-1 text-sm">
+                    {inv.taxBreakdown.map((tb) => (
+                      <li key={tb.taxRateBps} className="flex flex-wrap gap-x-3 gap-y-1">
+                        <span className="font-medium">
+                          {formatTaxRatePercent(tb.taxRateBps, locale)}
+                        </span>
+                        <span className="text-muted-foreground">
+                          {locale === "en" ? "Net" : "Netto"}:{" "}
+                          {formatMinorCurrency(tb.netCents, inv.currency, locale)}
+                        </span>
+                        <span className="text-muted-foreground">
+                          {locale === "en" ? "Tax" : "Steuer"}:{" "}
+                          {formatMinorCurrency(tb.taxCents, inv.currency, locale)}
+                        </span>
+                        <span className="text-muted-foreground">
+                          {locale === "en" ? "Gross" : "Brutto"}:{" "}
+                          {formatMinorCurrency(tb.grossCents, inv.currency, locale)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
               <DetailLine
                 label={copy.issued}
                 value={formatDate(inv.issuedAt, locale)}
@@ -1423,6 +1590,118 @@ export function SalesDetail({
           <CardTitle className="text-base">{reminderCopy.heading}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="xs"
+              disabled={reminderOutboxProcessBusy}
+              onClick={() => void runReminderOutboxProcess()}
+            >
+              {reminderOutboxProcessBusy
+                ? locale === "en"
+                  ? "Processing queue..."
+                  : "Verarbeite Queue ..."
+                : locale === "en"
+                  ? "Process queue now"
+                  : "Queue jetzt verarbeiten"}
+            </Button>
+            {reminderOutboxLastRun ? (
+              <span className="text-xs text-muted-foreground">
+                {locale === "en" ? "Last run" : "Letzter Lauf"}:{" "}
+                {formatDate(reminderOutboxLastRun.at, locale)} ·{" "}
+                {locale === "en" ? "processed" : "verarbeitet"}{" "}
+                {reminderOutboxLastRun.processed} ·{" "}
+                {locale === "en" ? "sent" : "versendet"}{" "}
+                {reminderOutboxLastRun.sent} ·{" "}
+                {locale === "en" ? "failed" : "fehlgeschlagen"}{" "}
+                {reminderOutboxLastRun.failed}
+              </span>
+            ) : null}
+            {reminderEmailMetrics?.latestActivityAt ? (
+              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                {locale === "en"
+                  ? "Latest outbox activity"
+                  : "Letzte Outbox-Aktivitaet"}
+                : {formatDate(reminderEmailMetrics.latestActivityAt, locale)} ·{" "}
+                <Badge
+                  variant={reminderJobStatusBadgeVariant(
+                    reminderEmailMetrics.latestActivityStatus,
+                  )}
+                  className="h-4 px-1.5 text-[10px]"
+                >
+                  {reminderJobStatusLabel(
+                    reminderEmailMetrics.latestActivityStatus,
+                    locale,
+                  )}
+                </Badge>
+                {reminderEmailMetrics.latestActivityAttempts != null
+                  ? ` · ${locale === "en" ? "attempt" : "Versuch"} ${reminderEmailMetrics.latestActivityAttempts}`
+                  : ""}
+              </span>
+            ) : null}
+          </div>
+          {reminderEmailMetrics ? (
+            <div className="rounded-md border border-border/80 p-3 text-sm">
+              <div className="flex flex-wrap gap-x-4 gap-y-1">
+                <span>
+                  {locale === "en" ? "Pending" : "Pending"}:{" "}
+                  <strong>{reminderEmailMetrics.pending}</strong>
+                </span>
+                <span>
+                  {locale === "en" ? "Failed" : "Fehlgeschlagen"}:{" "}
+                  <strong>{reminderEmailMetrics.failed}</strong>
+                </span>
+                <span>
+                  {locale === "en" ? "Sent" : "Versendet"}:{" "}
+                  <strong>{reminderEmailMetrics.sent}</strong>
+                </span>
+                <span>
+                  {locale === "en" ? "Total" : "Gesamt"}:{" "}
+                  <strong>{reminderEmailMetrics.total}</strong>
+                </span>
+              </div>
+              {(() => {
+                const oldestPendingMinutes = toAgeMinutes(
+                  reminderEmailMetrics.oldestPendingCreatedAt,
+                );
+                if (
+                  reminderEmailMetrics.failed === 0 &&
+                  (oldestPendingMinutes === null || oldestPendingMinutes < 30)
+                ) {
+                  return null;
+                }
+                return (
+                  <Alert variant="destructive" className="mt-3">
+                    <AlertTitle>
+                      {locale === "en"
+                        ? "Reminder outbox needs attention"
+                        : "Mahn-Outbox braucht Aufmerksamkeit"}
+                    </AlertTitle>
+                    <AlertDescription>
+                      {reminderEmailMetrics.failed > 0 ? (
+                        <span className="block">
+                          {locale === "en"
+                            ? `${reminderEmailMetrics.failed} failed jobs detected.`
+                            : `${reminderEmailMetrics.failed} fehlgeschlagene Jobs erkannt.`}
+                          {reminderEmailMetrics.latestFailedError
+                            ? ` ${reminderEmailMetrics.latestFailedError}`
+                            : ""}
+                        </span>
+                      ) : null}
+                      {oldestPendingMinutes !== null && oldestPendingMinutes >= 30 ? (
+                        <span className="block">
+                          {locale === "en"
+                            ? `Oldest pending job age: ${formatAgeLabel(oldestPendingMinutes, locale)}.`
+                            : `Aeltester Pending-Job: ${formatAgeLabel(oldestPendingMinutes, locale)}.`}
+                        </span>
+                      ) : null}
+                    </AlertDescription>
+                  </Alert>
+                );
+              })()}
+            </div>
+          ) : null}
           {inv.reminders.length > 0 ? (
             <ul className="space-y-2 border-t border-border pt-3">
               {inv.reminders.map((r) => (
@@ -1570,6 +1849,7 @@ export function SalesDetail({
         mode="invoices"
         documentId={inv.id}
         lines={inv.lines}
+          readOnly={inv.isFinalized}
         onDocumentUpdated={(next) =>
           setDetail(
             "quote" in next

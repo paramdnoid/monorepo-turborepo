@@ -48,6 +48,37 @@ function minorToEditString(cents: number, locale: Locale): string {
   });
 }
 
+function bpsToPercentEditString(bps: number, locale: Locale): string {
+  return (bps / 100).toLocaleString(locale === "en" ? "en-US" : "de-DE", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
+}
+
+function parsePercentToBps(raw: string, locale: Locale): number | null {
+  const n = parseQuantityAsMultiplier(raw, locale);
+  if (n === null) return null;
+  const bps = Math.round(n * 100);
+  if (bps < 0 || bps > 10_000) return null;
+  return bps;
+}
+
+function computeDiscountedLineTotalCents(
+  args: {
+    unitPriceCents: number;
+    quantity: string;
+    discountPercent: string;
+  },
+  locale: Locale,
+): number | null {
+  const unitPrice = args.unitPriceCents;
+  const multiplier = parseQuantityAsMultiplier(args.quantity, locale);
+  const discountBps = parsePercentToBps(args.discountPercent, locale);
+  if (multiplier === null || discountBps === null) return null;
+  const base = Math.round(multiplier * unitPrice);
+  return Math.max(0, Math.round((base * (10_000 - discountBps)) / 10_000));
+}
+
 function swapAdjacentLineIds(
   orderedIds: string[],
   index: number,
@@ -71,6 +102,7 @@ type SalesLinesSectionProps = {
   mode: "quotes" | "invoices";
   documentId: string;
   lines: SalesDocumentLine[];
+  readOnly?: boolean;
   onDocumentUpdated: (
     next: QuoteDetailPayload | InvoiceDetailPayload,
   ) => void;
@@ -81,6 +113,7 @@ export function SalesLinesSection({
   mode,
   documentId,
   lines,
+  readOnly = false,
   onDocumentUpdated,
 }: SalesLinesSectionProps) {
   const lc = getSalesLinesCopy(locale);
@@ -91,7 +124,7 @@ export function SalesLinesSection({
   const [reordering, setReordering] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const interactionLocked = busyLineId !== null || reordering;
+  const interactionLocked = readOnly || busyLineId !== null || reordering;
 
   useEffect(() => {
     if (!addOpen) {
@@ -218,7 +251,7 @@ export function SalesLinesSection({
         <p className="text-sm text-muted-foreground">{lc.emptyLines}</p>
       ) : (
         <div className="overflow-x-auto rounded-md border border-border">
-          <table className="w-full min-w-[40rem] text-left text-sm">
+          <table className="w-full min-w-160 text-left text-sm">
             <thead className="border-b border-border bg-muted/40 text-xs font-medium text-muted-foreground">
               <tr>
                 <th className="px-1 py-2 w-14 font-medium align-bottom">
@@ -228,6 +261,12 @@ export function SalesLinesSection({
                 <th className="px-3 py-2 font-medium">{lc.quantity}</th>
                 <th className="px-3 py-2 font-medium">{lc.unit}</th>
                 <th className="px-3 py-2 font-medium">{lc.unitPrice}</th>
+                <th className="px-3 py-2 font-medium">
+                  {locale === "en" ? "VAT %" : "MwSt %"}
+                </th>
+                <th className="px-3 py-2 font-medium">
+                  {locale === "en" ? "Discount %" : "Rabatt %"}
+                </th>
                 <th className="px-3 py-2 font-medium">{lc.lineTotal}</th>
                 <th className="px-3 py-2 font-medium w-28">{fc.save}</th>
                 <th className="px-2 py-2 font-medium w-24" aria-label={lc.deleteLine} />
@@ -317,6 +356,12 @@ function SalesLineRow({
   const [unitPriceStr, setUnitPriceStr] = useState(() =>
     minorToEditString(line.unitPriceCents, locale),
   );
+  const [taxRatePercentStr, setTaxRatePercentStr] = useState(() =>
+    bpsToPercentEditString(line.taxRateBps, locale),
+  );
+  const [discountPercentStr, setDiscountPercentStr] = useState(() =>
+    bpsToPercentEditString(line.discountBps, locale),
+  );
   const [lineTotalStr, setLineTotalStr] = useState(() =>
     minorToEditString(line.lineTotalCents, locale),
   );
@@ -326,6 +371,8 @@ function SalesLineRow({
     setQuantity(line.quantity ?? "");
     setUnit(line.unit ?? "");
     setUnitPriceStr(minorToEditString(line.unitPriceCents, locale));
+    setTaxRatePercentStr(bpsToPercentEditString(line.taxRateBps, locale));
+    setDiscountPercentStr(bpsToPercentEditString(line.discountBps, locale));
     setLineTotalStr(minorToEditString(line.lineTotalCents, locale));
   }, [
     line.id,
@@ -333,6 +380,8 @@ function SalesLineRow({
     line.quantity,
     line.unit,
     line.unitPriceCents,
+    line.taxRateBps,
+    line.discountBps,
     line.lineTotalCents,
     line.sortIndex,
     locale,
@@ -348,6 +397,8 @@ function SalesLineRow({
     qtyNorm !== (line.quantity ?? null) ||
     unitNorm !== (line.unit ?? null) ||
     unitPriceStr !== minorToEditString(line.unitPriceCents, locale) ||
+    taxRatePercentStr !== bpsToPercentEditString(line.taxRateBps, locale) ||
+    discountPercentStr !== bpsToPercentEditString(line.discountBps, locale) ||
     lineTotalStr !== minorToEditString(line.lineTotalCents, locale);
 
   async function handleSaveClick() {
@@ -355,8 +406,15 @@ function SalesLineRow({
       return;
     }
     const unitPriceCents = parseMajorToMinorUnits(unitPriceStr, locale);
+    const taxRateBps = parsePercentToBps(taxRatePercentStr, locale);
+    const discountBps = parsePercentToBps(discountPercentStr, locale);
     const lineTotalCents = parseMajorToMinorUnits(lineTotalStr, locale);
-    if (unitPriceCents === null || lineTotalCents === null) {
+    if (
+      unitPriceCents === null ||
+      taxRateBps === null ||
+      discountBps === null ||
+      lineTotalCents === null
+    ) {
       return;
     }
     await onSave({
@@ -364,6 +422,8 @@ function SalesLineRow({
       quantity: qtyNorm,
       unit: unitNorm,
       unitPriceCents,
+      taxRateBps,
+      discountBps,
       lineTotalCents,
     });
   }
@@ -396,7 +456,7 @@ function SalesLineRow({
           </Button>
         </div>
       </td>
-      <td className="px-2 py-1.5 align-top min-w-[8rem]">
+      <td className="px-2 py-1.5 align-top min-w-32">
         <Input
           value={description}
           onChange={(e) => setDescription(e.target.value)}
@@ -423,7 +483,7 @@ function SalesLineRow({
           className="min-h-9"
         />
       </td>
-      <td className="px-2 py-1.5 align-top min-w-[6rem]">
+      <td className="px-2 py-1.5 align-top min-w-24">
         <Input
           value={unitPriceStr}
           onChange={(e) => setUnitPriceStr(e.target.value)}
@@ -433,7 +493,27 @@ function SalesLineRow({
           className="min-h-9"
         />
       </td>
-      <td className="px-2 py-1.5 align-top min-w-[6.5rem]">
+      <td className="px-2 py-1.5 align-top w-20">
+        <Input
+          value={taxRatePercentStr}
+          onChange={(e) => setTaxRatePercentStr(e.target.value)}
+          disabled={interactionLocked}
+          inputMode="decimal"
+          aria-label={locale === "en" ? "VAT percent" : "MwSt Prozent"}
+          className="min-h-9"
+        />
+      </td>
+      <td className="px-2 py-1.5 align-top w-20">
+        <Input
+          value={discountPercentStr}
+          onChange={(e) => setDiscountPercentStr(e.target.value)}
+          disabled={interactionLocked}
+          inputMode="decimal"
+          aria-label={locale === "en" ? "Discount percent" : "Rabatt Prozent"}
+          className="min-h-9"
+        />
+      </td>
+      <td className="px-2 py-1.5 align-top min-w-26">
         <div className="flex flex-col gap-1">
           <Input
             value={lineTotalStr}
@@ -451,11 +531,17 @@ function SalesLineRow({
             disabled={interactionLocked}
             onClick={() => {
               const up = parseMajorToMinorUnits(unitPriceStr, locale);
-              const m = parseQuantityAsMultiplier(quantity, locale);
-              if (up === null || m === null) return;
-              setLineTotalStr(
-                minorToEditString(Math.round(m * up), locale),
+              if (up === null) return;
+              const computed = computeDiscountedLineTotalCents(
+                {
+                  unitPriceCents: up,
+                  quantity,
+                  discountPercent: discountPercentStr,
+                },
+                locale,
               );
+              if (computed === null) return;
+              setLineTotalStr(minorToEditString(computed, locale));
             }}
           >
             {lc.lineCalcFromQty}
@@ -499,6 +585,8 @@ type SalesLineAddDialogProps = {
     quantity: string | null;
     unit: string | null;
     unitPriceCents: number;
+    taxRateBps: number;
+    discountBps: number;
     lineTotalCents: number;
   }) => Promise<boolean>;
 };
@@ -515,6 +603,8 @@ function SalesLineAddDialog({
   const [quantity, setQuantity] = useState("");
   const [unit, setUnit] = useState("");
   const [unitPriceStr, setUnitPriceStr] = useState("");
+  const [taxRatePercentStr, setTaxRatePercentStr] = useState("19");
+  const [discountPercentStr, setDiscountPercentStr] = useState("0");
   const [lineTotalStr, setLineTotalStr] = useState("");
   const [busy, setBusy] = useState(false);
   const [localErr, setLocalErr] = useState<string | null>(null);
@@ -525,6 +615,8 @@ function SalesLineAddDialog({
       setQuantity("");
       setUnit("");
       setUnitPriceStr("");
+      setTaxRatePercentStr("19");
+      setDiscountPercentStr("0");
       setLineTotalStr("");
       setLocalErr(null);
     }
@@ -538,8 +630,15 @@ function SalesLineAddDialog({
       return;
     }
     const unitPriceCents = parseMajorToMinorUnits(unitPriceStr, locale);
+    const taxRateBps = parsePercentToBps(taxRatePercentStr, locale);
+    const discountBps = parsePercentToBps(discountPercentStr, locale);
     const lineTotalCents = parseMajorToMinorUnits(lineTotalStr, locale);
-    if (unitPriceCents === null || lineTotalCents === null) {
+    if (
+      unitPriceCents === null ||
+      taxRateBps === null ||
+      discountBps === null ||
+      lineTotalCents === null
+    ) {
       setLocalErr(lc.lineSaveFailed);
       return;
     }
@@ -550,6 +649,8 @@ function SalesLineAddDialog({
         quantity: quantity.trim() ? quantity.trim() : null,
         unit: unit.trim() ? unit.trim() : null,
         unitPriceCents,
+        taxRateBps,
+        discountBps,
         lineTotalCents,
       });
       if (ok) {
@@ -608,6 +709,28 @@ function SalesLineAddDialog({
                 onChange={(e) => setUnitPriceStr(e.target.value)}
                 inputMode="decimal"
               />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-2">
+                <Label htmlFor="ln-tax">{locale === "en" ? "VAT %" : "MwSt %"}</Label>
+                <Input
+                  id="ln-tax"
+                  value={taxRatePercentStr}
+                  onChange={(e) => setTaxRatePercentStr(e.target.value)}
+                  inputMode="decimal"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="ln-discount">
+                  {locale === "en" ? "Discount %" : "Rabatt %"}
+                </Label>
+                <Input
+                  id="ln-discount"
+                  value={discountPercentStr}
+                  onChange={(e) => setDiscountPercentStr(e.target.value)}
+                  inputMode="decimal"
+                />
+              </div>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="ln-lt">{lc.lineTotal}</Label>

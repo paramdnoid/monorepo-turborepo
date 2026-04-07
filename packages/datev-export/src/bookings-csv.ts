@@ -5,11 +5,15 @@
 
 export type DatevBookingCsvInvoiceRow = {
   documentNumber: string;
-  /** Brutto-Gesamtbetrag in Hauptwaehrung */
+  /** Betrag der Buchungszeile in Hauptwaehrung (Brutto oder gesplittet). */
   totalCents: number;
   /** ISO-Datum YYYY-MM-DD */
   postingDate: string;
   description: string;
+  /** Optionales row-spezifisches Konto-/Steuerschluessel-Mapping. */
+  debtorAccount?: string;
+  revenueAccount?: string;
+  vatKey?: string;
 };
 
 export type BuildDatevBookingsCsvInput = {
@@ -57,20 +61,21 @@ const HEADER = [
   "Währungskennzeichen",
 ].join(";");
 
-/**
- * Erzeugt eine UTF-8-CSV mit Kopfzeile (Semikolon). Eine Buchungszeile pro Rechnung.
- */
+/** Erzeugt eine UTF-8-CSV mit Kopfzeile (Semikolon). */
 export function buildDatevBookingsCsv(input: BuildDatevBookingsCsvInput): string {
   const lines: string[] = [HEADER];
   const vat = input.vatKey.trim();
   const vatCell = vat.length > 0 ? vat : "";
 
   for (const inv of input.invoices) {
+    const debtor = inv.debtorAccount?.trim() || input.debtorAccount;
+    const revenue = inv.revenueAccount?.trim() || input.revenueAccount;
+    const rowVat = inv.vatKey?.trim() ?? vatCell;
     const cells = [
       escapeCsvCell(formatGermanAmountFromCents(inv.totalCents)),
-      escapeCsvCell(input.debtorAccount),
-      escapeCsvCell(input.revenueAccount),
-      escapeCsvCell(vatCell),
+      escapeCsvCell(debtor),
+      escapeCsvCell(revenue),
+      escapeCsvCell(rowVat),
       escapeCsvCell(formatDisplayDate(inv.postingDate)),
       escapeCsvCell(inv.documentNumber),
       escapeCsvCell(inv.description),

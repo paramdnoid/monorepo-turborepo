@@ -71,6 +71,7 @@ import {
   createSalesReminderEmailJobPostHandler,
   createSalesReminderEmailJobPatchHandler,
   createSalesReminderEmailJobRetryPostHandler,
+  createSalesReminderEmailJobsMetricsGetHandler,
   createSalesReminderEmailJobsProcessPostHandler,
   createSalesReminderEmailJobsListHandler,
   createSalesInvoiceDeleteHandler,
@@ -238,6 +239,8 @@ export function createApp(options?: CreateAppOptions) {
   const salesReminderEmailJobPatch = createSalesReminderEmailJobPatchHandler(getDb);
   const salesReminderEmailJobRetryPost =
     createSalesReminderEmailJobRetryPostHandler(getDb);
+  const salesReminderEmailJobsMetricsGet =
+    createSalesReminderEmailJobsMetricsGetHandler(getDb);
   const salesReminderEmailJobsProcessPost =
     createSalesReminderEmailJobsProcessPostHandler(getDb);
   const salesReminderEmailJobsList = createSalesReminderEmailJobsListHandler(getDb);
@@ -616,6 +619,11 @@ export function createApp(options?: CreateAppOptions) {
     "/sales/reminder-email-jobs/:jobId/retry",
     orgMiddleware,
     salesReminderEmailJobRetryPost,
+  );
+  v1.get(
+    "/sales/reminder-email-jobs/metrics",
+    orgMiddleware,
+    salesReminderEmailJobsMetricsGet,
   );
   v1.post(
     "/sales/reminder-email-jobs/process",

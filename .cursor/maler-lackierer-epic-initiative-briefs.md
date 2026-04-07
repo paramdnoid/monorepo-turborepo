@@ -1,7 +1,9 @@
 # Epic Initiative Briefs — Maler & Lackierer
 
-**Stand:** 2026-04-06  
+**Stand:** 2026-04-07  
 **Bezug:** [Funktionslücken](./maler-lackierer-modul-funktionsluecken.md) · [Epic-Roadmap](./maler-lackierer-roadmap-epics.md)
+
+**Priorität:** E-06 **Mail-Outbox** vor E-02 Hub-v3 — siehe Roadmap „Prioritätsentscheid“.
 
 ## Änderungsstand (vollständig abgeglichen)
 
@@ -20,11 +22,11 @@ Zweck: **parallele Frontend-/Backend-Planung** — pro Epic ein gemeinsames Vers
 | Epic | Reifegrad | Fokus im nächsten Implementierungszug |
 |------|-----------|----------------------------------------|
 | **E-01** | umgesetzt | Stabilisieren/Backfill operativ abschließen |
-| **E-02** | in Arbeit | Hub-v3: KPI/Pipeline oder Aggregations-Endpoint |
+| **E-02** | in Arbeit | Hub-v3: KPI/Pipeline-Ausbau auf vorhandenem Aggregations-Endpoint |
 | **E-03** | in Arbeit | Kommerz-Defaults vertiefen (optional Kreditlimit) |
 | **E-04** | in Arbeit | Konflikte/Serien/Sollstunden |
 | **E-05** | in Arbeit | Soll/Ist + Auswertung |
-| **E-06** | in Arbeit | Mail-Produktivität (Queue/Retry/Audit); CAMT-Spikes, Dateiimport persistiert, Sammelzahlung + CAMT-Mehrfach-Prefill geliefert |
+| **E-06** | in Arbeit | Mahn-E-Mail **Outbox** (`sales_reminder_email_jobs`, API, BFF `email-queue`) geliefert; optional Cron/Retry-UI; CAMT/Sammelzahlung wie zuvor geliefert |
 | **E-07** | teilweise umgesetzt | Steuer-/Rabatt-/Teilrechnungslogik |
 | **E-08** | teilweise umgesetzt | Finalisierung + Snapshot + Sperren |
 | **E-09** | teilweise umgesetzt | XRechnung/ZUGFeRD + DATEV-Tiefe |
@@ -82,14 +84,14 @@ Zweck: **parallele Frontend-/Backend-Planung** — pro Epic ein gemeinsames Vers
 | Bereich | Spike / Klärungsfrage |
 |---------|------------------------|
 | **Schema** | Meist **read aggregations**: braucht es `project_id` auf weiteren Entitäten (GAEB, Assets) oder reicht Join über bestehende FKs? Performance: eine Hub-API vs. mehrere parallele Calls. |
-| **API** | Aktuell: bestehende Endpunkte kombiniert (parallel). Optional spaeter: `GET /projects/:id/hub` fuer weniger Roundtrips, zentrale Berechtigungs-/Caching-Strategie und konsistente Teillisten. |
+| **API** | `GET /v1/projects/:id/hub` ist vorhanden und liefert den aggregierten Payload. Nächster Schritt: Segment-/KPI-Ausbau, Caching-Strategie und konsistente Teilfehlerbehandlung. |
 | **UI** | Layout: lange Seite mit Karten/Sections; **7-Tage-Termine** und **Mahnungs-Anker/Details in der OP-Karte** geliefert. Offen: eingebettete Mini-Pipeline, KPI-Kacheln, optional weniger parallele Requests (Hub-Endpunkt). |
 
 ### MVP vs. Phase 2
 
 | MVP | Phase 2 |
 |-----|---------|
-| ~~Hub-Seite mit Belegen/Stammdaten/Dateien/GAEB~~ **geliefert**, inkl. **Terminplanung 7 Tage**, Zeiterfassung (Monat bis heute + letzte Buchungen), Forderungen/OP inkl. **#invoice-reminders** und Mahnungs-Kurzaktionen. | Eingebettete **Mini-Pipeline** (Status aus Quotes/Invoices), weitere KPI-Kacheln, Material-Widgets (nach E-11), ggf. `GET /projects/:id/hub`. |
+| ~~Hub-Seite mit Belegen/Stammdaten/Dateien/GAEB~~ **geliefert**, inkl. **Terminplanung 7 Tage**, Zeiterfassung (Monat bis heute + letzte Buchungen), Forderungen/OP inkl. **#invoice-reminders** und Mahnungs-Kurzaktionen; **`GET /v1/projects/:id/hub`** als aggregierter Endpunkt vorhanden. | Eingebettete **Mini-Pipeline** (Status aus Quotes/Invoices), weitere KPI-Kacheln, Material-Widgets (nach E-11), erweiterte Segmentierung/Resilienz im Hub-Payload. |
 
 ---
 
@@ -180,7 +182,7 @@ Zweck: **parallele Frontend-/Backend-Planung** — pro Epic ein gemeinsames Vers
 
 ## E-06 — Forderungsmanagement (Mahnung, Zahlung, OP)
 
-**Status:** in Arbeit — **v1 + v2 + v3 + v4 + v5-Basis umgesetzt** (2026-04-06): wie v3, zusaetzlich **`sales_reminder_templates`** (Stufe 1–10, Locale `de`/`en`, optional `fee_cents`); `GET`/`PUT /v1/sales/reminder-templates`, `GET …/resolved`; Reminder-PDF und Browser-Druck verwenden aufgeloesten Fließtext und Gebuehr inkl. Platzhalter (z. B. `{{invoiceNumber}}`, `{{openBalance}}`); Web **Einstellungen** (nur Mandanten-Admin) zum Pflegen. **E-Mail-Spike** (Dry-Run + optional SMTP-Send im Rechnungsdetail) und **CAMT-Matching-Spike** (`POST /v1/sales/invoices/camt-match`, Top-Kandidat, Buchung auf aktueller Rechnung). **CAMT-Dateiimport:** `POST /v1/sales/invoices/camt-import` (Multipart/XML), Vorschau mit Kandidaten auf `/web/sales/invoices/open`, **Persistenz/Idempotenz** über Datei-Hash (`sales_camt_import_batches` / `sales_camt_import_lines`), **Historie** (`GET …/camt-imports`, `GET …/camt-imports/:id`) — **ohne** automatische Buchung. **Sammelzahlungen:** `POST /v1/sales/invoices/payments/batch` + OP-UI (Mehrfachauswahl); **CAMT → Sammelzahlung** einzeln oder **mehrere Zeilen** (Checkboxen, „Alle Treffer“, Prefill; Duplikat-Rechnungen im CAMT werden pro Rechnung summiert). **Offen:** produktiver Mailflow (Queue/Retry/Audit).
+**Status:** in Arbeit — **v1 + v2 + v3 + v4 + v5-Basis + v6-Mail-Outbox umgesetzt** (v6: 2026-04-07): wie v3, zusaetzlich **`sales_reminder_templates`** (Stufe 1–10, Locale `de`/`en`, optional `fee_cents`); `GET`/`PUT /v1/sales/reminder-templates`, `GET …/resolved`; Reminder-PDF und Browser-Druck verwenden aufgeloesten Fließtext und Gebuehr inkl. Platzhalter (z. B. `{{invoiceNumber}}`, `{{openBalance}}`); Web **Einstellungen** (nur Mandanten-Admin) zum Pflegen. **E-Mail:** Legacy-**Spike**-Route; **Produktiv** `sales_reminder_email_jobs` + `POST/GET …/email-jobs` + `PATCH …/reminder-email-jobs/:jobId` + BFF **`/email-queue`** (Audit, Versand im Request, Retry-Zähler). **CAMT-Matching-Spike** (`POST /v1/sales/invoices/camt-match`, Top-Kandidat, Buchung auf aktueller Rechnung). **CAMT-Dateiimport:** `POST /v1/sales/invoices/camt-import` (Multipart/XML), Vorschau mit Kandidaten auf `/web/sales/invoices/open`, **Persistenz/Idempotenz** über Datei-Hash (`sales_camt_import_batches` / `sales_camt_import_lines`), **Historie** (`GET …/camt-imports`, `GET …/camt-imports/:id`) — **ohne** automatische Buchung. **Sammelzahlungen:** `POST /v1/sales/invoices/payments/batch` + OP-UI (Mehrfachauswahl); **CAMT → Sammelzahlung** einzeln oder **mehrere Zeilen** (Checkboxen, „Alle Treffer“, Prefill; Duplikat-Rechnungen im CAMT werden pro Rechnung summiert). **Offen:** Cron-Mailworker ohne Session; UI „erneut senden“ für `failed`.
 
 ### Initiative Brief
 
@@ -195,14 +197,14 @@ Zweck: **parallele Frontend-/Backend-Planung** — pro Epic ein gemeinsames Vers
 | Bereich | Spike / Klärungsfrage |
 |---------|------------------------|
 | **Schema** | ~~Teilzahlungen~~ → **`sales_invoice_payments`**. ~~Mahn-Historie~~ → **`sales_invoice_reminders`**. ~~Mandanten-Mahntexte~~ → **`sales_reminder_templates`**. **CAMT-Import:** `sales_camt_import_batches` + `sales_camt_import_lines` (Hash-Idempotenz). |
-| **API** | Zahlung + Loeschen erledigt. Mahnung + PDF/Druck erledigt. ~~Mahntext `GET`/`PUT` + Resolved~~ erledigt. **CAMT:** `POST …/camt-match`, `POST …/camt-import`, `GET …/camt-imports`, `GET …/camt-imports/:id`. **Sammelzahlung:** `POST …/payments/batch`. **Offen:** produktiver Mailversand-Workflow. ~~OP-Liste / CSV~~ erledigt. |
-| **UI** | Rechnungsdetail, OP, Mahnungen erledigt. ~~Einstellungen: Mahntexte/Gebuehr (Admin)~~ erledigt. **E-Mail-Spike** und **CAMT-Zuordnung** im Rechnungsdetail; **CAMT-Import-Panel** auf der OP-Seite (Historie, Zeilenauswahl, Prefill Sammelzahlung). **Offen:** Dashboard-Kachel „Summe OP“ (optional). |
+| **API** | Zahlung + Loeschen erledigt. Mahnung + PDF/Druck erledigt. ~~Mahntext `GET`/`PUT` + Resolved~~ erledigt. **CAMT:** `POST …/camt-match`, `POST …/camt-import`, `GET …/camt-imports`, `GET …/camt-imports/:id`. **Sammelzahlung:** `POST …/payments/batch`. **Mahn-E-Mail-Outbox:** `POST/GET …/email-jobs`, `PATCH …/reminder-email-jobs/:jobId`. **Offen:** optional Worker-Cron. ~~OP-Liste / CSV~~ erledigt. |
+| **UI** | Rechnungsdetail, OP, Mahnungen erledigt. ~~Einstellungen: Mahntexte/Gebuehr (Admin)~~ erledigt. **E-Mail:** Versand über BFF **`/email-queue`** (Outbox); Legacy-Spike-Route. **CAMT-Zuordnung** im Rechnungsdetail; **CAMT-Import-Panel** auf der OP-Seite (Historie, Zeilenauswahl, Prefill Sammelzahlung). **Offen:** Dashboard-Kachel „Summe OP“ (optional). |
 
 ### MVP vs. Phase 2
 
 | MVP | Phase 2 |
 |-----|---------|
-| ~~Teilzahlungen, Saldo-Anzeige~~ **(v1)**; ~~OP-Liste + CSV, Löschen Zahlungszeile~~ **(v2)**; ~~manuelle Mahnung + Historie + PDF/Druck~~ **(v3)**; ~~Mahntext-Templates + optionale Gebuehr, PDF/Druck, Admin-UI~~ **(v4)**; **E-Mail-/CAMT-Spike** **(v5-Basis)**; **CAMT-Dateiimport** (Vorschau + Persistenz/Historie) **(v5.1)**; **Sammelzahlung + CAMT-Mehrfach-Prefill** **(v5.2)**. | Produktiver E-Mail-Versand (Queue/Retry/Audit), automatische Eskalation nach Regeln. |
+| ~~Teilzahlungen, Saldo-Anzeige~~ **(v1)**; ~~OP-Liste + CSV, Löschen Zahlungszeile~~ **(v2)**; ~~manuelle Mahnung + Historie + PDF/Druck~~ **(v3)**; ~~Mahntext-Templates + optionale Gebuehr, PDF/Druck, Admin-UI~~ **(v4)**; **E-Mail-/CAMT-Spike** **(v5-Basis)**; **CAMT-Dateiimport** (Vorschau + Persistenz/Historie) **(v5.1)**; **Sammelzahlung + CAMT-Mehrfach-Prefill** **(v5.2)**; **Mahn-E-Mail-Outbox** **(v6)**. | Cron-Mailworker, UI „erneut senden“, automatische Eskalation nach Regeln. |
 
 ### Abgeschlossene Iteration — OP + CSV + Korrektur (v2)
 
@@ -233,7 +235,7 @@ Zweck: **parallele Frontend-/Backend-Planung** — pro Epic ein gemeinsames Vers
 | **V4-4** | **Web Einstellungen** (`WebSalesReminderTemplatesCard`, BFF) | umgesetzt (Rollen: wie sonstige Mandanteneinstellungen) |
 | **V4-5** | **API-Smoke** (`http-smoke-mock.mts`; Mahntexte + **CAMT-Import**) | umgesetzt |
 
-**Noch offen (Backlog):** produktiver E-Mail-Workflow (Queue/Retry/Audit). ~~Sammelzahlungen~~ / ~~CAMT-Persistenz~~ / ~~CAMT-Mehrfach-Prefill~~ geliefert.
+**Noch offen (Backlog):** optional Cron-Mailworker; UI für fehlgeschlagene Jobs. ~~Sammelzahlungen~~ / ~~CAMT-Persistenz~~ / ~~CAMT-Mehrfach-Prefill~~ / ~~Mahn-E-Mail-Outbox (API+BFF)~~ geliefert.
 
 ---
 
@@ -295,7 +297,7 @@ Zweck: **parallele Frontend-/Backend-Planung** — pro Epic ein gemeinsames Vers
 
 ## E-09 — Export: XRechnung / ZUGFeRD & DATEV
 
-**Status:** teilweise umgesetzt (2026-04-06): DATEV-Settings + Buchungs-CSV sind vorhanden; XRechnung/ZUGFeRD noch offen.
+**Status:** teilweise umgesetzt (2026-04-07): DATEV-Settings + Buchungs-CSV sind vorhanden; XRechnung/ZUGFeRD-Endpunkte/Downloadpfad sind vorhanden, fachliche Standardkonformität bleibt offen.
 
 ### Initiative Brief
 

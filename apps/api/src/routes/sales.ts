@@ -11,6 +11,7 @@ import {
   getTableColumns,
   inArray,
   ilike,
+  min,
   max,
   ne,
   or,
@@ -56,6 +57,7 @@ import {
   salesReminderEmailJobRetryResponseSchema,
   salesReminderEmailJobsProcessRequestSchema,
   salesReminderEmailJobsProcessResponseSchema,
+  salesReminderEmailJobsMetricsResponseSchema,
   salesReminderEmailJobRecordSchema,
 } from "@repo/api-contracts";
 
@@ -264,6 +266,31 @@ function parseListNumber(
     return undefined;
   }
   return n;
+}
+
+function parseLineQuantityMultiplier(raw: string | null | undefined): number | null {
+  if (raw == null) return null;
+  const normalized = raw.trim().replace(",", ".");
+  if (!normalized) return null;
+  if (!/^-?\d+(\.\d+)?$/.test(normalized)) return null;
+  const n = Number(normalized);
+  if (!Number.isFinite(n) || n < 0) return null;
+  return n;
+}
+
+function computeLineTotalCents(input: {
+  quantity: string | null | undefined;
+  unitPriceCents: number;
+  discountBps: number;
+  lineTotalCents: number;
+}): number {
+  const qty = parseLineQuantityMultiplier(input.quantity);
+  const base =
+    qty == null
+      ? Math.max(0, Math.round(input.lineTotalCents))
+      : Math.max(0, Math.round(qty * input.unitPriceCents));
+  const discounted = Math.round((base * (10_000 - input.discountBps)) / 10_000);
+  return Math.max(0, discounted);
 }
 
 function envBool(value: string | undefined, defaultTrue: boolean): boolean {
@@ -1778,8 +1805,102 @@ export function createSalesInvoiceDetailHandler(getDb: () => Db | undefined) {
   };
 }
 
+const invoiceSnapshotSchema = z.object({
+  documentNumber: z.string(),
+  issuedAt: z.string().nullable(),
+  dueAt: z.string().nullable(),
+  currency: z.string(),
+  customerLabel: z.string(),
+  totalCents: z.number().int(),
+  balanceCents: z.number().int(),
+  billingType: z.enum(["invoice", "partial", "final", "credit_note"]).default("invoice"),
+  parentInvoiceId: z.string().uuid().nullable().default(null),
+  creditForInvoiceId: z.string().uuid().nullable().default(null),
+  lines: z
+    .array(
+      z.object({
+        id: z.string().uuid(),
+        sortIndex: z.number().int(),
+        description: z.string(),
+        quantity: z.string().nullable(),
+        unit: z.string().nullable(),
+        unitPriceCents: z.number().int(),
+        lineTotalCents: z.number().int(),
+        taxRateBps: z.number().int().min(0).max(10_000),
+        discountBps: z.number().int().min(0).max(10_000),
+      }),
+    )
+    .default([]),
+  taxBreakdown: z
+    .array(
+      z.object({
+        taxRateBps: z.number().int().min(0).max(10_000),
+        netCents: z.number().int(),
+        taxCents: z.number().int(),
+        grossCents: z.number().int(),
+      }),
+    )
+    .default([]),
+});
+
+type InvoiceSnapshot = z.infer<typeof invoiceSnapshotSchema>;
+
+function stableJsonStringify(value: unknown): string {
+  if (value === null || typeof value !== "object") {
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableJsonStringify(item)).join(",")}]`;
+  }
+  const entries = Object.entries(value as Record<string, unknown>).sort(([a], [b]) =>
+    a.localeCompare(b),
+  );
+  return `{${entries
+    .map(([key, val]) => `${JSON.stringify(key)}:${stableJsonStringify(val)}`)
+    .join(",")}}`;
+}
+
 function toStableSnapshotHash(payload: unknown): string {
-  return createHash("sha256").update(JSON.stringify(payload)).digest("hex");
+  return createHash("sha256").update(stableJsonStringify(payload)).digest("hex");
+}
+
+function buildInvoiceSnapshot(
+  invoice: NonNullable<Awaited<ReturnType<typeof buildInvoiceDetailPayload>>>["invoice"],
+): InvoiceSnapshot {
+  const billingType = invoiceSnapshotSchema.shape.billingType.safeParse(
+    invoice.billingType,
+  );
+  return {
+    documentNumber: invoice.documentNumber,
+    issuedAt: invoice.issuedAt,
+    dueAt: invoice.dueAt,
+    currency: invoice.currency,
+    customerLabel: invoice.customerLabel,
+    totalCents: invoice.totalCents,
+    balanceCents: invoice.balanceCents,
+    billingType: billingType.success ? billingType.data : "invoice",
+    parentInvoiceId: invoice.parentInvoiceId,
+    creditForInvoiceId: invoice.creditForInvoiceId,
+    lines: [...invoice.lines]
+      .sort(
+        (a, b) =>
+          a.sortIndex - b.sortIndex || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
+      )
+      .map((line) => ({
+        id: line.id,
+        sortIndex: line.sortIndex,
+        description: line.description,
+        quantity: line.quantity,
+        unit: line.unit,
+        unitPriceCents: line.unitPriceCents,
+        lineTotalCents: line.lineTotalCents,
+        taxRateBps: line.taxRateBps,
+        discountBps: line.discountBps,
+      })),
+    taxBreakdown: [...invoice.taxBreakdown].sort(
+      (a, b) => a.taxRateBps - b.taxRateBps,
+    ),
+  };
 }
 
 function escapeXml(value: string): string {
@@ -1791,35 +1912,135 @@ function escapeXml(value: string): string {
     .replaceAll("'", "&apos;");
 }
 
-function buildSimpleEInvoiceXml(args: {
+function normalizeIsoDate(iso: string | null | undefined): string {
+  if (typeof iso === "string" && iso.length >= 10) return iso.slice(0, 10);
+  return new Date().toISOString().slice(0, 10);
+}
+
+function toDateYmdCompact(isoDate: string): string {
+  return isoDate.replaceAll("-", "");
+}
+
+function formatEuroAmount(cents: number): string {
+  return (cents / 100).toFixed(2);
+}
+
+function computeNetFromGross(grossCents: number, taxRateBps: number): number {
+  if (taxRateBps <= 0) return grossCents;
+  return Math.round((grossCents * 10_000) / (10_000 + taxRateBps));
+}
+
+function parseLineQuantityValue(raw: string | null): number {
+  if (!raw) return 1;
+  const normalized = raw.trim().replace(",", ".");
+  if (!/^-?\d+(\.\d+)?$/.test(normalized)) return 1;
+  const n = Number(normalized);
+  if (!Number.isFinite(n) || n <= 0) return 1;
+  return n;
+}
+
+function buildCiiEInvoiceXml(args: {
   profile: "xrechnung" | "zugferd";
-  invoice: {
-    documentNumber: string;
-    issuedAt: string | null;
-    dueAt: string | null;
-    currency: string;
-    customerLabel: string;
-    totalCents: number;
-    balanceCents: number;
-  };
+  invoice: InvoiceSnapshot;
 }): string {
-  const issueDate = args.invoice.issuedAt
-    ? args.invoice.issuedAt.slice(0, 10)
-    : new Date().toISOString().slice(0, 10);
-  const dueDate = args.invoice.dueAt ? args.invoice.dueAt.slice(0, 10) : "";
-  const total = (args.invoice.totalCents / 100).toFixed(2);
-  const open = (args.invoice.balanceCents / 100).toFixed(2);
+  const issueDate = normalizeIsoDate(args.invoice.issuedAt);
+  const dueDate = normalizeIsoDate(args.invoice.dueAt ?? args.invoice.issuedAt);
+  const profileId =
+    args.profile === "xrechnung"
+      ? "urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0"
+      : "urn:cen.eu:en16931:2017#conformant#urn:factur-x.eu:1p0:basic";
+
+  const taxRows =
+    args.invoice.taxBreakdown.length > 0
+      ? args.invoice.taxBreakdown
+      : [{ taxRateBps: 0, netCents: args.invoice.totalCents, taxCents: 0, grossCents: args.invoice.totalCents }];
+  const taxBasisTotalCents = taxRows.reduce((acc, row) => acc + row.netCents, 0);
+  const taxTotalCents = taxRows.reduce((acc, row) => acc + row.taxCents, 0);
+  const lineNetTotalCents = args.invoice.lines.reduce((acc, line) => {
+    const rate = line.taxRateBps ?? 1900;
+    return acc + computeNetFromGross(line.lineTotalCents, rate);
+  }, 0);
+
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
-    `<EInvoice profile="${args.profile}">`,
-    `  <DocumentNumber>${escapeXml(args.invoice.documentNumber)}</DocumentNumber>`,
-    `  <IssueDate>${escapeXml(issueDate)}</IssueDate>`,
-    `  <DueDate>${escapeXml(dueDate)}</DueDate>`,
-    `  <Currency>${escapeXml(args.invoice.currency)}</Currency>`,
-    `  <BuyerName>${escapeXml(args.invoice.customerLabel)}</BuyerName>`,
-    `  <TotalAmount>${escapeXml(total)}</TotalAmount>`,
-    `  <OpenAmount>${escapeXml(open)}</OpenAmount>`,
-    "</EInvoice>",
+    '<rsm:CrossIndustryInvoice xmlns:rsm="urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100" xmlns:ram="urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100" xmlns:udt="urn:un:unece:uncefact:data:standard:UnqualifiedDataType:100">',
+    "  <rsm:ExchangedDocumentContext>",
+    "    <ram:GuidelineSpecifiedDocumentContextParameter>",
+    `      <ram:ID>${escapeXml(profileId)}</ram:ID>`,
+    "    </ram:GuidelineSpecifiedDocumentContextParameter>",
+    "  </rsm:ExchangedDocumentContext>",
+    "  <rsm:ExchangedDocument>",
+    `    <ram:ID>${escapeXml(args.invoice.documentNumber)}</ram:ID>`,
+    "    <ram:TypeCode>380</ram:TypeCode>",
+    "    <ram:IssueDateTime>",
+    `      <udt:DateTimeString format="102">${escapeXml(toDateYmdCompact(issueDate))}</udt:DateTimeString>`,
+    "    </ram:IssueDateTime>",
+    "  </rsm:ExchangedDocument>",
+    "  <rsm:SupplyChainTradeTransaction>",
+    ...args.invoice.lines.flatMap((line, idx) => {
+      const quantity = parseLineQuantityValue(line.quantity);
+      const lineTaxRateBps = line.taxRateBps ?? 1900;
+      const lineNetCents = computeNetFromGross(line.lineTotalCents, lineTaxRateBps);
+      const ratePercent = (lineTaxRateBps / 100).toFixed(2);
+      const unitCode = line.unit?.trim() ? line.unit.trim().slice(0, 3).toUpperCase() : "C62";
+      return [
+        "    <ram:IncludedSupplyChainTradeLineItem>",
+        "      <ram:AssociatedDocumentLineDocument>",
+        `        <ram:LineID>${idx + 1}</ram:LineID>`,
+        "      </ram:AssociatedDocumentLineDocument>",
+        "      <ram:SpecifiedTradeProduct>",
+        `        <ram:Name>${escapeXml(line.description)}</ram:Name>`,
+        "      </ram:SpecifiedTradeProduct>",
+        "      <ram:SpecifiedLineTradeAgreement>",
+        "        <ram:NetPriceProductTradePrice>",
+        `          <ram:ChargeAmount>${formatEuroAmount(line.unitPriceCents)}</ram:ChargeAmount>`,
+        "        </ram:NetPriceProductTradePrice>",
+        "      </ram:SpecifiedLineTradeAgreement>",
+        "      <ram:SpecifiedLineTradeDelivery>",
+        `        <ram:BilledQuantity unitCode="${escapeXml(unitCode)}">${quantity.toFixed(2)}</ram:BilledQuantity>`,
+        "      </ram:SpecifiedLineTradeDelivery>",
+        "      <ram:SpecifiedLineTradeSettlement>",
+        "        <ram:ApplicableTradeTax>",
+        "          <ram:TypeCode>VAT</ram:TypeCode>",
+        "          <ram:CategoryCode>S</ram:CategoryCode>",
+        `          <ram:RateApplicablePercent>${ratePercent}</ram:RateApplicablePercent>`,
+        "        </ram:ApplicableTradeTax>",
+        "        <ram:SpecifiedTradeSettlementLineMonetarySummation>",
+        `          <ram:LineTotalAmount>${formatEuroAmount(lineNetCents)}</ram:LineTotalAmount>`,
+        "        </ram:SpecifiedTradeSettlementLineMonetarySummation>",
+        "      </ram:SpecifiedLineTradeSettlement>",
+        "    </ram:IncludedSupplyChainTradeLineItem>",
+      ];
+    }),
+    "    <ram:ApplicableHeaderTradeAgreement>",
+    "      <ram:BuyerTradeParty>",
+    `        <ram:Name>${escapeXml(args.invoice.customerLabel)}</ram:Name>`,
+    "      </ram:BuyerTradeParty>",
+    "    </ram:ApplicableHeaderTradeAgreement>",
+    "    <ram:ApplicableHeaderTradeSettlement>",
+    `      <ram:InvoiceCurrencyCode>${escapeXml(args.invoice.currency)}</ram:InvoiceCurrencyCode>`,
+    ...taxRows.flatMap((row) => [
+      "      <ram:ApplicableTradeTax>",
+      `        <ram:CalculatedAmount>${formatEuroAmount(row.taxCents)}</ram:CalculatedAmount>`,
+      "        <ram:TypeCode>VAT</ram:TypeCode>",
+      `        <ram:BasisAmount>${formatEuroAmount(row.netCents)}</ram:BasisAmount>`,
+      "        <ram:CategoryCode>S</ram:CategoryCode>",
+      `        <ram:RateApplicablePercent>${(row.taxRateBps / 100).toFixed(2)}</ram:RateApplicablePercent>`,
+      "      </ram:ApplicableTradeTax>",
+    ]),
+    "      <ram:SpecifiedTradePaymentTerms>",
+    `        <ram:DueDateDateTime><udt:DateTimeString format="102">${escapeXml(toDateYmdCompact(dueDate))}</udt:DateTimeString></ram:DueDateDateTime>`,
+    "      </ram:SpecifiedTradePaymentTerms>",
+    "      <ram:SpecifiedTradeSettlementHeaderMonetarySummation>",
+    `        <ram:LineTotalAmount>${formatEuroAmount(lineNetTotalCents)}</ram:LineTotalAmount>`,
+    `        <ram:TaxBasisTotalAmount>${formatEuroAmount(taxBasisTotalCents)}</ram:TaxBasisTotalAmount>`,
+    `        <ram:TaxTotalAmount currencyID="${escapeXml(args.invoice.currency)}">${formatEuroAmount(taxTotalCents)}</ram:TaxTotalAmount>`,
+    `        <ram:GrandTotalAmount>${formatEuroAmount(args.invoice.totalCents)}</ram:GrandTotalAmount>`,
+    `        <ram:DuePayableAmount>${formatEuroAmount(args.invoice.balanceCents)}</ram:DuePayableAmount>`,
+    "      </ram:SpecifiedTradeSettlementHeaderMonetarySummation>",
+    "    </ram:ApplicableHeaderTradeSettlement>",
+    "  </rsm:SupplyChainTradeTransaction>",
+    "</rsm:CrossIndustryInvoice>",
     "",
   ].join("\n");
 }
@@ -1850,7 +2071,8 @@ export function createSalesInvoiceFinalizePostHandler(
 
     const detail = await buildInvoiceDetailPayload(db, auth.tenantId, invoiceId);
     if (!detail) return c.json({ error: "not_found" }, 404);
-    const snapshotHash = toStableSnapshotHash(detail.invoice);
+    const snapshot = buildInvoiceSnapshot(detail.invoice);
+    const snapshotHash = toStableSnapshotHash(snapshot);
     const now = new Date();
     const [updated] = await db
       .update(salesInvoices)
@@ -1858,7 +2080,7 @@ export function createSalesInvoiceFinalizePostHandler(
         isFinalized: true,
         finalizedAt: now,
         snapshotHash,
-        snapshotJson: detail.invoice as unknown as Record<string, unknown>,
+        snapshotJson: snapshot as unknown as Record<string, unknown>,
         updatedAt: now,
       })
       .where(
@@ -1893,19 +2115,13 @@ export function createSalesInvoiceFinalizePostHandler(
 function resolveInvoiceSnapshotSource(
   inv: typeof salesInvoices.$inferSelect,
   fallback: Awaited<ReturnType<typeof buildInvoiceDetailPayload>> | null,
-) {
+) : InvoiceSnapshot | null {
   if (inv.snapshotJson && typeof inv.snapshotJson === "object") {
-    return inv.snapshotJson as {
-      documentNumber: string;
-      issuedAt: string | null;
-      dueAt: string | null;
-      currency: string;
-      customerLabel: string;
-      totalCents: number;
-      balanceCents: number;
-    };
+    const parsed = invoiceSnapshotSchema.safeParse(inv.snapshotJson);
+    if (parsed.success) return parsed.data;
   }
-  return fallback?.invoice ?? null;
+  if (!fallback) return null;
+  return buildInvoiceSnapshot(fallback.invoice);
 }
 
 export function createSalesInvoiceXRechnungGetHandler(getDb: () => Db | undefined) {
@@ -1922,7 +2138,7 @@ export function createSalesInvoiceXRechnungGetHandler(getDb: () => Db | undefine
     const detail = await buildInvoiceDetailPayload(db, auth.tenantId, idParse.data);
     const snapshot = resolveInvoiceSnapshotSource(inv, detail);
     if (!snapshot) return c.json({ error: "not_found" }, 404);
-    const xml = buildSimpleEInvoiceXml({
+    const xml = buildCiiEInvoiceXml({
       profile: "xrechnung",
       invoice: snapshot,
     });
@@ -1949,7 +2165,7 @@ export function createSalesInvoiceZugferdGetHandler(getDb: () => Db | undefined)
     const detail = await buildInvoiceDetailPayload(db, auth.tenantId, idParse.data);
     const snapshot = resolveInvoiceSnapshotSource(inv, detail);
     if (!snapshot) return c.json({ error: "not_found" }, 404);
-    const xml = buildSimpleEInvoiceXml({
+    const xml = buildCiiEInvoiceXml({
       profile: "zugferd",
       invoice: snapshot,
     });
@@ -2475,6 +2691,25 @@ export function createSalesInvoiceFromQuotePostHandler(
     if (!db) {
       return c.json({ error: "database_unavailable" }, 503);
     }
+    if (input.parentInvoiceId) {
+      if (input.parentInvoiceId === input.creditForInvoiceId) {
+        return c.json({ error: "invalid_parent_invoice" }, 400);
+      }
+      const ok = await assertInvoiceForTenant(db, auth.tenantId, input.parentInvoiceId);
+      if (!ok) {
+        return c.json({ error: "invalid_parent_invoice" }, 400);
+      }
+    }
+    if (input.creditForInvoiceId) {
+      const ok = await assertInvoiceForTenant(
+        db,
+        auth.tenantId,
+        input.creditForInvoiceId,
+      );
+      if (!ok) {
+        return c.json({ error: "invalid_credit_reference" }, 400);
+      }
+    }
     const quoteOk = await assertQuoteForTenant(db, auth.tenantId, quoteId);
     if (!quoteOk) {
       return c.json({ error: "not_found" }, 404);
@@ -2545,12 +2780,12 @@ export function createSalesInvoiceFromQuotePostHandler(
             documentNumber: input.documentNumber,
             customerLabel: quoteRow.customerLabel,
             status: input.status,
-            billingType: "invoice",
+            billingType: input.billingType ?? "invoice",
             currency: quoteRow.currency,
             totalCents: 0,
             quoteId,
-            parentInvoiceId: null,
-            creditForInvoiceId: null,
+            parentInvoiceId: input.parentInvoiceId ?? null,
+            creditForInvoiceId: input.creditForInvoiceId ?? null,
             projectId: quoteRow.projectId ?? null,
             issuedAt: issuedAtValue,
             dueAt: dueAtValue,
@@ -3228,6 +3463,58 @@ async function processPendingReminderEmailJobs(
   };
 }
 
+export async function processReminderEmailOutboxForAllTenants(
+  db: Db,
+  args?: { tenantLimit?: number; perTenantLimit?: number },
+): Promise<{
+  tenantCount: number;
+  processed: number;
+  sent: number;
+  failed: number;
+  erroredTenants: string[];
+}> {
+  const tenantLimit = Math.min(500, Math.max(1, args?.tenantLimit ?? 50));
+  const perTenantLimit = Math.min(100, Math.max(1, args?.perTenantLimit ?? 20));
+
+  const oldestPending = min(salesReminderEmailJobs.createdAt);
+  const tenantRows = await db
+    .select({
+      tenantId: salesReminderEmailJobs.tenantId,
+      oldestPendingCreatedAt: oldestPending,
+    })
+    .from(salesReminderEmailJobs)
+    .where(eq(salesReminderEmailJobs.status, "pending"))
+    .groupBy(salesReminderEmailJobs.tenantId)
+    .orderBy(asc(oldestPending))
+    .limit(tenantLimit);
+
+  let processed = 0;
+  let sent = 0;
+  let failed = 0;
+  const erroredTenants: string[] = [];
+
+  for (const row of tenantRows) {
+    try {
+      const result = await processPendingReminderEmailJobs(db, row.tenantId, {
+        limit: perTenantLimit,
+      });
+      processed += result.processed;
+      sent += result.sent;
+      failed += result.failed;
+    } catch {
+      erroredTenants.push(row.tenantId);
+    }
+  }
+
+  return {
+    tenantCount: tenantRows.length,
+    processed,
+    sent,
+    failed,
+    erroredTenants,
+  };
+}
+
 export function createSalesReminderEmailJobPostHandler(
   getDb: () => Db | undefined,
 ) {
@@ -3480,6 +3767,97 @@ export function createSalesReminderEmailJobsProcessPostHandler(
   };
 }
 
+export function createSalesReminderEmailJobsMetricsGetHandler(
+  getDb: () => Db | undefined,
+) {
+  return async (c: Context) => {
+    const auth = c.get("auth");
+    if (!auth) return c.json({ error: "missing_auth" }, 500);
+    if (!canEditSalesDocuments(auth)) return c.json({ error: "forbidden" }, 403);
+    const db = getDb();
+    if (!db) return c.json({ error: "database_unavailable" }, 503);
+
+    const rows = await db
+      .select({
+        status: salesReminderEmailJobs.status,
+        total: count(),
+      })
+      .from(salesReminderEmailJobs)
+      .where(eq(salesReminderEmailJobs.tenantId, auth.tenantId))
+      .groupBy(salesReminderEmailJobs.status);
+
+    const statusCounts = new Map<string, number>();
+    for (const row of rows) {
+      statusCounts.set(row.status, Number(row.total ?? 0));
+    }
+
+    const [oldestPending] = await db
+      .select({
+        createdAt: min(salesReminderEmailJobs.createdAt),
+      })
+      .from(salesReminderEmailJobs)
+      .where(
+        and(
+          eq(salesReminderEmailJobs.tenantId, auth.tenantId),
+          eq(salesReminderEmailJobs.status, "pending"),
+        ),
+      )
+      .limit(1);
+
+    const [latestFailed] = await db
+      .select({
+        updatedAt: salesReminderEmailJobs.updatedAt,
+        lastError: salesReminderEmailJobs.lastError,
+      })
+      .from(salesReminderEmailJobs)
+      .where(
+        and(
+          eq(salesReminderEmailJobs.tenantId, auth.tenantId),
+          eq(salesReminderEmailJobs.status, "failed"),
+        ),
+      )
+      .orderBy(desc(salesReminderEmailJobs.updatedAt))
+      .limit(1);
+
+    const [latestActivity] = await db
+      .select({
+        updatedAt: salesReminderEmailJobs.updatedAt,
+        status: salesReminderEmailJobs.status,
+        attempts: salesReminderEmailJobs.attempts,
+      })
+      .from(salesReminderEmailJobs)
+      .where(eq(salesReminderEmailJobs.tenantId, auth.tenantId))
+      .orderBy(desc(salesReminderEmailJobs.updatedAt))
+      .limit(1);
+
+    const payload = salesReminderEmailJobsMetricsResponseSchema.safeParse({
+      pending: statusCounts.get("pending") ?? 0,
+      sent: statusCounts.get("sent") ?? 0,
+      failed: statusCounts.get("failed") ?? 0,
+      total:
+        (statusCounts.get("pending") ?? 0) +
+        (statusCounts.get("sent") ?? 0) +
+        (statusCounts.get("failed") ?? 0),
+      oldestPendingCreatedAt: oldestPending?.createdAt
+        ? oldestPending.createdAt.toISOString()
+        : null,
+      latestFailedAt: latestFailed?.updatedAt
+        ? latestFailed.updatedAt.toISOString()
+        : null,
+      latestFailedError: latestFailed?.lastError ?? null,
+      latestActivityAt: latestActivity?.updatedAt
+        ? latestActivity.updatedAt.toISOString()
+        : null,
+      latestActivityStatus: latestActivity?.status ?? null,
+      latestActivityAttempts: latestActivity?.attempts ?? null,
+    });
+    if (!payload.success) {
+      return c.json({ error: "response_serialization" }, 500);
+    }
+    return c.json(payload.data);
+  };
+}
+
 export function createSalesReminderEmailJobsListHandler(
   getDb: () => Db | undefined,
 ) {
@@ -3577,6 +3955,12 @@ export function createSalesQuoteLinePostHandler(getDb: () => Db | undefined) {
     }
     const input = parsed.data;
     const sortIndex = await nextQuoteLineSortIndex(db, quoteId);
+    const lineTotalCents = computeLineTotalCents({
+      quantity: input.quantity ?? null,
+      unitPriceCents: input.unitPriceCents,
+      discountBps: input.discountBps ?? 0,
+      lineTotalCents: input.lineTotalCents,
+    });
     await db.insert(salesQuoteLines).values({
       quoteId,
       sortIndex,
@@ -3586,7 +3970,7 @@ export function createSalesQuoteLinePostHandler(getDb: () => Db | undefined) {
       taxRateBps: input.taxRateBps ?? 1900,
       discountBps: input.discountBps ?? 0,
       unitPriceCents: input.unitPriceCents,
-      lineTotalCents: input.lineTotalCents,
+      lineTotalCents,
     });
     await recalcQuoteTotalCents(db, quoteId);
     const payload = await buildQuoteDetailPayload(db, auth.tenantId, quoteId);
@@ -3632,7 +4016,13 @@ export function createSalesQuoteLinePatchHandler(getDb: () => Db | undefined) {
       return c.json({ error: "database_unavailable" }, 503);
     }
     const access = await db
-      .select({ id: salesQuoteLines.id })
+      .select({
+        id: salesQuoteLines.id,
+        quantity: salesQuoteLines.quantity,
+        unitPriceCents: salesQuoteLines.unitPriceCents,
+        discountBps: salesQuoteLines.discountBps,
+        lineTotalCents: salesQuoteLines.lineTotalCents,
+      })
       .from(salesQuoteLines)
       .innerJoin(salesQuotes, eq(salesQuoteLines.quoteId, salesQuotes.id))
       .where(
@@ -3643,7 +4033,8 @@ export function createSalesQuoteLinePatchHandler(getDb: () => Db | undefined) {
         ),
       )
       .limit(1);
-    if (!access[0]) {
+    const existing = access[0];
+    if (!existing) {
       return c.json({ error: "not_found" }, 404);
     }
     const updates: {
@@ -3681,6 +4072,24 @@ export function createSalesQuoteLinePatchHandler(getDb: () => Db | undefined) {
     if (patch.lineTotalCents !== undefined) {
       updates.lineTotalCents = patch.lineTotalCents;
     }
+    const nextQuantity = patch.quantity !== undefined ? patch.quantity : existing.quantity;
+    const nextUnitPriceCents =
+      patch.unitPriceCents !== undefined
+        ? patch.unitPriceCents
+        : existing.unitPriceCents;
+    const nextDiscountBps =
+      patch.discountBps !== undefined ? patch.discountBps : existing.discountBps ?? 0;
+    const nextLineTotalCents = computeLineTotalCents({
+      quantity: nextQuantity,
+      unitPriceCents: nextUnitPriceCents,
+      discountBps: nextDiscountBps,
+      lineTotalCents:
+        patch.lineTotalCents !== undefined
+          ? patch.lineTotalCents
+          : existing.lineTotalCents,
+    });
+    updates.lineTotalCents = nextLineTotalCents;
+
     await db
       .update(salesQuoteLines)
       .set(updates)
@@ -3798,6 +4207,12 @@ export function createSalesInvoiceLinePostHandler(getDb: () => Db | undefined) {
     }
     const input = parsed.data;
     const sortIndex = await nextInvoiceLineSortIndex(db, invoiceId);
+    const lineTotalCents = computeLineTotalCents({
+      quantity: input.quantity ?? null,
+      unitPriceCents: input.unitPriceCents,
+      discountBps: input.discountBps ?? 0,
+      lineTotalCents: input.lineTotalCents,
+    });
     await db.insert(salesInvoiceLines).values({
       invoiceId,
       sortIndex,
@@ -3807,7 +4222,7 @@ export function createSalesInvoiceLinePostHandler(getDb: () => Db | undefined) {
       taxRateBps: input.taxRateBps ?? 1900,
       discountBps: input.discountBps ?? 0,
       unitPriceCents: input.unitPriceCents,
-      lineTotalCents: input.lineTotalCents,
+      lineTotalCents,
     });
     await recalcInvoiceTotalCents(db, invoiceId);
     const payload = await buildInvoiceDetailPayload(db, auth.tenantId, invoiceId);
@@ -3860,7 +4275,13 @@ export function createSalesInvoiceLinePatchHandler(getDb: () => Db | undefined) 
       return c.json({ error: "finalized_locked" }, 409);
     }
     const access = await db
-      .select({ id: salesInvoiceLines.id })
+      .select({
+        id: salesInvoiceLines.id,
+        quantity: salesInvoiceLines.quantity,
+        unitPriceCents: salesInvoiceLines.unitPriceCents,
+        discountBps: salesInvoiceLines.discountBps,
+        lineTotalCents: salesInvoiceLines.lineTotalCents,
+      })
       .from(salesInvoiceLines)
       .innerJoin(
         salesInvoices,
@@ -3874,7 +4295,8 @@ export function createSalesInvoiceLinePatchHandler(getDb: () => Db | undefined) 
         ),
       )
       .limit(1);
-    if (!access[0]) {
+    const existing = access[0];
+    if (!existing) {
       return c.json({ error: "not_found" }, 404);
     }
     const updates: {
@@ -3912,6 +4334,24 @@ export function createSalesInvoiceLinePatchHandler(getDb: () => Db | undefined) 
     if (patch.lineTotalCents !== undefined) {
       updates.lineTotalCents = patch.lineTotalCents;
     }
+    const nextQuantity = patch.quantity !== undefined ? patch.quantity : existing.quantity;
+    const nextUnitPriceCents =
+      patch.unitPriceCents !== undefined
+        ? patch.unitPriceCents
+        : existing.unitPriceCents;
+    const nextDiscountBps =
+      patch.discountBps !== undefined ? patch.discountBps : existing.discountBps ?? 0;
+    const nextLineTotalCents = computeLineTotalCents({
+      quantity: nextQuantity,
+      unitPriceCents: nextUnitPriceCents,
+      discountBps: nextDiscountBps,
+      lineTotalCents:
+        patch.lineTotalCents !== undefined
+          ? patch.lineTotalCents
+          : existing.lineTotalCents,
+    });
+    updates.lineTotalCents = nextLineTotalCents;
+
     await db
       .update(salesInvoiceLines)
       .set(updates)
