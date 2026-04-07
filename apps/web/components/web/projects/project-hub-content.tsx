@@ -21,7 +21,7 @@ import {
 } from "@repo/api-contracts";
 import { Alert, AlertDescription, AlertTitle } from "@repo/ui/alert";
 import { Button } from "@repo/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@repo/ui/card";
 import { Input } from "@repo/ui/input";
 import { Label } from "@repo/ui/label";
 import { Skeleton } from "@repo/ui/skeleton";
@@ -89,16 +89,75 @@ type HubData = {
       latestReminderId: string | null;
     }[];
   };
+  pipeline: {
+    quotes: {
+      draft: number;
+      sent: number;
+      accepted: number;
+      rejected: number;
+      expired: number;
+    };
+    invoices: {
+      draft: number;
+      sent: number;
+      overdue: number;
+      paid: number;
+    };
+    progress: {
+      quotesSentOrLaterPercent: number;
+      quotesAcceptedPercent: number;
+      quotesAcceptedFromSentPercent: number;
+      invoicesIssuedPercent: number;
+      invoicesPaidFromIssuedPercent: number;
+      invoicesOverdueFromIssuedPercent: number;
+    };
+  };
   kpis: {
     quoteCount: number;
     quoteVolumeCents: number;
     acceptedQuoteCount: number;
+    quoteAcceptanceRatePercent: number;
     invoiceCount: number;
     invoiceVolumeCents: number;
+    paidInvoiceCount: number;
+    paidInvoiceRatePercent: number;
     openBalanceCents: number;
     overdueOpenCount: number;
     next7AssignmentsCount: number;
     workTimeMinutesMonthToDate: number;
+  };
+  segments: {
+    last30Days: {
+      quoteCount: number;
+      quoteVolumeCents: number;
+      acceptedQuoteCount: number;
+      quoteAcceptanceRatePercent: number;
+      invoiceCount: number;
+      invoiceVolumeCents: number;
+      paidInvoiceCount: number;
+      paidInvoiceRatePercent: number;
+      paymentReceivedCents: number;
+    };
+    previous30Days: {
+      quoteCount: number;
+      quoteVolumeCents: number;
+      acceptedQuoteCount: number;
+      quoteAcceptanceRatePercent: number;
+      invoiceCount: number;
+      invoiceVolumeCents: number;
+      paidInvoiceCount: number;
+      paidInvoiceRatePercent: number;
+      paymentReceivedCents: number;
+    };
+    trends: {
+      quoteCountDeltaPercent: number | null;
+      quoteVolumeDeltaPercent: number | null;
+      quoteAcceptanceRateDeltaPercent: number | null;
+      invoiceCountDeltaPercent: number | null;
+      invoiceVolumeDeltaPercent: number | null;
+      paymentReceivedDeltaPercent: number | null;
+      paidInvoiceRateDeltaPercent: number | null;
+    };
   };
 };
 
@@ -137,6 +196,32 @@ function formatDuration(locale: Locale, minutes: number): string {
     return `${h}h ${m}m`;
   }
   return `${h} Std. ${m} Min.`;
+}
+
+function formatPercent(locale: Locale, value: number): string {
+  const tag = locale === "en" ? "en-GB" : "de-DE";
+  return `${value.toLocaleString(tag, { minimumFractionDigits: 0, maximumFractionDigits: 1 })}%`;
+}
+
+function clampPercent(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  if (value < 0) return 0;
+  if (value > 100) return 100;
+  return value;
+}
+
+function formatDeltaPercent(locale: Locale, value: number | null): string {
+  if (value == null || !Number.isFinite(value)) {
+    return locale === "en" ? "n/a" : "k. A.";
+  }
+  const tag = locale === "en" ? "en-GB" : "de-DE";
+  const sign = value > 0 ? "+" : "";
+  return `${sign}${value.toLocaleString(tag, { minimumFractionDigits: 0, maximumFractionDigits: 1 })}%`;
+}
+
+function deltaToneClass(value: number | null): string {
+  if (value == null || !Number.isFinite(value) || value === 0) return "text-muted-foreground";
+  return value > 0 ? "text-emerald-600" : "text-rose-600";
 }
 
 function formatYmd(locale: Locale, ymd: string): string {
@@ -215,12 +300,49 @@ export function ProjectHubContent({
             receivablesLoadError: "Open items could not be loaded.",
             receivablesEmpty: "No open items linked to this project.",
             kpiTitle: "Pipeline and KPIs",
+            kpiSummaryHint:
+              "Cash position first, then volumes, pipeline status, and recent trends.",
+            kpiSectionOverview: "Key figures",
+            kpiSectionRates: "Conversion",
+            kpiSectionOperations: "Operations",
+            pipelineTitle: "Mini pipeline",
+            pipelineProgressBlock: "Progress",
+            pipelineStatusBlock: "Status counts",
+            pipelineQuotes: "Quotes",
+            pipelineInvoices: "Invoices",
+            pipelineDraft: "Draft",
+            pipelineSent: "Sent",
+            pipelineAccepted: "Accepted",
+            pipelineRejected: "Rejected",
+            pipelineExpired: "Expired",
+            pipelineOverdue: "Overdue",
+            pipelinePaid: "Paid",
+            pipelineProgressSent: "Sent or later",
+            pipelineProgressAcceptedTotal: "Accepted (total)",
+            pipelineProgressAcceptedAfterSent: "Accepted after sent",
+            pipelineProgressIssued: "Issued (not draft)",
+            pipelineProgressPaidAfterIssued: "Paid after issued",
+            pipelineProgressOverdueAfterIssued: "Overdue after issued",
             kpiQuotes: "Quotes",
             kpiInvoices: "Invoices",
+            kpiQuoteAcceptance: "Quote acceptance",
+            kpiInvoicePaidRate: "Paid invoices",
             kpiOpenBalance: "Open balance",
             kpiOverdue: "Overdue open items",
             kpiAssignments: "Assignments (7 days)",
             kpiWorkTime: "Work time (month to date)",
+            segmentTitle: "30-day segments and trends",
+            segmentLast30: "Last 30 days",
+            segmentPrevious30: "Previous 30 days",
+            segmentPaymentReceived: "Payments received",
+            segmentTrendTitle: "Trend vs previous 30 days",
+            trendQuoteCount: "Quotes",
+            trendQuoteVolume: "Quote volume",
+            trendQuoteAcceptance: "Quote acceptance",
+            trendInvoiceCount: "Invoices",
+            trendInvoiceVolume: "Invoice volume",
+            trendPaidInvoiceRate: "Paid invoice rate",
+            trendPaymentReceived: "Payments received",
           }
         : {
             back: "Projekte",
@@ -277,12 +399,49 @@ export function ProjectHubContent({
             receivablesLoadError: "Offene Posten konnten nicht geladen werden.",
             receivablesEmpty: "Keine offenen Posten zu diesem Projekt.",
             kpiTitle: "Pipeline und KPIs",
+            kpiSummaryHint:
+              "Zuerst Liquiditaet, dann Volumina, Pipeline-Status und juengste Trends.",
+            kpiSectionOverview: "Kernzahlen",
+            kpiSectionRates: "Quoten",
+            kpiSectionOperations: "Betrieb",
+            pipelineTitle: "Mini-Pipeline",
+            pipelineProgressBlock: "Fortschritt",
+            pipelineStatusBlock: "Stufenzaehler",
+            pipelineQuotes: "Angebote",
+            pipelineInvoices: "Rechnungen",
+            pipelineDraft: "Entwurf",
+            pipelineSent: "Versendet",
+            pipelineAccepted: "Angenommen",
+            pipelineRejected: "Abgelehnt",
+            pipelineExpired: "Abgelaufen",
+            pipelineOverdue: "Ueberfaellig",
+            pipelinePaid: "Bezahlt",
+            pipelineProgressSent: "Versendet oder weiter",
+            pipelineProgressAcceptedTotal: "Angenommen (gesamt)",
+            pipelineProgressAcceptedAfterSent: "Angenommen nach Versand",
+            pipelineProgressIssued: "In Rechnung gestellt (ohne Entwurf)",
+            pipelineProgressPaidAfterIssued: "Bezahlt nach Versand",
+            pipelineProgressOverdueAfterIssued: "Ueberfaellig nach Versand",
             kpiQuotes: "Angebote",
             kpiInvoices: "Rechnungen",
+            kpiQuoteAcceptance: "Angebotsquote",
+            kpiInvoicePaidRate: "Bezahlt-Quote",
             kpiOpenBalance: "Offener Saldo",
             kpiOverdue: "Ueberfaellige OP",
             kpiAssignments: "Einsaetze (7 Tage)",
             kpiWorkTime: "Zeiten (Monat bis heute)",
+            segmentTitle: "30-Tage-Segmente und Trends",
+            segmentLast30: "Letzte 30 Tage",
+            segmentPrevious30: "Vorherige 30 Tage",
+            segmentPaymentReceived: "Zahlungseingaenge",
+            segmentTrendTitle: "Trend vs. vorherige 30 Tage",
+            trendQuoteCount: "Angebote",
+            trendQuoteVolume: "Angebotsvolumen",
+            trendQuoteAcceptance: "Angebotsquote",
+            trendInvoiceCount: "Rechnungen",
+            trendInvoiceVolume: "Rechnungsvolumen",
+            trendPaidInvoiceRate: "Bezahlt-Quote",
+            trendPaymentReceived: "Zahlungseingaenge",
           },
     [locale],
   );
@@ -313,41 +472,6 @@ export function ProjectHubContent({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadKind, setUploadKind] = useState<ProjectAssetKind>("document");
   const [uploadFile, setUploadFile] = useState<File | null>(null);
-
-  const [schedulingWeek, setSchedulingWeek] = useState<
-    { id: string; date: string; startTime: string; title: string }[] | null
-  >(null);
-  const [schedulingBusy, setSchedulingBusy] = useState(false);
-
-  const [workTimeSummary, setWorkTimeSummary] = useState<{
-    totalMinutes: number;
-    entries: {
-      id: string;
-      workDate: string;
-      durationMinutes: number;
-      employeeName: string | null;
-      notes: string | null;
-    }[];
-  } | null>(null);
-  const [workTimeBusy, setWorkTimeBusy] = useState(false);
-  const [workTimeError, setWorkTimeError] = useState(false);
-
-  const [openItems, setOpenItems] = useState<{
-    total: number;
-    invoices: {
-      id: string;
-      documentNumber: string;
-      customerLabel: string;
-      dueAt: string | null;
-      currency: string;
-      balanceCents: number;
-      reminderCount: number;
-      maxReminderLevel: number | null;
-      latestReminderId: string | null;
-    }[];
-  } | null>(null);
-  const [openItemsBusy, setOpenItemsBusy] = useState(false);
-  const [openItemsError, setOpenItemsError] = useState(false);
 
   const load = useCallback(async () => {
     setBusy(true);
@@ -381,7 +505,9 @@ export function ProjectHubContent({
         schedulingWeek: hub.schedulingWeek,
         workTimeSummary: hub.workTime,
         openItems: hub.receivables,
+        pipeline: hub.pipeline,
         kpis: hub.kpis,
+        segments: hub.segments,
       });
     } catch {
       setError(copy.loadError);
@@ -393,40 +519,6 @@ export function ProjectHubContent({
   useEffect(() => {
     void load();
   }, [load]);
-
-  useEffect(() => {
-    if (!data) {
-      setSchedulingWeek(null);
-      setSchedulingBusy(false);
-      return;
-    }
-    setSchedulingBusy(false);
-    setSchedulingWeek(data.schedulingWeek);
-  }, [data]);
-
-  useEffect(() => {
-    if (!data) {
-      setWorkTimeSummary(null);
-      setWorkTimeError(false);
-      setWorkTimeBusy(false);
-      return;
-    }
-    setWorkTimeError(false);
-    setWorkTimeBusy(false);
-    setWorkTimeSummary(data.workTimeSummary);
-  }, [data]);
-
-  useEffect(() => {
-    if (!data) {
-      setOpenItems(null);
-      setOpenItemsError(false);
-      setOpenItemsBusy(false);
-      return;
-    }
-    setOpenItemsError(false);
-    setOpenItemsBusy(false);
-    setOpenItems(data.openItems);
-  }, [data]);
 
   const upload = useCallback(async () => {
     setUploadError(null);
@@ -535,46 +627,546 @@ export function ProjectHubContent({
           </div>
 
           <Card className="border-border/80 bg-muted/15 shadow-none">
-            <CardHeader>
+            <CardHeader className="space-y-1 pb-2 sm:pb-3">
               <CardTitle className="text-base">{copy.kpiTitle}</CardTitle>
+              <CardDescription className="text-xs leading-relaxed sm:text-sm">
+                {copy.kpiSummaryHint}
+              </CardDescription>
             </CardHeader>
-            <CardContent className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
-              <div className="rounded-md border bg-background/40 p-3">
-                <div className="text-xs text-muted-foreground">{copy.kpiQuotes}</div>
-                <div className="font-medium">
-                  {data.kpis.quoteCount} ·{" "}
-                  {formatMinorCurrency(data.kpis.quoteVolumeCents, "EUR", locale)}
+            <CardContent className="space-y-6 text-sm">
+              <section className="space-y-2" aria-labelledby="hub-kpi-overview-heading">
+                <h2
+                  id="hub-kpi-overview-heading"
+                  className="text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground"
+                >
+                  {copy.kpiSectionOverview}
+                </h2>
+                <div
+                  className="flex max-sm:snap-x max-sm:snap-mandatory gap-3 max-sm:overflow-x-auto max-sm:pb-1 max-sm:-mx-1 max-sm:px-1 sm:grid sm:grid-cols-3"
+                  role="list"
+                >
+                  <div
+                    role="listitem"
+                    className="min-w-[min(100%,17.5rem)] max-sm:snap-center max-sm:shrink-0 sm:min-w-0 rounded-md border border-border/80 bg-background/50 p-3 shadow-sm"
+                  >
+                    <div className="text-xs text-muted-foreground">{copy.kpiOpenBalance}</div>
+                    <div className="text-base font-semibold tabular-nums tracking-tight sm:text-lg">
+                      {formatMinorCurrency(data.kpis.openBalanceCents, "EUR", locale)}
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {copy.kpiOverdue}:{" "}
+                      <span className="tabular-nums text-foreground">
+                        {data.kpis.overdueOpenCount}
+                      </span>
+                    </div>
+                  </div>
+                  <div
+                    role="listitem"
+                    className="min-w-[min(100%,17.5rem)] max-sm:snap-center max-sm:shrink-0 sm:min-w-0 rounded-md border bg-background/40 p-3"
+                  >
+                    <div className="text-xs text-muted-foreground">{copy.kpiQuotes}</div>
+                    <div className="font-medium tabular-nums">
+                      {data.kpis.quoteCount} ·{" "}
+                      {formatMinorCurrency(data.kpis.quoteVolumeCents, "EUR", locale)}
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {copy.pipelineAccepted}: {data.kpis.acceptedQuoteCount}
+                    </div>
+                  </div>
+                  <div
+                    role="listitem"
+                    className="min-w-[min(100%,17.5rem)] max-sm:snap-center max-sm:shrink-0 sm:min-w-0 rounded-md border bg-background/40 p-3"
+                  >
+                    <div className="text-xs text-muted-foreground">{copy.kpiInvoices}</div>
+                    <div className="font-medium tabular-nums">
+                      {data.kpis.invoiceCount} ·{" "}
+                      {formatMinorCurrency(data.kpis.invoiceVolumeCents, "EUR", locale)}
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {copy.pipelinePaid}: {data.kpis.paidInvoiceCount}
+                    </div>
+                  </div>
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  {locale === "en" ? "Accepted" : "Angenommen"}: {data.kpis.acceptedQuoteCount}
+              </section>
+
+              <div className="h-px bg-border/60" aria-hidden />
+
+              <section className="space-y-2" aria-labelledby="hub-kpi-rates-heading">
+                <h2
+                  id="hub-kpi-rates-heading"
+                  className="text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground"
+                >
+                  {copy.kpiSectionRates}
+                </h2>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-md border bg-background/40 p-3">
+                    <div className="text-xs text-muted-foreground">{copy.kpiQuoteAcceptance}</div>
+                    <div className="text-base font-semibold tabular-nums sm:text-lg">
+                      {formatPercent(locale, data.kpis.quoteAcceptanceRatePercent)}
+                    </div>
+                  </div>
+                  <div className="rounded-md border bg-background/40 p-3">
+                    <div className="text-xs text-muted-foreground">{copy.kpiInvoicePaidRate}</div>
+                    <div className="text-base font-semibold tabular-nums sm:text-lg">
+                      {formatPercent(locale, data.kpis.paidInvoiceRatePercent)}
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div className="rounded-md border bg-background/40 p-3">
-                <div className="text-xs text-muted-foreground">{copy.kpiInvoices}</div>
-                <div className="font-medium">
-                  {data.kpis.invoiceCount} ·{" "}
-                  {formatMinorCurrency(data.kpis.invoiceVolumeCents, "EUR", locale)}
+              </section>
+
+              <section className="space-y-2" aria-labelledby="hub-kpi-ops-heading">
+                <h2
+                  id="hub-kpi-ops-heading"
+                  className="text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground"
+                >
+                  {copy.kpiSectionOperations}
+                </h2>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-md border bg-background/40 p-3">
+                    <div className="text-xs text-muted-foreground">{copy.kpiAssignments}</div>
+                    <div className="font-medium tabular-nums">{data.kpis.next7AssignmentsCount}</div>
+                  </div>
+                  <div className="rounded-md border bg-background/40 p-3">
+                    <div className="text-xs text-muted-foreground">{copy.kpiWorkTime}</div>
+                    <div className="font-medium tabular-nums">
+                      {formatDuration(locale, data.kpis.workTimeMinutesMonthToDate)}
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div className="rounded-md border bg-background/40 p-3">
-                <div className="text-xs text-muted-foreground">{copy.kpiOpenBalance}</div>
-                <div className="font-medium">
-                  {formatMinorCurrency(data.kpis.openBalanceCents, "EUR", locale)}
+              </section>
+
+              <div className="h-px bg-border/60" aria-hidden />
+
+              <section className="space-y-3 rounded-md border bg-background/40 p-3 sm:p-4">
+                <h2 className="text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground">
+                  {copy.pipelineTitle}
+                </h2>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-md border border-border/70 bg-background/60 p-2.5 sm:p-3">
+                    <div className="mb-2 text-xs font-medium text-foreground">
+                      {copy.pipelineQuotes}
+                    </div>
+                    <div className="space-y-2">
+                      <div>
+                        <div className="mb-1 text-[0.65rem] font-semibold uppercase tracking-wide text-muted-foreground">
+                          {copy.pipelineProgressBlock}
+                        </div>
+                        <div className="space-y-2">
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between gap-2 text-xs">
+                              <span className="text-muted-foreground">
+                                {copy.pipelineProgressSent}
+                              </span>
+                              <span className="tabular-nums">
+                                {formatPercent(
+                                  locale,
+                                  data.pipeline.progress.quotesSentOrLaterPercent,
+                                )}
+                              </span>
+                            </div>
+                            <div className="h-1.5 overflow-hidden rounded bg-muted">
+                              <div
+                                className="h-full bg-primary"
+                                style={{
+                                  width: `${clampPercent(data.pipeline.progress.quotesSentOrLaterPercent)}%`,
+                                }}
+                              />
+                            </div>
+                          </div>
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between gap-2 text-xs">
+                              <span className="text-muted-foreground">
+                                {copy.pipelineProgressAcceptedTotal}
+                              </span>
+                              <span className="tabular-nums">
+                                {formatPercent(
+                                  locale,
+                                  data.pipeline.progress.quotesAcceptedPercent,
+                                )}
+                              </span>
+                            </div>
+                            <div className="h-1.5 overflow-hidden rounded bg-muted">
+                              <div
+                                className="h-full bg-primary/80"
+                                style={{
+                                  width: `${clampPercent(data.pipeline.progress.quotesAcceptedPercent)}%`,
+                                }}
+                              />
+                            </div>
+                          </div>
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between gap-2 text-xs">
+                              <span className="text-muted-foreground">
+                                {copy.pipelineProgressAcceptedAfterSent}
+                              </span>
+                              <span className="tabular-nums">
+                                {formatPercent(
+                                  locale,
+                                  data.pipeline.progress.quotesAcceptedFromSentPercent,
+                                )}
+                              </span>
+                            </div>
+                            <div className="h-1.5 overflow-hidden rounded bg-muted">
+                              <div
+                                className="h-full bg-primary/70"
+                                style={{
+                                  width: `${clampPercent(data.pipeline.progress.quotesAcceptedFromSentPercent)}%`,
+                                }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <div className="mb-1 text-[0.65rem] font-semibold uppercase tracking-wide text-muted-foreground">
+                          {copy.pipelineStatusBlock}
+                        </div>
+                        <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                          <span>{copy.pipelineDraft}</span>
+                          <span className="text-right tabular-nums">
+                            {data.pipeline.quotes.draft}
+                          </span>
+                          <span>{copy.pipelineSent}</span>
+                          <span className="text-right tabular-nums">
+                            {data.pipeline.quotes.sent}
+                          </span>
+                          <span>{copy.pipelineAccepted}</span>
+                          <span className="text-right tabular-nums">
+                            {data.pipeline.quotes.accepted}
+                          </span>
+                          <span>{copy.pipelineRejected}</span>
+                          <span className="text-right tabular-nums">
+                            {data.pipeline.quotes.rejected}
+                          </span>
+                          <span>{copy.pipelineExpired}</span>
+                          <span className="text-right tabular-nums">
+                            {data.pipeline.quotes.expired}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="rounded-md border border-border/70 bg-background/60 p-2.5 sm:p-3">
+                    <div className="mb-2 text-xs font-medium text-foreground">
+                      {copy.pipelineInvoices}
+                    </div>
+                    <div className="space-y-2">
+                      <div>
+                        <div className="mb-1 text-[0.65rem] font-semibold uppercase tracking-wide text-muted-foreground">
+                          {copy.pipelineProgressBlock}
+                        </div>
+                        <div className="space-y-2">
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between gap-2 text-xs">
+                              <span className="text-muted-foreground">
+                                {copy.pipelineProgressIssued}
+                              </span>
+                              <span className="tabular-nums">
+                                {formatPercent(locale, data.pipeline.progress.invoicesIssuedPercent)}
+                              </span>
+                            </div>
+                            <div className="h-1.5 overflow-hidden rounded bg-muted">
+                              <div
+                                className="h-full bg-primary"
+                                style={{
+                                  width: `${clampPercent(data.pipeline.progress.invoicesIssuedPercent)}%`,
+                                }}
+                              />
+                            </div>
+                          </div>
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between gap-2 text-xs">
+                              <span className="text-muted-foreground">
+                                {copy.pipelineProgressPaidAfterIssued}
+                              </span>
+                              <span className="tabular-nums">
+                                {formatPercent(
+                                  locale,
+                                  data.pipeline.progress.invoicesPaidFromIssuedPercent,
+                                )}
+                              </span>
+                            </div>
+                            <div className="h-1.5 overflow-hidden rounded bg-muted">
+                              <div
+                                className="h-full bg-primary/80"
+                                style={{
+                                  width: `${clampPercent(data.pipeline.progress.invoicesPaidFromIssuedPercent)}%`,
+                                }}
+                              />
+                            </div>
+                          </div>
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between gap-2 text-xs">
+                              <span className="text-muted-foreground">
+                                {copy.pipelineProgressOverdueAfterIssued}
+                              </span>
+                              <span className="tabular-nums">
+                                {formatPercent(
+                                  locale,
+                                  data.pipeline.progress.invoicesOverdueFromIssuedPercent,
+                                )}
+                              </span>
+                            </div>
+                            <div className="h-1.5 overflow-hidden rounded bg-muted">
+                              <div
+                                className="h-full bg-primary/70"
+                                style={{
+                                  width: `${clampPercent(data.pipeline.progress.invoicesOverdueFromIssuedPercent)}%`,
+                                }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <div className="mb-1 text-[0.65rem] font-semibold uppercase tracking-wide text-muted-foreground">
+                          {copy.pipelineStatusBlock}
+                        </div>
+                        <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                          <span>{copy.pipelineDraft}</span>
+                          <span className="text-right tabular-nums">
+                            {data.pipeline.invoices.draft}
+                          </span>
+                          <span>{copy.pipelineSent}</span>
+                          <span className="text-right tabular-nums">
+                            {data.pipeline.invoices.sent}
+                          </span>
+                          <span>{copy.pipelineOverdue}</span>
+                          <span className="text-right tabular-nums">
+                            {data.pipeline.invoices.overdue}
+                          </span>
+                          <span>{copy.pipelinePaid}</span>
+                          <span className="text-right tabular-nums">
+                            {data.pipeline.invoices.paid}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  {copy.kpiOverdue}: {data.kpis.overdueOpenCount}
+              </section>
+
+              <section className="space-y-3 rounded-md border bg-background/40 p-3 sm:p-4">
+                <h2 className="text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground">
+                  {copy.segmentTitle}
+                </h2>
+                <div className="flex max-sm:snap-x max-sm:snap-mandatory gap-3 max-sm:overflow-x-auto max-sm:pb-1 max-sm:-mx-1 max-sm:px-1 sm:grid sm:grid-cols-2">
+                  <div className="min-w-[min(100%,18rem)] max-sm:snap-center max-sm:shrink-0 sm:min-w-0 rounded-md border border-border/70 bg-background/60 p-2.5 sm:p-3">
+                    <div className="mb-2 text-xs font-medium text-muted-foreground">
+                      {copy.segmentLast30}
+                    </div>
+                    <div className="space-y-2 text-xs">
+                      <div className="flex flex-col gap-0.5 min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between min-[380px]:gap-2">
+                        <span className="shrink-0 text-muted-foreground">{copy.kpiQuotes}</span>
+                        <span className="min-w-0 wrap-break-word text-right tabular-nums">
+                          {data.segments.last30Days.quoteCount} ·{" "}
+                          {formatMinorCurrency(
+                            data.segments.last30Days.quoteVolumeCents,
+                            "EUR",
+                            locale,
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex flex-col gap-0.5 min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between min-[380px]:gap-2">
+                        <span className="shrink-0 text-muted-foreground">
+                          {copy.kpiQuoteAcceptance}
+                        </span>
+                        <span className="tabular-nums">
+                          {formatPercent(
+                            locale,
+                            data.segments.last30Days.quoteAcceptanceRatePercent,
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex flex-col gap-0.5 min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between min-[380px]:gap-2">
+                        <span className="shrink-0 text-muted-foreground">{copy.kpiInvoices}</span>
+                        <span className="min-w-0 wrap-break-word text-right tabular-nums">
+                          {data.segments.last30Days.invoiceCount} ·{" "}
+                          {formatMinorCurrency(
+                            data.segments.last30Days.invoiceVolumeCents,
+                            "EUR",
+                            locale,
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex flex-col gap-0.5 min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between min-[380px]:gap-2">
+                        <span className="shrink-0 text-muted-foreground">
+                          {copy.kpiInvoicePaidRate}
+                        </span>
+                        <span className="min-w-0 text-right tabular-nums">
+                          {data.segments.last30Days.paidInvoiceCount} ·{" "}
+                          {formatPercent(locale, data.segments.last30Days.paidInvoiceRatePercent)}
+                        </span>
+                      </div>
+                      <div className="flex flex-col gap-0.5 min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between min-[380px]:gap-2">
+                        <span className="shrink-0 text-muted-foreground">
+                          {copy.segmentPaymentReceived}
+                        </span>
+                        <span className="min-w-0 wrap-break-word text-right tabular-nums">
+                          {formatMinorCurrency(
+                            data.segments.last30Days.paymentReceivedCents,
+                            "EUR",
+                            locale,
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="min-w-[min(100%,18rem)] max-sm:snap-center max-sm:shrink-0 sm:min-w-0 rounded-md border border-border/70 bg-background/60 p-2.5 sm:p-3">
+                    <div className="mb-2 text-xs font-medium text-muted-foreground">
+                      {copy.segmentPrevious30}
+                    </div>
+                    <div className="space-y-2 text-xs">
+                      <div className="flex flex-col gap-0.5 min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between min-[380px]:gap-2">
+                        <span className="shrink-0 text-muted-foreground">{copy.kpiQuotes}</span>
+                        <span className="min-w-0 wrap-break-word text-right tabular-nums">
+                          {data.segments.previous30Days.quoteCount} ·{" "}
+                          {formatMinorCurrency(
+                            data.segments.previous30Days.quoteVolumeCents,
+                            "EUR",
+                            locale,
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex flex-col gap-0.5 min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between min-[380px]:gap-2">
+                        <span className="shrink-0 text-muted-foreground">
+                          {copy.kpiQuoteAcceptance}
+                        </span>
+                        <span className="tabular-nums">
+                          {formatPercent(
+                            locale,
+                            data.segments.previous30Days.quoteAcceptanceRatePercent,
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex flex-col gap-0.5 min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between min-[380px]:gap-2">
+                        <span className="shrink-0 text-muted-foreground">{copy.kpiInvoices}</span>
+                        <span className="min-w-0 wrap-break-word text-right tabular-nums">
+                          {data.segments.previous30Days.invoiceCount} ·{" "}
+                          {formatMinorCurrency(
+                            data.segments.previous30Days.invoiceVolumeCents,
+                            "EUR",
+                            locale,
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex flex-col gap-0.5 min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between min-[380px]:gap-2">
+                        <span className="shrink-0 text-muted-foreground">
+                          {copy.kpiInvoicePaidRate}
+                        </span>
+                        <span className="min-w-0 text-right tabular-nums">
+                          {data.segments.previous30Days.paidInvoiceCount} ·{" "}
+                          {formatPercent(
+                            locale,
+                            data.segments.previous30Days.paidInvoiceRatePercent,
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex flex-col gap-0.5 min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between min-[380px]:gap-2">
+                        <span className="shrink-0 text-muted-foreground">
+                          {copy.segmentPaymentReceived}
+                        </span>
+                        <span className="min-w-0 wrap-break-word text-right tabular-nums">
+                          {formatMinorCurrency(
+                            data.segments.previous30Days.paymentReceivedCents,
+                            "EUR",
+                            locale,
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div className="rounded-md border bg-background/40 p-3">
-                <div className="text-xs text-muted-foreground">{copy.kpiAssignments}</div>
-                <div className="font-medium">{data.kpis.next7AssignmentsCount}</div>
-              </div>
-              <div className="rounded-md border bg-background/40 p-3">
-                <div className="text-xs text-muted-foreground">{copy.kpiWorkTime}</div>
-                <div className="font-medium">
-                  {formatDuration(locale, data.kpis.workTimeMinutesMonthToDate)}
+                <div className="space-y-2 border-t border-border/50 pt-3">
+                  <div className="text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {copy.segmentTrendTitle}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-3">
+                    <div className="rounded-md border border-dashed border-border/60 bg-muted/20 p-2 sm:p-2.5">
+                      <div className="text-[10px] text-muted-foreground sm:text-[11px]">
+                        {copy.trendQuoteCount}
+                      </div>
+                      <div
+                        className={`text-xs font-medium tabular-nums sm:text-sm ${deltaToneClass(data.segments.trends.quoteCountDeltaPercent)}`}
+                      >
+                        {formatDeltaPercent(locale, data.segments.trends.quoteCountDeltaPercent)}
+                      </div>
+                    </div>
+                    <div className="rounded-md border border-dashed border-border/60 bg-muted/20 p-2 sm:p-2.5">
+                      <div className="text-[10px] text-muted-foreground sm:text-[11px]">
+                        {copy.trendQuoteVolume}
+                      </div>
+                      <div
+                        className={`text-xs font-medium tabular-nums sm:text-sm ${deltaToneClass(data.segments.trends.quoteVolumeDeltaPercent)}`}
+                      >
+                        {formatDeltaPercent(locale, data.segments.trends.quoteVolumeDeltaPercent)}
+                      </div>
+                    </div>
+                    <div className="rounded-md border border-dashed border-border/60 bg-muted/20 p-2 sm:p-2.5">
+                      <div className="text-[10px] text-muted-foreground sm:text-[11px]">
+                        {copy.trendQuoteAcceptance}
+                      </div>
+                      <div
+                        className={`text-xs font-medium tabular-nums sm:text-sm ${deltaToneClass(data.segments.trends.quoteAcceptanceRateDeltaPercent)}`}
+                      >
+                        {formatDeltaPercent(
+                          locale,
+                          data.segments.trends.quoteAcceptanceRateDeltaPercent,
+                        )}
+                      </div>
+                    </div>
+                    <div className="rounded-md border border-dashed border-border/60 bg-muted/20 p-2 sm:p-2.5">
+                      <div className="text-[10px] text-muted-foreground sm:text-[11px]">
+                        {copy.trendInvoiceCount}
+                      </div>
+                      <div
+                        className={`text-xs font-medium tabular-nums sm:text-sm ${deltaToneClass(data.segments.trends.invoiceCountDeltaPercent)}`}
+                      >
+                        {formatDeltaPercent(locale, data.segments.trends.invoiceCountDeltaPercent)}
+                      </div>
+                    </div>
+                    <div className="rounded-md border border-dashed border-border/60 bg-muted/20 p-2 sm:p-2.5">
+                      <div className="text-[10px] text-muted-foreground sm:text-[11px]">
+                        {copy.trendInvoiceVolume}
+                      </div>
+                      <div
+                        className={`text-xs font-medium tabular-nums sm:text-sm ${deltaToneClass(data.segments.trends.invoiceVolumeDeltaPercent)}`}
+                      >
+                        {formatDeltaPercent(
+                          locale,
+                          data.segments.trends.invoiceVolumeDeltaPercent,
+                        )}
+                      </div>
+                    </div>
+                    <div className="rounded-md border border-dashed border-border/60 bg-muted/20 p-2 sm:p-2.5">
+                      <div className="text-[10px] text-muted-foreground sm:text-[11px]">
+                        {copy.trendPaidInvoiceRate}
+                      </div>
+                      <div
+                        className={`text-xs font-medium tabular-nums sm:text-sm ${deltaToneClass(data.segments.trends.paidInvoiceRateDeltaPercent)}`}
+                      >
+                        {formatDeltaPercent(
+                          locale,
+                          data.segments.trends.paidInvoiceRateDeltaPercent,
+                        )}
+                      </div>
+                    </div>
+                    <div className="rounded-md border border-dashed border-border/60 bg-muted/20 p-2 sm:p-2.5">
+                      <div className="text-[10px] text-muted-foreground sm:text-[11px]">
+                        {copy.trendPaymentReceived}
+                      </div>
+                      <div
+                        className={`text-xs font-medium tabular-nums sm:text-sm ${deltaToneClass(data.segments.trends.paymentReceivedDeltaPercent)}`}
+                      >
+                        {formatDeltaPercent(
+                          locale,
+                          data.segments.trends.paymentReceivedDeltaPercent,
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              </section>
             </CardContent>
           </Card>
 
@@ -691,15 +1283,11 @@ export function ProjectHubContent({
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
                 <p className="text-xs text-muted-foreground">{copy.schedulingHint}</p>
-                {schedulingBusy || schedulingWeek === null ? (
-                  <p className="text-muted-foreground">
-                    {locale === "en" ? "Loading…" : "Lädt…"}
-                  </p>
-                ) : schedulingWeek.length === 0 ? (
+                {data.schedulingWeek.length === 0 ? (
                   <p className="text-muted-foreground">{copy.noSchedulingWeek}</p>
                 ) : (
                   <ul className="space-y-1">
-                    {schedulingWeek.map((a) => (
+                    {data.schedulingWeek.map((a) => (
                       <li key={a.id} className="text-muted-foreground">
                         <span className="font-medium text-foreground">
                           {formatYmd(locale, a.date)}
@@ -733,17 +1321,7 @@ export function ProjectHubContent({
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
                 <p className="text-xs text-muted-foreground">{copy.workTimeHint}</p>
-                {workTimeBusy ? (
-                  <p className="text-muted-foreground">
-                    {locale === "en" ? "Loading…" : "Lädt…"}
-                  </p>
-                ) : workTimeError ? (
-                  <p className="text-muted-foreground">{copy.workTimeLoadError}</p>
-                ) : !workTimeSummary ? (
-                  <p className="text-muted-foreground">
-                    {locale === "en" ? "Loading…" : "Lädt…"}
-                  </p>
-                ) : workTimeSummary.totalMinutes <= 0 ? (
+                {data.workTimeSummary.totalMinutes <= 0 ? (
                   <p className="text-muted-foreground">{copy.workTimeEmpty}</p>
                 ) : (
                   <>
@@ -752,11 +1330,11 @@ export function ProjectHubContent({
                         {locale === "en" ? "Total" : "Summe"}
                       </div>
                       <div className="font-medium tabular-nums text-foreground">
-                        {formatDuration(locale, workTimeSummary.totalMinutes)}
+                        {formatDuration(locale, data.workTimeSummary.totalMinutes)}
                       </div>
                     </div>
                     <ul className="space-y-2">
-                      {workTimeSummary.entries.map((e) => (
+                      {data.workTimeSummary.entries.map((e) => (
                         <li
                           key={e.id}
                           className="flex items-start justify-between gap-3"
@@ -797,26 +1375,16 @@ export function ProjectHubContent({
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
                 <p className="text-xs text-muted-foreground">{copy.receivablesHint}</p>
-                {openItemsBusy ? (
-                  <p className="text-muted-foreground">
-                    {locale === "en" ? "Loading…" : "Lädt…"}
-                  </p>
-                ) : openItemsError ? (
-                  <p className="text-muted-foreground">{copy.receivablesLoadError}</p>
-                ) : !openItems ? (
-                  <p className="text-muted-foreground">
-                    {locale === "en" ? "Loading…" : "Lädt…"}
-                  </p>
-                ) : openItems.total === 0 ? (
+                {data.openItems.total === 0 ? (
                   <p className="text-muted-foreground">{copy.receivablesEmpty}</p>
                 ) : (
                   <>
                     <p className="text-xs text-muted-foreground">
-                      {openItems.total}{" "}
+                      {data.openItems.total}{" "}
                       {locale === "en" ? "open items" : "offene Posten"}
                     </p>
                     <ul className="space-y-2">
-                      {openItems.invoices.map((i) => (
+                      {data.openItems.invoices.map((i) => (
                         <li key={i.id} className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <Link

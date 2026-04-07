@@ -73,6 +73,21 @@ function toInt(v: unknown): number {
   return Number.isFinite(n) ? Math.trunc(n) : 0;
 }
 
+function toPercent(numerator: number, denominator: number): number {
+  if (!Number.isFinite(numerator) || !Number.isFinite(denominator) || denominator <= 0) {
+    return 0;
+  }
+  return Math.round((numerator / denominator) * 1000) / 10;
+}
+
+function percentDelta(current: number, previous: number): number | null {
+  if (!Number.isFinite(current) || !Number.isFinite(previous)) return null;
+  if (previous === 0) {
+    return current === 0 ? 0 : null;
+  }
+  return Math.round((((current - previous) / Math.abs(previous)) * 100) * 10) / 10;
+}
+
 function formatSiteAddressLabel(a: {
   label: string | null;
   recipientName: string;
@@ -483,7 +498,26 @@ export function createProjectHubDetailHandler(getDb: () => Db | undefined) {
       }
     }
 
-    const [quoteRows, invoiceRows, assetRows, gaebRows] = await Promise.all([
+    const now = new Date();
+    const nowTs = now.getTime();
+    const todayIso = isoDateLocal(now);
+    const endIso = addDaysIsoLocal(todayIso, 6);
+    const monthFrom = isoDateLocal(new Date(now.getFullYear(), now.getMonth(), 1));
+    const monthTo = isoDateLocal(now);
+    const last30Start = new Date(nowTs - 30 * 86_400_000);
+    const prev30Start = new Date(nowTs - 60 * 86_400_000);
+
+    // Fetch all independent hub blocks in parallel.
+    const [
+      quoteRows,
+      invoiceRows,
+      assetRows,
+      gaebRows,
+      schedulingRows,
+      workTimeRows,
+      quoteAllRows,
+      invoiceAllRows,
+    ] = await Promise.all([
       db
         .select({
           id: salesQuotes.id,
@@ -545,119 +579,138 @@ export function createProjectHubDetailHandler(getDb: () => Db | undefined) {
           and(
             eq(lvDocuments.tenantId, auth.tenantId),
             eq(lvDocuments.projectId, id),
-            gt(lvDocuments.purgeAfterAt, new Date()),
+            gt(lvDocuments.purgeAfterAt, now),
           ),
         )
         .orderBy(desc(lvDocuments.updatedAt))
         .limit(8),
+      db
+        .select({
+          id: schedulingAssignments.id,
+          date: schedulingAssignments.date,
+          startTime: schedulingAssignments.startTime,
+          title: schedulingAssignments.title,
+        })
+        .from(schedulingAssignments)
+        .where(
+          and(
+            eq(schedulingAssignments.tenantId, auth.tenantId),
+            eq(schedulingAssignments.projectId, id),
+            gte(schedulingAssignments.date, todayIso),
+            lte(schedulingAssignments.date, endIso),
+          ),
+        )
+        .orderBy(asc(schedulingAssignments.date), asc(schedulingAssignments.startTime))
+        .limit(100),
+      db
+        .select({
+          id: workTimeEntries.id,
+          workDate: workTimeEntries.workDate,
+          durationMinutes: workTimeEntries.durationMinutes,
+          notes: workTimeEntries.notes,
+          employeeName: employees.displayName,
+          createdAt: workTimeEntries.createdAt,
+        })
+        .from(workTimeEntries)
+        .leftJoin(employees, eq(employees.id, workTimeEntries.employeeId))
+        .where(
+          and(
+            eq(workTimeEntries.tenantId, auth.tenantId),
+            eq(workTimeEntries.projectId, id),
+            gte(workTimeEntries.workDate, monthFrom),
+            lte(workTimeEntries.workDate, monthTo),
+          ),
+        )
+        .orderBy(desc(workTimeEntries.workDate), desc(workTimeEntries.createdAt))
+        .limit(200),
+      db
+        .select({
+          status: salesQuotes.status,
+          totalCents: salesQuotes.totalCents,
+          createdAt: salesQuotes.createdAt,
+        })
+        .from(salesQuotes)
+        .where(and(eq(salesQuotes.tenantId, auth.tenantId), eq(salesQuotes.projectId, id))),
+      db
+        .select({
+          id: salesInvoices.id,
+          documentNumber: salesInvoices.documentNumber,
+          customerLabel: salesInvoices.customerLabel,
+          totalCents: salesInvoices.totalCents,
+          dueAt: salesInvoices.dueAt,
+          status: salesInvoices.status,
+          currency: salesInvoices.currency,
+          issuedAt: salesInvoices.issuedAt,
+          createdAt: salesInvoices.createdAt,
+        })
+        .from(salesInvoices)
+        .where(
+          and(
+            eq(salesInvoices.tenantId, auth.tenantId),
+            eq(salesInvoices.projectId, id),
+            sql`${salesInvoices.status} <> 'cancelled'`,
+          ),
+        ),
     ]);
 
-    const todayIso = isoDateLocal(new Date());
-    const endIso = addDaysIsoLocal(todayIso, 6);
-    const schedulingRows = await db
-      .select({
-        id: schedulingAssignments.id,
-        date: schedulingAssignments.date,
-        startTime: schedulingAssignments.startTime,
-        title: schedulingAssignments.title,
-      })
-      .from(schedulingAssignments)
-      .where(
-        and(
-          eq(schedulingAssignments.tenantId, auth.tenantId),
-          eq(schedulingAssignments.projectId, id),
-          gte(schedulingAssignments.date, todayIso),
-          lte(schedulingAssignments.date, endIso),
-        ),
-      )
-      .orderBy(asc(schedulingAssignments.date), asc(schedulingAssignments.startTime))
-      .limit(100);
-
-    const now = new Date();
-    const monthFrom = isoDateLocal(new Date(now.getFullYear(), now.getMonth(), 1));
-    const monthTo = isoDateLocal(now);
-    const workTimeRows = await db
-      .select({
-        id: workTimeEntries.id,
-        workDate: workTimeEntries.workDate,
-        durationMinutes: workTimeEntries.durationMinutes,
-        notes: workTimeEntries.notes,
-        employeeName: employees.displayName,
-        createdAt: workTimeEntries.createdAt,
-      })
-      .from(workTimeEntries)
-      .leftJoin(employees, eq(employees.id, workTimeEntries.employeeId))
-      .where(
-        and(
-          eq(workTimeEntries.tenantId, auth.tenantId),
-          eq(workTimeEntries.projectId, id),
-          gte(workTimeEntries.workDate, monthFrom),
-          lte(workTimeEntries.workDate, monthTo),
-        ),
-      )
-      .orderBy(desc(workTimeEntries.workDate), desc(workTimeEntries.createdAt))
-      .limit(200);
     const workTimeTotalMinutes = workTimeRows.reduce(
       (sum, row) => sum + row.durationMinutes,
       0,
     );
-
-    const invoiceAllRows = await db
-      .select({
-        id: salesInvoices.id,
-        documentNumber: salesInvoices.documentNumber,
-        customerLabel: salesInvoices.customerLabel,
-        totalCents: salesInvoices.totalCents,
-        dueAt: salesInvoices.dueAt,
-        status: salesInvoices.status,
-        currency: salesInvoices.currency,
-      })
-      .from(salesInvoices)
-      .where(
-        and(
-          eq(salesInvoices.tenantId, auth.tenantId),
-          eq(salesInvoices.projectId, id),
-          sql`${salesInvoices.status} <> 'cancelled'`,
-        ),
-      );
     const invoiceIds = invoiceAllRows.map((row) => row.id);
-    const paymentAggRows =
+    const paymentData =
       invoiceIds.length > 0
-        ? await db
-            .select({
-              invoiceId: salesInvoicePayments.invoiceId,
-              amount: sum(salesInvoicePayments.amountCents),
-            })
-            .from(salesInvoicePayments)
-            .where(
-              and(
-                eq(salesInvoicePayments.tenantId, auth.tenantId),
-                inArray(salesInvoicePayments.invoiceId, invoiceIds),
+        ? await Promise.all([
+            db
+              .select({
+                invoiceId: salesInvoicePayments.invoiceId,
+                amount: sum(salesInvoicePayments.amountCents),
+              })
+              .from(salesInvoicePayments)
+              .where(
+                and(
+                  eq(salesInvoicePayments.tenantId, auth.tenantId),
+                  inArray(salesInvoicePayments.invoiceId, invoiceIds),
+                ),
+              )
+              .groupBy(salesInvoicePayments.invoiceId),
+            db
+              .select({
+                last30Amount:
+                  sql<number>`coalesce(sum(case when ${salesInvoicePayments.paidAt} >= ${last30Start} then ${salesInvoicePayments.amountCents} else 0 end), 0)`,
+                previous30Amount:
+                  sql<number>`coalesce(sum(case when ${salesInvoicePayments.paidAt} >= ${prev30Start} and ${salesInvoicePayments.paidAt} < ${last30Start} then ${salesInvoicePayments.amountCents} else 0 end), 0)`,
+              })
+              .from(salesInvoicePayments)
+              .where(
+                and(
+                  eq(salesInvoicePayments.tenantId, auth.tenantId),
+                  inArray(salesInvoicePayments.invoiceId, invoiceIds),
+                ),
               ),
-            )
-            .groupBy(salesInvoicePayments.invoiceId)
-        : [];
-    const reminderRows =
-      invoiceIds.length > 0
-        ? await db
-            .select({
-              id: salesInvoiceReminders.id,
-              invoiceId: salesInvoiceReminders.invoiceId,
-              level: salesInvoiceReminders.level,
-              sentAt: salesInvoiceReminders.sentAt,
-            })
-            .from(salesInvoiceReminders)
-            .where(
-              and(
-                eq(salesInvoiceReminders.tenantId, auth.tenantId),
-                inArray(salesInvoiceReminders.invoiceId, invoiceIds),
+            db
+              .select({
+                id: salesInvoiceReminders.id,
+                invoiceId: salesInvoiceReminders.invoiceId,
+                level: salesInvoiceReminders.level,
+                sentAt: salesInvoiceReminders.sentAt,
+              })
+              .from(salesInvoiceReminders)
+              .where(
+                and(
+                  eq(salesInvoiceReminders.tenantId, auth.tenantId),
+                  inArray(salesInvoiceReminders.invoiceId, invoiceIds),
+                ),
+              )
+              .orderBy(
+                desc(salesInvoiceReminders.sentAt),
+                desc(salesInvoiceReminders.createdAt),
               ),
-            )
-            .orderBy(
-              desc(salesInvoiceReminders.sentAt),
-              desc(salesInvoiceReminders.createdAt),
-            )
-        : [];
+          ])
+        : null;
+    const paymentAggRows = paymentData?.[0] ?? [];
+    const paymentTrendRow = paymentData?.[1][0] ?? { last30Amount: 0, previous30Amount: 0 };
+    const reminderRows = paymentData?.[2] ?? [];
 
     const paidByInvoiceId = new Map<string, number>();
     for (const row of paymentAggRows) {
@@ -709,27 +762,136 @@ export function createProjectHubDetailHandler(getDb: () => Db | undefined) {
         return da.localeCompare(dbv);
       });
 
-    const quoteAggRows = await db
-      .select({
-        quoteCount: sql<number>`cast(count(*) as int)`,
-        quoteVolume: sql<number>`coalesce(sum(${salesQuotes.totalCents}), 0)`,
-        acceptedCount:
-          sql<number>`cast(sum(case when ${salesQuotes.status} = 'accepted' then 1 else 0 end) as int)`,
-      })
-      .from(salesQuotes)
-      .where(and(eq(salesQuotes.tenantId, auth.tenantId), eq(salesQuotes.projectId, id)));
-    const quoteAgg = quoteAggRows[0] ?? {
-      quoteCount: 0,
-      quoteVolume: 0,
+    const quotePipeline = {
+      draft: 0,
+      sent: 0,
+      accepted: 0,
+      rejected: 0,
+      expired: 0,
+    };
+    const quoteSegmentCurrent = {
+      count: 0,
+      volumeCents: 0,
       acceptedCount: 0,
     };
+    const quoteSegmentPrevious = {
+      count: 0,
+      volumeCents: 0,
+      acceptedCount: 0,
+    };
+    const last30StartTs = last30Start.getTime();
+    const prev30StartTs = prev30Start.getTime();
+    let quoteVolumeCents = 0;
+    for (const row of quoteAllRows) {
+      quoteVolumeCents += row.totalCents;
+      if (row.status === "draft") quotePipeline.draft += 1;
+      else if (row.status === "sent") quotePipeline.sent += 1;
+      else if (row.status === "accepted") quotePipeline.accepted += 1;
+      else if (row.status === "rejected") quotePipeline.rejected += 1;
+      else if (row.status === "expired") quotePipeline.expired += 1;
+
+      const createdTs = row.createdAt.getTime();
+      if (!Number.isFinite(createdTs)) continue;
+      if (createdTs >= last30StartTs) {
+        quoteSegmentCurrent.count += 1;
+        quoteSegmentCurrent.volumeCents += row.totalCents;
+        if (row.status === "accepted") quoteSegmentCurrent.acceptedCount += 1;
+      } else if (createdTs >= prev30StartTs) {
+        quoteSegmentPrevious.count += 1;
+        quoteSegmentPrevious.volumeCents += row.totalCents;
+        if (row.status === "accepted") quoteSegmentPrevious.acceptedCount += 1;
+      }
+    }
+
+    const quoteCount = quoteAllRows.length;
+    const acceptedQuoteCount = quotePipeline.accepted;
+    const quoteAcceptanceRatePercent = toPercent(acceptedQuoteCount, quoteCount);
+
+    const invoicePipeline = {
+      draft: 0,
+      sent: 0,
+      overdue: 0,
+      paid: 0,
+    };
+    const invoiceSegmentCurrent = {
+      count: 0,
+      volumeCents: 0,
+      paidCount: 0,
+    };
+    const invoiceSegmentPrevious = {
+      count: 0,
+      volumeCents: 0,
+      paidCount: 0,
+    };
     const invoiceCount = invoiceAllRows.length;
-    const invoiceVolumeCents = invoiceAllRows.reduce(
-      (sum, row) => sum + row.totalCents,
-      0,
-    );
+    let invoiceVolumeCents = 0;
+    for (const row of invoiceAllRows) {
+      invoiceVolumeCents += row.totalCents;
+      if (row.status === "draft") invoicePipeline.draft += 1;
+      else if (row.status === "sent") invoicePipeline.sent += 1;
+      else if (row.status === "overdue") invoicePipeline.overdue += 1;
+      else if (row.status === "paid") invoicePipeline.paid += 1;
+
+      const segmentTs = (row.issuedAt ?? row.createdAt).getTime();
+      if (!Number.isFinite(segmentTs)) continue;
+      if (segmentTs >= last30StartTs) {
+        invoiceSegmentCurrent.count += 1;
+        invoiceSegmentCurrent.volumeCents += row.totalCents;
+        if (row.status === "paid") invoiceSegmentCurrent.paidCount += 1;
+      } else if (segmentTs >= prev30StartTs) {
+        invoiceSegmentPrevious.count += 1;
+        invoiceSegmentPrevious.volumeCents += row.totalCents;
+        if (row.status === "paid") invoiceSegmentPrevious.paidCount += 1;
+      }
+    }
+
+    const paidInvoiceCount = invoicePipeline.paid;
+    const paidInvoiceRatePercent = toPercent(paidInvoiceCount, invoiceCount);
+
+    const quoteSentOrLaterCount =
+      quotePipeline.sent +
+      quotePipeline.accepted +
+      quotePipeline.rejected +
+      quotePipeline.expired;
+    const invoiceIssuedCount =
+      invoicePipeline.sent + invoicePipeline.overdue + invoicePipeline.paid;
+
+    const segmentLast30 = {
+      quoteCount: quoteSegmentCurrent.count,
+      quoteVolumeCents: quoteSegmentCurrent.volumeCents,
+      acceptedQuoteCount: quoteSegmentCurrent.acceptedCount,
+      quoteAcceptanceRatePercent: toPercent(
+        quoteSegmentCurrent.acceptedCount,
+        quoteSegmentCurrent.count,
+      ),
+      invoiceCount: invoiceSegmentCurrent.count,
+      invoiceVolumeCents: invoiceSegmentCurrent.volumeCents,
+      paidInvoiceCount: invoiceSegmentCurrent.paidCount,
+      paidInvoiceRatePercent: toPercent(
+        invoiceSegmentCurrent.paidCount,
+        invoiceSegmentCurrent.count,
+      ),
+      paymentReceivedCents: toInt(paymentTrendRow?.last30Amount ?? 0),
+    };
+    const segmentPrevious30 = {
+      quoteCount: quoteSegmentPrevious.count,
+      quoteVolumeCents: quoteSegmentPrevious.volumeCents,
+      acceptedQuoteCount: quoteSegmentPrevious.acceptedCount,
+      quoteAcceptanceRatePercent: toPercent(
+        quoteSegmentPrevious.acceptedCount,
+        quoteSegmentPrevious.count,
+      ),
+      invoiceCount: invoiceSegmentPrevious.count,
+      invoiceVolumeCents: invoiceSegmentPrevious.volumeCents,
+      paidInvoiceCount: invoiceSegmentPrevious.paidCount,
+      paidInvoiceRatePercent: toPercent(
+        invoiceSegmentPrevious.paidCount,
+        invoiceSegmentPrevious.count,
+      ),
+      paymentReceivedCents: toInt(paymentTrendRow?.previous30Amount ?? 0),
+    };
+
     const openBalanceCents = openItems.reduce((sum, row) => sum + row.balanceCents, 0);
-    const nowTs = Date.now();
     const overdueOpenCount = openItems.filter((row) => {
       if (!row.dueAt) return false;
       const due = new Date(row.dueAt);
@@ -803,16 +965,85 @@ export function createProjectHubDetailHandler(getDb: () => Db | undefined) {
         total: openItems.length,
         invoices: openItems.slice(0, 5),
       },
+      pipeline: {
+        quotes: {
+          draft: quotePipeline.draft,
+          sent: quotePipeline.sent,
+          accepted: acceptedQuoteCount,
+          rejected: quotePipeline.rejected,
+          expired: quotePipeline.expired,
+        },
+        invoices: {
+          draft: invoicePipeline.draft,
+          sent: invoicePipeline.sent,
+          overdue: invoicePipeline.overdue,
+          paid: paidInvoiceCount,
+        },
+        progress: {
+          quotesSentOrLaterPercent: toPercent(quoteSentOrLaterCount, quoteCount),
+          quotesAcceptedPercent: toPercent(acceptedQuoteCount, quoteCount),
+          quotesAcceptedFromSentPercent: toPercent(
+            acceptedQuoteCount,
+            quoteSentOrLaterCount,
+          ),
+          invoicesIssuedPercent: toPercent(invoiceIssuedCount, invoiceCount),
+          invoicesPaidFromIssuedPercent: toPercent(
+            paidInvoiceCount,
+            invoiceIssuedCount,
+          ),
+          invoicesOverdueFromIssuedPercent: toPercent(
+            invoicePipeline.overdue,
+            invoiceIssuedCount,
+          ),
+        },
+      },
       kpis: {
-        quoteCount: toInt(quoteAgg.quoteCount),
-        quoteVolumeCents: toInt(quoteAgg.quoteVolume),
-        acceptedQuoteCount: toInt(quoteAgg.acceptedCount),
+        quoteCount,
+        quoteVolumeCents,
+        acceptedQuoteCount,
+        quoteAcceptanceRatePercent,
         invoiceCount,
         invoiceVolumeCents,
+        paidInvoiceCount,
+        paidInvoiceRatePercent,
         openBalanceCents,
         overdueOpenCount,
         next7AssignmentsCount: schedulingRows.length,
         workTimeMinutesMonthToDate: workTimeTotalMinutes,
+      },
+      segments: {
+        last30Days: segmentLast30,
+        previous30Days: segmentPrevious30,
+        trends: {
+          quoteCountDeltaPercent: percentDelta(
+            segmentLast30.quoteCount,
+            segmentPrevious30.quoteCount,
+          ),
+          quoteVolumeDeltaPercent: percentDelta(
+            segmentLast30.quoteVolumeCents,
+            segmentPrevious30.quoteVolumeCents,
+          ),
+          quoteAcceptanceRateDeltaPercent: percentDelta(
+            segmentLast30.quoteAcceptanceRatePercent,
+            segmentPrevious30.quoteAcceptanceRatePercent,
+          ),
+          invoiceCountDeltaPercent: percentDelta(
+            segmentLast30.invoiceCount,
+            segmentPrevious30.invoiceCount,
+          ),
+          invoiceVolumeDeltaPercent: percentDelta(
+            segmentLast30.invoiceVolumeCents,
+            segmentPrevious30.invoiceVolumeCents,
+          ),
+          paymentReceivedDeltaPercent: percentDelta(
+            segmentLast30.paymentReceivedCents,
+            segmentPrevious30.paymentReceivedCents,
+          ),
+          paidInvoiceRateDeltaPercent: percentDelta(
+            segmentLast30.paidInvoiceRatePercent,
+            segmentPrevious30.paidInvoiceRatePercent,
+          ),
+        },
       },
     };
     const safe = projectHubResponseSchema.safeParse(payload);
