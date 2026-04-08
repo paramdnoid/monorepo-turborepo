@@ -2,7 +2,7 @@
  * @repo/datanorm — MVP-Parser für Artikel-/Preislieferungen im DATANORM-üblichen W/P-Textformat (Datei oder ZIP).
  *
  * Produktscope (Web-Modul „Ressourcenmanagement & Großhandel“):
- * - MVP: Datei-Upload (ZIP oder .txt/.csv-ähnlich), keine IDS-Connect-Online-API.
+ * - MVP: Datei-Upload (ZIP oder .txt/.csv-ähnlich); IDS-Connect-Online laeuft ueber `apps/api` (Adapter/Mock).
  * - Vollständige Normabdeckung aller DATANORM-Versionen bewusst nicht Ziel dieser ersten Ausbaustufe.
  */
 

@@ -274,6 +274,27 @@
       "when": 1775606681238,
       "tag": "0038_scheduling_assignment_place_geo",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1775610000000,
+      "tag": "0039_sales_invoice_header_discount",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1775610100000,
+      "tag": "0040_sales_lines_catalog_article",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1775610200000,
+      "tag": "0041_ids_connect_carts",
+      "breakpoints": true
     }
   ]
 }

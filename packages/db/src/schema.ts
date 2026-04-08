@@ -858,6 +858,49 @@ export const catalogSuppliers = pgTable("catalog_suppliers", {
     .notNull(),
 });
 
+/** IDS-Connect-Warenkorb-Entwurf je Mandant (Proxy zu externem Shop; Snapshot fuer UI/Retry). */
+export const idsConnectCarts = pgTable(
+  "ids_connect_carts",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => organizations.tenantId, { onDelete: "cascade" }),
+    supplierId: uuid("supplier_id")
+      .notNull()
+      .references(() => catalogSuppliers.id, { onDelete: "cascade" }),
+    externalCartId: text("external_cart_id"),
+    /** draft | submitted | error */
+    status: text("status").notNull().default("draft"),
+    snapshot: jsonb("snapshot")
+      .$type<{
+        lines: Array<{
+          externalId: string;
+          sku: string;
+          name: string | null;
+          quantity: string;
+          unit: string | null;
+          unitPrice: string;
+          currency: string;
+        }>;
+      }>()
+      .notNull()
+      .default({ lines: [] }),
+    purgeAfterAt: timestamp("purge_after_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    tenantIdx: index("ids_connect_carts_tenant_id_idx").on(t.tenantId),
+    supplierIdx: index("ids_connect_carts_supplier_id_idx").on(t.supplierId),
+    purgeIdx: index("ids_connect_carts_purge_after_at_idx").on(t.purgeAfterAt),
+  }),
+);
+
 /**
  * Hochgeladener Katalogimport je Mandant (DATANORM-Paket oder BMEcat-XML).
  * Flow wie GAEB: pending_review → approved; Rohdaten werden nicht dauerhaft gespeichert.
@@ -1028,6 +1071,8 @@ export const salesInvoices = pgTable(
     billingType: text("billing_type").notNull().default("invoice"),
     currency: text("currency").notNull().default("EUR"),
     totalCents: integer("total_cents").notNull().default(0),
+    /** Rabatt auf Summe der Positions-Bruttobeträge in Basispunkten (z. B. 500 = 5 %). */
+    headerDiscountBps: integer("header_discount_bps").notNull().default(0),
     quoteId: uuid("quote_id").references(() => salesQuotes.id, {
       onDelete: "set null",
     }),
@@ -1290,6 +1335,11 @@ export const salesQuoteLines = pgTable("sales_quote_lines", {
   quoteId: uuid("quote_id")
     .notNull()
     .references(() => salesQuotes.id, { onDelete: "cascade" }),
+  /** Optional: Verweis auf freigegebenen Katalogartikel (Stamm). */
+  catalogArticleId: uuid("catalog_article_id").references(
+    () => catalogArticles.id,
+    { onDelete: "set null" },
+  ),
   sortIndex: integer("sort_index").notNull(),
   description: text("description").notNull(),
   quantity: text("quantity"),
@@ -1314,6 +1364,11 @@ export const salesInvoiceLines = pgTable("sales_invoice_lines", {
   invoiceId: uuid("invoice_id")
     .notNull()
     .references(() => salesInvoices.id, { onDelete: "cascade" }),
+  /** Optional: Verweis auf freigegebenen Katalogartikel (Stamm). */
+  catalogArticleId: uuid("catalog_article_id").references(
+    () => catalogArticles.id,
+    { onDelete: "set null" },
+  ),
   sortIndex: integer("sort_index").notNull(),
   description: text("description").notNull(),
   quantity: text("quantity"),

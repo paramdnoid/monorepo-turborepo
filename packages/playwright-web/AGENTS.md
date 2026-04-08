@@ -21,6 +21,8 @@ Interactive UI mode (from this package directory): `pnpm e2e:ui` (see `package.j
 
 **Local runs:** the **`web`** app (and usually **`api`** if tests hit BFF → API) must match what the tests expect — start e.g. `pnpm exec turbo run dev --filter=web` (and `--filter=api` if needed) or use your team’s E2E env from [`.env.example`](../../.env.example).
 
+**Katalog / Ressourcenmanagement:** [`e2e/catalog-resource-management.spec.ts`](./e2e/catalog-resource-management.spec.ts) nutzt ein Test-JWT-Cookie plus **gemockte** `/api/web/catalog/*`-Antworten (kein laufendes `api`, keine Keycloak-Anmeldung). Vollständiger Backend-Pfad bleibt über `pnpm --filter api run smoke:http` abgedeckt.
+
 ## CI
 
 GitHub Actions runs **`pnpm exec turbo run e2e`** (on PRs with **`--affected`** when the plan includes this task). See root **[`../../AGENTS.md`](../../AGENTS.md)** (**Tests and CI** / **Local verification**).

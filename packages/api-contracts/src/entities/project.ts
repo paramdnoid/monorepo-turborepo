@@ -201,6 +201,23 @@ const projectHubOpenItemSchema = z.object({
   latestReminderId: z.string().uuid().nullable(),
 });
 
+const projectHubInvoiceChainEntrySchema = z.object({
+  id: z.string().uuid(),
+  documentNumber: z.string(),
+  billingType: z.enum(["invoice", "partial", "final", "credit_note"]),
+  totalCents: z.number().int(),
+  parentInvoiceId: z.string().uuid().nullable(),
+});
+
+const projectHubInvoiceBillingChainSchema = z.object({
+  rootInvoiceId: z.string().uuid(),
+  rootDocumentNumber: z.string(),
+  entries: z.array(projectHubInvoiceChainEntrySchema),
+  chainInvoicedCents: z.number().int(),
+  chainCreditNotesCents: z.number().int(),
+  chainNetCents: z.number().int(),
+});
+
 export const projectHubResponseSchema = z.object({
   project: projectSchema,
   siteAddressLabel: z.string().nullable(),
@@ -217,6 +234,7 @@ export const projectHubResponseSchema = z.object({
     total: z.number().int().nonnegative(),
     invoices: z.array(projectHubOpenItemSchema),
   }),
+  invoiceBillingChains: z.array(projectHubInvoiceBillingChainSchema),
   pipeline: z.object({
     quotes: z.object({
       draft: z.number().int().nonnegative(),

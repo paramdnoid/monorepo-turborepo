@@ -6,10 +6,23 @@ import {
   type CatalogSupplier,
   catalogCreateSupplierSchema,
   catalogPatchImportSchema,
+  catalogPatchSupplierSchema,
 } from "@repo/api-contracts";
+import { z } from "zod";
 import { parseBmecatXml } from "@repo/bmecat";
 import { parseDatanormBuffer } from "@repo/datanorm";
-import { and, asc, count, desc, eq, gt } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  gt,
+  ilike,
+  inArray,
+  or,
+  sql,
+} from "drizzle-orm";
 import type { Context } from "hono";
 
 import {
@@ -29,6 +42,8 @@ const MAX_UPLOAD_BYTES = 12 * 1024 * 1024;
 const RETENTION_DAYS = 90;
 const LIST_LIMIT = 50;
 const DETAIL_LINE_LIMIT = 500;
+const ARTICLES_PAGE_DEFAULT = 50;
+const ARTICLES_PAGE_MAX = 100;
 
 const UPLOAD_RATE_WINDOW_MS = 60_000;
 const UPLOAD_RATE_MAX = 30;
@@ -75,14 +90,32 @@ function isRetentionExpired(purgeAfterAt: Date): boolean {
   return Date.now() > purgeAfterAt.getTime();
 }
 
+function redactSupplierMeta(
+  meta: Record<string, unknown> | null | undefined,
+): Record<string, unknown> | undefined {
+  if (!meta || typeof meta !== "object") {
+    return undefined;
+  }
+  const o = { ...meta };
+  if ("idsConnectApiKey" in o && o.idsConnectApiKey) {
+    o.idsConnectApiKey = "***";
+  }
+  return o;
+}
+
 function mapSupplierRow(
   r: typeof catalogSuppliers.$inferSelect,
 ): CatalogSupplier {
+  const meta =
+    r.meta && typeof r.meta === "object"
+      ? redactSupplierMeta(r.meta as Record<string, unknown>)
+      : undefined;
   return {
     id: r.id,
     name: r.name,
     sourceKind: r.sourceKind,
     createdAt: r.createdAt.toISOString(),
+    ...(meta ? { meta } : {}),
   };
 }
 
@@ -146,12 +179,24 @@ export function createCatalogSupplierPostHandler(getDb: () => Db | undefined) {
     if (!parsed.success) {
       return c.json({ error: "invalid_body", code: "VALIDATION" }, 400);
     }
+    const meta =
+      parsed.data.sourceKind === "ids_connect"
+        ? {
+            idsConnectMode: parsed.data.meta.idsConnectMode,
+            idsConnectBaseUrl: parsed.data.meta.idsConnectBaseUrl,
+            ...(parsed.data.meta.idsConnectApiKey
+              ? { idsConnectApiKey: parsed.data.meta.idsConnectApiKey }
+              : {}),
+          }
+        : undefined;
+
     const [row] = await db
       .insert(catalogSuppliers)
       .values({
         tenantId: auth.tenantId,
         name: parsed.data.name.trim(),
         sourceKind: parsed.data.sourceKind,
+        ...(meta ? { meta } : {}),
       })
       .returning();
     if (!row) {
@@ -162,6 +207,86 @@ export function createCatalogSupplierPostHandler(getDb: () => Db | undefined) {
       supplierId: row.id,
     });
     return c.json(mapSupplierRow(row), 201);
+  };
+}
+
+export function createCatalogSupplierPatchHandler(getDb: () => Db | undefined) {
+  return async (c: Context) => {
+    const auth = c.get("auth");
+    if (!auth) {
+      return c.json({ error: "missing_auth", code: "AUTH" }, 500);
+    }
+    const db = getDb();
+    if (!db) {
+      return c.json({ error: "database_unavailable", code: "DB" }, 503);
+    }
+    const id = c.req.param("id");
+    if (!id) {
+      return c.json({ error: "missing_id", code: "PARAM" }, 400);
+    }
+    let json: unknown;
+    try {
+      json = await c.req.json();
+    } catch {
+      return c.json({ error: "invalid_json", code: "JSON" }, 400);
+    }
+    const parsed = catalogPatchSupplierSchema.safeParse(json);
+    if (!parsed.success) {
+      return c.json({ error: "invalid_body", code: "VALIDATION" }, 400);
+    }
+    const rows = await db
+      .select()
+      .from(catalogSuppliers)
+      .where(
+        and(
+          eq(catalogSuppliers.id, id),
+          eq(catalogSuppliers.tenantId, auth.tenantId),
+        ),
+      )
+      .limit(1);
+    const row = rows[0];
+    if (!row) {
+      return c.json({ error: "supplier_not_found", code: "SUPPLIER" }, 404);
+    }
+    if (row.sourceKind !== "ids_connect") {
+      return c.json(
+        { error: "supplier_not_ids_connect", code: "VALIDATION" },
+        400,
+      );
+    }
+    const existingMeta =
+      row.meta && typeof row.meta === "object"
+        ? (row.meta as Record<string, unknown>)
+        : {};
+    const patch = parsed.data;
+    const nextName = patch.name?.trim() ?? row.name;
+    let nextMeta = existingMeta;
+    if (patch.meta) {
+      const p = patch.meta;
+      const newKey =
+        p.idsConnectApiKey && p.idsConnectApiKey !== "***"
+          ? p.idsConnectApiKey
+          : (existingMeta.idsConnectApiKey as string | undefined);
+      nextMeta = {
+        idsConnectMode: p.idsConnectMode,
+        idsConnectBaseUrl: p.idsConnectBaseUrl,
+        ...(typeof newKey === "string" && newKey
+          ? { idsConnectApiKey: newKey }
+          : {}),
+      };
+    }
+    const [updated] = await db
+      .update(catalogSuppliers)
+      .set({
+        name: nextName,
+        meta: nextMeta,
+      })
+      .where(eq(catalogSuppliers.id, id))
+      .returning();
+    if (!updated) {
+      return c.json({ error: "update_failed", code: "UPDATE" }, 500);
+    }
+    return c.json(mapSupplierRow(updated));
   };
 }
 
@@ -213,6 +338,15 @@ export function createCatalogImportPostHandler(getDb: () => Db | undefined) {
     const supplier = supRows[0];
     if (!supplier) {
       return c.json({ error: "supplier_not_found", code: "SUPPLIER" }, 404);
+    }
+    if (supplier.sourceKind === "ids_connect") {
+      return c.json(
+        {
+          error: "supplier_ids_connect_no_file_upload",
+          code: "VALIDATION",
+        },
+        400,
+      );
     }
 
     const buf = await file.arrayBuffer();
@@ -534,5 +668,117 @@ export function createCatalogImportPatchHandler(getDb: () => Db | undefined) {
     });
 
     return c.json({ ok: true });
+  };
+}
+
+export function createCatalogArticlesListHandler(getDb: () => Db | undefined) {
+  return async (c: Context) => {
+    const auth = c.get("auth");
+    if (!auth) {
+      return c.json({ error: "missing_auth", code: "AUTH" }, 500);
+    }
+    const db = getDb();
+    if (!db) {
+      return c.json({ error: "database_unavailable", code: "DB" }, 503);
+    }
+
+    const supplierIdRaw = c.req.query("supplierId")?.trim();
+    const qRaw = c.req.query("q")?.trim();
+    const cursorRaw = c.req.query("cursor")?.trim();
+    const limitRaw = c.req.query("limit")?.trim();
+
+    let limit = ARTICLES_PAGE_DEFAULT;
+    if (limitRaw) {
+      const n = Number.parseInt(limitRaw, 10);
+      if (Number.isFinite(n)) {
+        limit = Math.min(ARTICLES_PAGE_MAX, Math.max(1, n));
+      }
+    }
+
+    const conditions = [eq(catalogArticles.tenantId, auth.tenantId)];
+
+    if (supplierIdRaw) {
+      const sid = z.string().uuid().safeParse(supplierIdRaw);
+      if (!sid.success) {
+        return c.json({ error: "invalid_supplier_id", code: "VALIDATION" }, 400);
+      }
+      conditions.push(eq(catalogArticles.supplierId, sid.data));
+    }
+
+    if (cursorRaw) {
+      const cur = z.string().uuid().safeParse(cursorRaw);
+      if (!cur.success) {
+        return c.json({ error: "invalid_cursor", code: "VALIDATION" }, 400);
+      }
+      conditions.push(gt(catalogArticles.id, cur.data));
+    }
+
+    if (qRaw) {
+      const pattern = `%${qRaw}%`;
+      conditions.push(
+        or(
+          ilike(catalogArticles.supplierSku, pattern),
+          sql`coalesce(${catalogArticles.name}, '') ilike ${pattern}`,
+        )!,
+      );
+    }
+
+    const whereExpr = and(...conditions)!;
+
+    const rows = await db
+      .select({
+        article: catalogArticles,
+        supplierName: catalogSuppliers.name,
+      })
+      .from(catalogArticles)
+      .innerJoin(
+        catalogSuppliers,
+        eq(catalogArticles.supplierId, catalogSuppliers.id),
+      )
+      .where(whereExpr)
+      .orderBy(asc(catalogArticles.id))
+      .limit(limit + 1);
+
+    const hasMore = rows.length > limit;
+    const pageRows = hasMore ? rows.slice(0, limit) : rows;
+    const ids = pageRows.map((r) => r.article.id);
+
+    const priceMap = new Map<string, { price: string; currency: string }>();
+    if (ids.length > 0) {
+      const priceRows = await db
+        .select()
+        .from(catalogPrices)
+        .where(inArray(catalogPrices.articleId, ids))
+        .orderBy(desc(catalogPrices.createdAt));
+      for (const pr of priceRows) {
+        if (!priceMap.has(pr.articleId)) {
+          priceMap.set(pr.articleId, {
+            price: pr.price,
+            currency: pr.currency,
+          });
+        }
+      }
+    }
+
+    const articles = pageRows.map(({ article, supplierName }) => {
+      const p = priceMap.get(article.id);
+      return {
+        id: article.id,
+        supplierId: article.supplierId,
+        supplierName,
+        supplierSku: article.supplierSku,
+        name: article.name ?? null,
+        unit: article.unit ?? null,
+        ean: article.ean ?? null,
+        price: p?.price ?? null,
+        currency: p?.currency ?? "EUR",
+        updatedAt: article.updatedAt.toISOString(),
+      };
+    });
+
+    const last = articles[articles.length - 1];
+    const nextCursor = hasMore && last ? last.id : null;
+
+    return c.json({ articles, nextCursor });
   };
 }

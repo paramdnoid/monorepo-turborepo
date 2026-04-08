@@ -678,6 +678,8 @@ export function createProjectHubDetailHandler(getDb: () => Db | undefined) {
           currency: salesInvoices.currency,
           issuedAt: salesInvoices.issuedAt,
           createdAt: salesInvoices.createdAt,
+          billingType: salesInvoices.billingType,
+          parentInvoiceId: salesInvoices.parentInvoiceId,
         })
         .from(salesInvoices)
         .where(
@@ -938,6 +940,78 @@ export function createProjectHubDetailHandler(getDb: () => Db | undefined) {
       return Number.isFinite(due.getTime()) && due.getTime() < nowTs;
     }).length;
 
+    type HubInvoiceRow = (typeof invoiceAllRows)[number];
+    const invById = new Map<string, HubInvoiceRow>(
+      invoiceAllRows.map((r) => [r.id, r]),
+    );
+    function billingRootInProject(invId: string): string {
+      const seen = new Set<string>();
+      let cur: string | null = invId;
+      while (cur) {
+        if (seen.has(cur)) return invId;
+        seen.add(cur);
+        const row = invById.get(cur);
+        if (!row) return cur;
+        if (!row.parentInvoiceId) return cur;
+        if (!invById.has(row.parentInvoiceId)) return cur;
+        cur = row.parentInvoiceId;
+      }
+      return invId;
+    }
+    const chainMembers = new Map<string, HubInvoiceRow[]>();
+    for (const inv of invoiceAllRows) {
+      const root = billingRootInProject(inv.id);
+      const list = chainMembers.get(root) ?? [];
+      list.push(inv);
+      chainMembers.set(root, list);
+    }
+    const invoiceBillingChains = [...chainMembers.entries()]
+      .map(([rootId, members]) => {
+        const root = invById.get(rootId);
+        const sorted = [...members].sort(
+          (a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
+        );
+        let chainInvoicedCents = 0;
+        let chainCreditNotesCents = 0;
+        for (const m of members) {
+          const bt =
+            m.billingType === "partial" ||
+            m.billingType === "final" ||
+            m.billingType === "credit_note"
+              ? m.billingType
+              : "invoice";
+          if (bt === "credit_note") chainCreditNotesCents += m.totalCents;
+          else chainInvoicedCents += m.totalCents;
+        }
+        return {
+          rootInvoiceId: rootId,
+          rootDocumentNumber: root?.documentNumber ?? "",
+          entries: sorted.map((m) => {
+            const billingType =
+              m.billingType === "partial" ||
+              m.billingType === "final" ||
+              m.billingType === "credit_note"
+                ? m.billingType
+                : "invoice";
+            return {
+              id: m.id,
+              documentNumber: m.documentNumber,
+              billingType,
+              totalCents: m.totalCents,
+              parentInvoiceId: m.parentInvoiceId,
+            };
+          }),
+          chainInvoicedCents,
+          chainCreditNotesCents,
+          chainNetCents: chainInvoicedCents - chainCreditNotesCents,
+        };
+      })
+      .filter(
+        (c) =>
+          c.entries.length > 1 ||
+          c.entries.some((e) => e.billingType !== "invoice"),
+      );
+
     const payload = {
       project,
       siteAddressLabel,
@@ -1005,6 +1079,7 @@ export function createProjectHubDetailHandler(getDb: () => Db | undefined) {
         total: openItems.length,
         invoices: openItems.slice(0, 5),
       },
+      invoiceBillingChains,
       pipeline: {
         quotes: {
           draft: quotePipeline.draft,

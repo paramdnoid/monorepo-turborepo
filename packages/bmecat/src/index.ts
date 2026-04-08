@@ -1,7 +1,7 @@
 /**
  * @repo/bmecat — MVP-Extraktion von Artikel/Preis aus BMEcat-XML (typisch fuer IDS-/Haendler-Katalogdateien).
  *
- * MVP: Dateiupload im Web; keine Live-Anbindung IDS-Connect-API.
+ * MVP: Dateiupload im Web; Live-Anbindung laeuft separat ueber die API (IDS-Connect-Adapter / Mock).
  */
 
 export type {

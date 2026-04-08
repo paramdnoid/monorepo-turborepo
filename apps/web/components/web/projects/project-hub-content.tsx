@@ -89,6 +89,20 @@ type HubData = {
       latestReminderId: string | null;
     }[];
   };
+  invoiceBillingChains: {
+    rootInvoiceId: string;
+    rootDocumentNumber: string;
+    entries: {
+      id: string;
+      documentNumber: string;
+      billingType: "invoice" | "partial" | "final" | "credit_note";
+      totalCents: number;
+      parentInvoiceId: string | null;
+    }[];
+    chainInvoicedCents: number;
+    chainCreditNotesCents: number;
+    chainNetCents: number;
+  }[];
   pipeline: {
     quotes: {
       draft: number;
@@ -302,6 +316,13 @@ export function ProjectHubContent({
             receivablesOpen: "Open open items",
             receivablesLoadError: "Open items could not be loaded.",
             receivablesEmpty: "No open items linked to this project.",
+            billingChains: "Partial / final invoice chains",
+            billingChainsHint:
+              "Summaries for invoices linked to the same chain (partial, final, credit note).",
+            billingChainNet: "Net (invoiced − credits)",
+            billingTypePartial: "Partial",
+            billingTypeFinal: "Final",
+            billingTypeCredit: "Credit",
             kpiTitle: "Pipeline and KPIs",
             kpiSummaryHint:
               "Cash position first, then volumes, pipeline status, and recent trends.",
@@ -403,6 +424,13 @@ export function ProjectHubContent({
             receivablesOpen: "Zu den offenen Posten",
             receivablesLoadError: "Offene Posten konnten nicht geladen werden.",
             receivablesEmpty: "Keine offenen Posten zu diesem Projekt.",
+            billingChains: "Teilrechnungsketten",
+            billingChainsHint:
+              "Uebersicht zu Rechnungen derselben Kette (Teil-/Schlussrechnung, Gutschrift).",
+            billingChainNet: "Saldo (Rechnungen − Gutschriften)",
+            billingTypePartial: "Teilrechnung",
+            billingTypeFinal: "Schlussrechnung",
+            billingTypeCredit: "Gutschrift",
             kpiTitle: "Pipeline und KPIs",
             kpiSummaryHint:
               "Zuerst Liquiditaet, dann Volumina, Pipeline-Status und juengste Trends.",
@@ -512,6 +540,7 @@ export function ProjectHubContent({
         schedulingWeek: hub.schedulingWeek,
         workTimeSummary: hub.workTime,
         openItems: hub.receivables,
+        invoiceBillingChains: hub.invoiceBillingChains,
         pipeline: hub.pipeline,
         kpis: hub.kpis,
         segments: hub.segments,
@@ -1289,6 +1318,82 @@ export function ProjectHubContent({
                 </div>
               </CardContent>
             </Card>
+
+            {data.invoiceBillingChains.length > 0 ? (
+              <Card className="border-border/80 bg-muted/15 shadow-none lg:col-span-3">
+                <CardHeader>
+                  <CardTitle className="text-base">{copy.billingChains}</CardTitle>
+                  <CardDescription>{copy.billingChainsHint}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4 text-sm">
+                  {data.invoiceBillingChains.map((chain) => {
+                    const chainCurrency =
+                      data.invoices.find((i) =>
+                        chain.entries.some((e) => e.id === i.id),
+                      )?.currency ?? "EUR";
+                    return (
+                    <div
+                      key={chain.rootInvoiceId}
+                      className="rounded-lg border border-border/60 bg-background/60 p-3"
+                    >
+                      <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+                        <div className="font-medium">
+                          {locale === "en" ? "Root" : "Kopf"}:{" "}
+                          <Link
+                            href={`/web/sales/invoices/${chain.rootInvoiceId}`}
+                            className="underline-offset-4 hover:underline"
+                          >
+                            {chain.rootDocumentNumber}
+                          </Link>
+                        </div>
+                        <div className="text-xs text-muted-foreground tabular-nums">
+                          {copy.billingChainNet}:{" "}
+                          {formatMinorCurrency(
+                            chain.chainNetCents,
+                            chainCurrency,
+                            locale,
+                          )}
+                        </div>
+                      </div>
+                      <ul className="space-y-1.5">
+                        {chain.entries.map((e) => (
+                          <li
+                            key={e.id}
+                            className="flex flex-wrap items-center justify-between gap-2 text-muted-foreground"
+                          >
+                            <Link
+                              href={`/web/sales/invoices/${e.id}`}
+                              className="font-medium text-foreground underline-offset-4 hover:underline"
+                            >
+                              {e.documentNumber}
+                            </Link>
+                            <span className="text-xs">
+                              {e.billingType === "partial"
+                                ? copy.billingTypePartial
+                                : e.billingType === "final"
+                                  ? copy.billingTypeFinal
+                                  : e.billingType === "credit_note"
+                                    ? copy.billingTypeCredit
+                                    : locale === "en"
+                                      ? "Invoice"
+                                      : "Rechnung"}
+                            </span>
+                            <span className="tabular-nums">
+                              {formatMinorCurrency(
+                                e.totalCents,
+                                chainCurrency,
+                                locale,
+                              )}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+            ) : null}
           </div>
 
           <div className="grid gap-3 lg:grid-cols-3">

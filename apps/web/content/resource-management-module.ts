@@ -17,6 +17,24 @@ export type ResourceManagementModuleCopy = {
   sourceKindLabel: string;
   sourceDatanorm: string;
   sourceBmecat: string;
+  sourceIdsConnect: string;
+  idsConnectModeLabel: string;
+  idsConnectModeMock: string;
+  idsConnectModeHttp: string;
+  idsConnectBaseUrlLabel: string;
+  idsConnectApiKeyLabel: string;
+  idsConnectLiveTitle: string;
+  idsConnectLiveHint: string;
+  idsConnectPickSupplier: string;
+  idsConnectSearchPlaceholder: string;
+  idsConnectSearchButton: string;
+  idsConnectNewCart: string;
+  idsConnectAddToCart: string;
+  idsConnectCartLines: string;
+  idsConnectSubmitCart: string;
+  idsConnectCartStatus: string;
+  idsConnectNoSuppliers: string;
+  idsConnectQuantity: string;
   addSupplier: string;
   supplierSelectLabel: string;
   supplierPlaceholder: string;
@@ -49,15 +67,25 @@ export type ResourceManagementModuleCopy = {
   failedBadge: string;
   articleCount: string;
   formatLabel: string;
+  stockTitle: string;
+  stockHint: string;
+  stockFilterSupplier: string;
+  stockSearchLabel: string;
+  stockSearchPlaceholder: string;
+  stockSearchApply: string;
+  stockEmpty: string;
+  stockSupplierCol: string;
+  stockLoadMore: string;
+  stockLoading: string;
 };
 
 const de: ResourceManagementModuleCopy = {
   benefitTitle: "Funktion",
   benefitBody:
-    "Lieferanten-Kataloge als DATANORM-Paket (ZIP/Text) oder BMEcat-XML (typisch IDS-/Haendler-Kataloge) importieren. Nach dem Upload pruefen Sie die extrahierten Zeilen und geben den Import frei — erst dann werden Artikel und Preise in Ihren Mandantenstamm uebernommen.",
-  scopeTitle: "MVP-Umfang",
+    "Lieferanten-Kataloge als DATANORM-Paket (ZIP/Text) oder BMEcat-XML importieren, optional Live-Suche und Warenkorb ueber IDS-Connect-kompatible Endpunkte (Mock oder HTTP-Adapter). Nach Datei-Upload pruefen Sie die extrahierten Zeilen und geben den Import frei — erst dann werden Artikel und Preise in Ihren Mandantenstamm uebernommen.",
+  scopeTitle: "Umfang",
   scopeBody:
-    "DATANORM: semikolongetrennte W- und P-Saetze (gaengiges Lieferantenformat). BMEcat: PRODUCT-Knoten mit SUPPLIER_PID und PRICE_DETAILS. Keine Live-Anbindung IDS-Connect-API in dieser Ausbaustufe — nur Dateiupload.",
+    "DATANORM: semikolongetrennte W- und P-Saetze. BMEcat: PRODUCT-Knoten mit SUPPLIER_PID und PRICE_DETAILS. IDS Connect Live: serverseitiger Aufruf normalisierter Pfade unter der konfigurierten Basis-URL (siehe API) oder Mock-Modus ohne externe Verbindung.",
   datanormTitle: "DATANORM",
   datanormBody:
     "ZIP mit einer oder mehreren Textdateien oder eine einzelne .txt — Kodierung wird als Windows-1252 oder UTF-8 versucht.",
@@ -74,6 +102,26 @@ const de: ResourceManagementModuleCopy = {
   sourceKindLabel: "Quellformat",
   sourceDatanorm: "DATANORM",
   sourceBmecat: "BMEcat (IDS-/Katalog-XML)",
+  sourceIdsConnect: "IDS Connect (Live)",
+  idsConnectModeLabel: "Verbindung",
+  idsConnectModeMock: "Mock (ohne externe API)",
+  idsConnectModeHttp: "HTTP (Basis-URL + API-Key)",
+  idsConnectBaseUrlLabel: "Basis-URL des Adapters",
+  idsConnectApiKeyLabel: "API-Key / Bearer (optional)",
+  idsConnectLiveTitle: "IDS Connect — Live-Suche und Warenkorb",
+  idsConnectLiveHint:
+    "Waehlen Sie einen IDS-Connect-Lieferanten. Suche und Warenkorb laufen ueber die API (Mock oder konfigurierten HTTP-Adapter).",
+  idsConnectPickSupplier: "IDS-Lieferant",
+  idsConnectSearchPlaceholder: "Suchbegriff",
+  idsConnectSearchButton: "Suchen",
+  idsConnectNewCart: "Neuer Warenkorb",
+  idsConnectAddToCart: "In Warenkorb",
+  idsConnectCartLines: "Positionen",
+  idsConnectSubmitCart: "Warenkorb senden",
+  idsConnectCartStatus: "Status",
+  idsConnectNoSuppliers:
+    "Legen Sie zuerst einen Lieferanten mit Quellformat IDS Connect an.",
+  idsConnectQuantity: "Menge",
   addSupplier: "Lieferant speichern",
   supplierSelectLabel: "Lieferant fuer Upload",
   supplierPlaceholder: "Bitte Lieferant waehlen",
@@ -110,15 +158,26 @@ const de: ResourceManagementModuleCopy = {
   failedBadge: "Fehler",
   articleCount: "Positionen",
   formatLabel: "Format",
+  stockTitle: "Artikelstamm (freigegeben)",
+  stockHint:
+    "Alle aus Katalogimporten freigegebenen Artikel mit zuletzt gespeichertem Preis. Filter nach Lieferant und Textsuche.",
+  stockFilterSupplier: "Lieferant",
+  stockSearchLabel: "Suche",
+  stockSearchPlaceholder: "Art.-Nr. oder Bezeichnung",
+  stockSearchApply: "Suchen",
+  stockEmpty: "Noch keine Artikel im Stamm.",
+  stockSupplierCol: "Lieferant",
+  stockLoadMore: "Weitere laden",
+  stockLoading: "Laden …",
 };
 
 const en: ResourceManagementModuleCopy = {
   benefitTitle: "What this does",
   benefitBody:
-    "Import supplier catalogs as a DATANORM package (ZIP/text) or BMEcat XML (typical IDS/wholesale catalogs). After upload, review extracted rows and approve — only then articles and prices are merged into your tenant master data.",
-  scopeTitle: "MVP scope",
+    "Import supplier catalogs as DATANORM (ZIP/text) or BMEcat XML, optionally live search and cart via IDS-Connect-compatible endpoints (mock or HTTP adapter). After file upload, review rows and approve to merge articles into master data.",
+  scopeTitle: "Scope",
   scopeBody:
-    "DATANORM: semicolon-separated W and P records. BMEcat: PRODUCT nodes with SUPPLIER_PID and PRICE_DETAILS. No live IDS Connect API in this phase — file upload only.",
+    "DATANORM: W/P records. BMEcat: PRODUCT and PRICE_DETAILS. IDS Connect live: server calls normalized paths under your configured base URL (see API) or mock mode without outbound calls.",
   datanormTitle: "DATANORM",
   datanormBody:
     "ZIP with one or more text files or a single .txt — encoding tries Windows-1252 then UTF-8.",
@@ -135,6 +194,25 @@ const en: ResourceManagementModuleCopy = {
   sourceKindLabel: "Source format",
   sourceDatanorm: "DATANORM",
   sourceBmecat: "BMEcat (IDS / catalog XML)",
+  sourceIdsConnect: "IDS Connect (live)",
+  idsConnectModeLabel: "Connection",
+  idsConnectModeMock: "Mock (no external API)",
+  idsConnectModeHttp: "HTTP (base URL + API key)",
+  idsConnectBaseUrlLabel: "Adapter base URL",
+  idsConnectApiKeyLabel: "API key / Bearer (optional)",
+  idsConnectLiveTitle: "IDS Connect — live search and cart",
+  idsConnectLiveHint:
+    "Pick an IDS Connect supplier. Search and cart go through the API (mock or configured HTTP adapter).",
+  idsConnectPickSupplier: "IDS supplier",
+  idsConnectSearchPlaceholder: "Search term",
+  idsConnectSearchButton: "Search",
+  idsConnectNewCart: "New cart",
+  idsConnectAddToCart: "Add to cart",
+  idsConnectCartLines: "Lines",
+  idsConnectSubmitCart: "Submit cart",
+  idsConnectCartStatus: "Status",
+  idsConnectNoSuppliers: "Create a supplier with source IDS Connect first.",
+  idsConnectQuantity: "Qty",
   addSupplier: "Save supplier",
   supplierSelectLabel: "Supplier for upload",
   supplierPlaceholder: "Choose a supplier",
@@ -169,6 +247,17 @@ const en: ResourceManagementModuleCopy = {
   failedBadge: "Failed",
   articleCount: "Lines",
   formatLabel: "Format",
+  stockTitle: "Approved article master",
+  stockHint:
+    "Items released from catalog imports with the latest stored price. Filter by supplier and search SKU or description.",
+  stockFilterSupplier: "Supplier",
+  stockSearchLabel: "Search",
+  stockSearchPlaceholder: "SKU or description",
+  stockSearchApply: "Search",
+  stockEmpty: "No articles in master data yet.",
+  stockSupplierCol: "Supplier",
+  stockLoadMore: "Load more",
+  stockLoading: "Loading…",
 };
 
 export function getResourceManagementModuleCopy(

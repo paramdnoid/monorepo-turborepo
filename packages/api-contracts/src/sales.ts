@@ -73,6 +73,8 @@ export const salesCreateInvoiceSchema = z.object({
   dueAt: optionalInstantOrNull,
   paidAt: optionalInstantOrNull,
   customerId: optionalUuidOrNull,
+  /** Rabatt auf Summe der Positions-Bruttobeträge (Basispunkte, z. B. 500 = 5 %). */
+  headerDiscountBps: z.number().int().min(0).max(10_000).optional().default(0),
 });
 
 export type SalesCreateInvoiceInput = z.infer<typeof salesCreateInvoiceSchema>;
@@ -87,6 +89,7 @@ export const salesCreateInvoiceFromQuoteSchema = z.object({
   issuedAt: optionalInstantOrNull,
   dueAt: optionalInstantOrNull,
   paidAt: optionalInstantOrNull,
+  headerDiscountBps: z.number().int().min(0).max(10_000).optional().default(0),
 });
 
 export type SalesCreateInvoiceFromQuoteInput = z.infer<
@@ -172,6 +175,8 @@ export const salesDocumentLineSchema = z.object({
   lineTotalCents: z.number().int(),
   taxRateBps: z.number().int().min(0).max(10_000).default(1900),
   discountBps: z.number().int().min(0).max(10_000).default(0),
+  /** gesetzt, wenn die Zeile aus dem Lieferanten-Katalog übernommen wurde */
+  catalogArticleId: z.string().uuid().nullable().optional(),
 });
 
 export type SalesDocumentLine = z.infer<typeof salesDocumentLineSchema>;
@@ -184,6 +189,7 @@ export const salesCreateQuoteLineSchema = z.object({
   lineTotalCents: z.number().int().min(0),
   taxRateBps: z.number().int().min(0).max(10_000).optional().default(1900),
   discountBps: z.number().int().min(0).max(10_000).optional().default(0),
+  catalogArticleId: z.string().uuid().optional(),
 });
 
 export type SalesCreateQuoteLineInput = z.infer<typeof salesCreateQuoteLineSchema>;
@@ -192,6 +198,7 @@ export const salesPatchQuoteLineSchema = salesCreateQuoteLineSchema
   .partial()
   .extend({
     sortIndex: z.number().int().min(0).max(1_000_000).optional(),
+    catalogArticleId: z.union([z.string().uuid(), z.null()]).optional(),
   });
 
 export type SalesPatchQuoteLineInput = z.infer<typeof salesPatchQuoteLineSchema>;
@@ -234,6 +241,7 @@ export const salesInvoiceListItemSchema = z.object({
   creditForInvoiceId: z.string().uuid().nullable().default(null),
   currency: z.string(),
   totalCents: z.number().int(),
+  headerDiscountBps: z.number().int().min(0).max(10_000).default(0),
   issuedAt: z.string().nullable(),
   dueAt: z.string().nullable(),
   paidAt: z.string().nullable(),

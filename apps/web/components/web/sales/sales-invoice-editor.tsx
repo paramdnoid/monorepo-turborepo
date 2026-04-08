@@ -51,6 +51,10 @@ import {
   fetchSalesProjectOptions,
   fetchSalesQuoteLinkOptions,
 } from "./sales-lookups";
+import {
+  bpsToPercentEditString,
+  parsePercentToBps,
+} from "./sales-lines";
 
 type InvoiceDetail = z.infer<typeof salesInvoiceDetailSchema>;
 
@@ -132,6 +136,7 @@ export function SalesInvoiceCreateDialog({
   const [issuedYmd, setIssuedYmd] = useState("");
   const [dueYmd, setDueYmd] = useState("");
   const [paidYmd, setPaidYmd] = useState("");
+  const [headerDiscountPctStr, setHeaderDiscountPctStr] = useState("");
   const [quoteOptions, setQuoteOptions] = useState<{ id: string; label: string }[]>(
     [],
   );
@@ -162,6 +167,7 @@ export function SalesInvoiceCreateDialog({
     setIssuedYmd("");
     setDueYmd("");
     setPaidYmd("");
+    setHeaderDiscountPctStr(bpsToPercentEditString(0, locale));
     setMasterCustomerId("");
     setError(null);
     void (async () => {
@@ -176,7 +182,7 @@ export function SalesInvoiceCreateDialog({
       setProjectOptions(projects);
       setCustomerStammOptions(customers);
     })();
-  }, [open, presetQuoteId]);
+  }, [open, presetQuoteId, locale]);
 
   useEffect(() => {
     if (!masterCustomerId) {
@@ -217,6 +223,12 @@ export function SalesInvoiceCreateDialog({
       }
       setBusy(true);
       try {
+        const headerDiscountBps = parsePercentToBps(headerDiscountPctStr, locale);
+        if (headerDiscountBps === null) {
+          setError(fc.validationAmount);
+          setBusy(false);
+          return;
+        }
         const res = await fetch(
           `/api/web/sales/quotes/${encodeURIComponent(quoteId)}/invoices`,
           {
@@ -236,6 +248,7 @@ export function SalesInvoiceCreateDialog({
               issuedAt: dateInputToIsoNoon(issuedYmd),
               dueAt: dateInputToIsoNoon(dueYmd),
               paidAt: dateInputToIsoNoon(paidYmd),
+              headerDiscountBps,
             }),
           },
         );
@@ -283,6 +296,11 @@ export function SalesInvoiceCreateDialog({
       );
       return;
     }
+    const headerDiscountBps = parsePercentToBps(headerDiscountPctStr, locale);
+    if (headerDiscountBps === null) {
+      setError(fc.validationAmount);
+      return;
+    }
     setBusy(true);
     try {
       const res = await fetch("/api/web/sales/invoices", {
@@ -308,6 +326,7 @@ export function SalesInvoiceCreateDialog({
           dueAt: dateInputToIsoNoon(dueYmd),
           paidAt: dateInputToIsoNoon(paidYmd),
           customerId: masterCustomerId === "" ? null : masterCustomerId,
+          headerDiscountBps,
         }),
       });
       if (res.status === 409) {
@@ -517,6 +536,25 @@ export function SalesInvoiceCreateDialog({
                 </Select>
               </div>
             ) : null}
+            <div className="grid gap-2">
+              <Label htmlFor="i-hdr-disc">
+                {locale === "en" ? "Header discount on gross" : "Kopfrabatt auf Brutto"}
+              </Label>
+              <Input
+                id="i-hdr-disc"
+                value={headerDiscountPctStr}
+                onChange={(e) => setHeaderDiscountPctStr(e.target.value)}
+                inputMode="decimal"
+                aria-label={
+                  locale === "en" ? "Header discount on gross" : "Kopfrabatt auf Brutto"
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                {locale === "en"
+                  ? "Reduces the sum of line gross amounts (before VAT split)."
+                  : "Reduziert die Summe der Positions-Bruttobetraege (vor Steueraufschluesselung)."}
+              </p>
+            </div>
             {copyFromQuote ? null : (
               <div className="grid gap-2">
                 <Label htmlFor="i-total">{fc.total}</Label>
@@ -669,6 +707,9 @@ export function SalesInvoiceEditForm({
   );
   const [dueYmd, setDueYmd] = useState(isoToDateInputValue(invoice.dueAt));
   const [paidYmd, setPaidYmd] = useState(isoToDateInputValue(invoice.paidAt));
+  const [headerDiscountPctStr, setHeaderDiscountPctStr] = useState(() =>
+    bpsToPercentEditString(invoice.headerDiscountBps ?? 0, locale),
+  );
   const [quoteOptions, setQuoteOptions] = useState<{ id: string; label: string }[]>(
     [],
   );
@@ -722,6 +763,9 @@ export function SalesInvoiceEditForm({
     setIssuedYmd(isoToDateInputValue(invoice.issuedAt));
     setDueYmd(isoToDateInputValue(invoice.dueAt));
     setPaidYmd(isoToDateInputValue(invoice.paidAt));
+    setHeaderDiscountPctStr(
+      bpsToPercentEditString(invoice.headerDiscountBps ?? 0, locale),
+    );
   }, [invoice, locale]);
 
   const hasLines = invoice.lines.length > 0;
@@ -749,6 +793,11 @@ export function SalesInvoiceEditForm({
       );
       return;
     }
+    const headerDiscountBps = parsePercentToBps(headerDiscountPctStr, locale);
+    if (headerDiscountBps === null) {
+      setError(fc.validationAmount);
+      return;
+    }
     setBusy(true);
     try {
       const res = await fetch(`/api/web/sales/invoices/${invoice.id}`, {
@@ -774,6 +823,7 @@ export function SalesInvoiceEditForm({
           issuedAt: dateInputToIsoNoon(issuedYmd),
           dueAt: dateInputToIsoNoon(dueYmd),
           paidAt: dateInputToIsoNoon(paidYmd),
+          headerDiscountBps,
         }),
       });
       if (res.status === 409) {
@@ -965,6 +1015,25 @@ export function SalesInvoiceEditForm({
           </Select>
         </div>
       ) : null}
+      <div className="grid gap-2">
+        <Label htmlFor="ie-hdr-disc">
+          {locale === "en" ? "Header discount on gross" : "Kopfrabatt auf Brutto"}
+        </Label>
+        <Input
+          id="ie-hdr-disc"
+          value={headerDiscountPctStr}
+          onChange={(e) => setHeaderDiscountPctStr(e.target.value)}
+          inputMode="decimal"
+          aria-label={
+            locale === "en" ? "Header discount on gross" : "Kopfrabatt auf Brutto"
+          }
+        />
+        <p className="text-xs text-muted-foreground">
+          {locale === "en"
+            ? "Reduces the sum of line gross amounts (before VAT split)."
+            : "Reduziert die Summe der Positions-Bruttobetraege (vor Steueraufschluesselung)."}
+        </p>
+      </div>
       <div className="grid gap-2">
         <Label htmlFor={hasLines ? "ie-total-display" : "ie-total"}>
           {hasLines ? fc.totalFromLines : fc.total}

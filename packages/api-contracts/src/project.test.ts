@@ -95,6 +95,7 @@ test("projectHubResponseSchema parses aggregated hub payload", () => {
     schedulingWeek: [],
     workTime: { totalMinutes: 0, entries: [] },
     receivables: { total: 0, invoices: [] },
+    invoiceBillingChains: [],
     pipeline: {
       quotes: { draft: 0, sent: 0, accepted: 0, rejected: 0, expired: 0 },
       invoices: { draft: 0, sent: 0, overdue: 0, paid: 0 },

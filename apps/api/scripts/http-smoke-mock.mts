@@ -16,15 +16,18 @@
  * **Work-Time** (`/v1/work-time/entries`: Liste, Create, gefilterte Liste, Delete),
  * DATEV-Settings und Buchungs-CSV, **Sales-Mahntext-Templates** (`GET`/`PUT /v1/sales/reminder-templates`, `GET …/resolved`),
  * **CAMT-Import-Vorschau** (`POST /v1/sales/invoices/camt-import`, multipart `file`).
+ * **Katalog / Ressourcenmanagement** (`/v1/catalog/suppliers`, `POST /v1/catalog/imports` mit DATANORM-Text und BMEcat-XML,
+ *   Liste, Detail, `PATCH` Freigabe, Prüfung `catalog_articles`).
  */
 import { randomUUID } from "node:crypto";
 import { config } from "dotenv";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { count, eq } from "drizzle-orm";
+import { and, count, eq } from "drizzle-orm";
 
 import {
+  catalogArticles,
   provisionOrganizationIfAbsent,
   salesInvoices,
   salesQuoteLines,
@@ -144,6 +147,7 @@ if (quoteCount === 0) {
       customerLabel: "Smoke Kunde AG",
       status: "sent",
       totalCents: 99_99,
+      headerDiscountBps: 0,
       quoteId: qid,
       issuedAt: new Date(),
       dueAt: new Date(Date.now() + 14 * 86_400_000),
@@ -794,3 +798,272 @@ try {
   console.error("Smoke: DATEV dryRun response is not JSON", e);
   process.exit(1);
 }
+
+const smokeCatalogSuffix = Date.now();
+const dnSupplierRes = await app.request("http://localhost/v1/catalog/suppliers", {
+  method: "POST",
+  headers: {
+    Authorization: "Bearer mock",
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    name: `Smoke Katalog DN ${smokeCatalogSuffix}`,
+    sourceKind: "datanorm",
+  }),
+});
+const dnSupplierText = await dnSupplierRes.text();
+console.log("POST /v1/catalog/suppliers (datanorm)", dnSupplierRes.status, dnSupplierText);
+if (!dnSupplierRes.ok) {
+  process.exit(1);
+}
+let dnSupplierId: string;
+try {
+  const dnSupplierJson = JSON.parse(dnSupplierText) as { id?: string };
+  dnSupplierId = dnSupplierJson.id ?? "";
+  if (!dnSupplierId) {
+    console.error("Smoke: catalog supplier (datanorm) missing id");
+    process.exit(1);
+  }
+} catch (e) {
+  console.error("Smoke: catalog supplier (datanorm) JSON invalid", e);
+  process.exit(1);
+}
+
+const dnLines = [
+  "W;4711;A1234567890;GRP01;Farbe Weiss;Liter",
+  "P;4711;15,90;L",
+].join("\n");
+const dnImportForm = new FormData();
+dnImportForm.append("supplierId", dnSupplierId);
+dnImportForm.append(
+  "file",
+  new File([dnLines], "smoke.datanorm.txt", { type: "text/plain" }),
+);
+const dnImportRes = await app.request("http://localhost/v1/catalog/imports", {
+  method: "POST",
+  headers: { Authorization: "Bearer mock" },
+  body: dnImportForm,
+});
+const dnImportText = await dnImportRes.text();
+console.log("POST /v1/catalog/imports (datanorm)", dnImportRes.status, dnImportText);
+if (!dnImportRes.ok) {
+  process.exit(1);
+}
+let dnBatchId: string;
+try {
+  const dnImportJson = JSON.parse(dnImportText) as { id?: string; status?: string };
+  dnBatchId = dnImportJson.id ?? "";
+  if (!dnBatchId || dnImportJson.status !== "pending_review") {
+    console.error("Smoke: datanorm import unexpected", dnImportJson);
+    process.exit(1);
+  }
+} catch (e) {
+  console.error("Smoke: datanorm import JSON invalid", e);
+  process.exit(1);
+}
+
+const catalogListRes = await app.request("http://localhost/v1/catalog/imports", {
+  headers: { Authorization: "Bearer mock" },
+});
+const catalogListText = await catalogListRes.text();
+console.log("GET /v1/catalog/imports", catalogListRes.status, catalogListText.slice(0, 200));
+if (!catalogListRes.ok) {
+  process.exit(1);
+}
+try {
+  const catalogListJson = JSON.parse(catalogListText) as {
+    batches?: { id: string }[];
+  };
+  if (!catalogListJson.batches?.some((b) => b.id === dnBatchId)) {
+    console.error("Smoke: catalog imports list missing datanorm batch");
+    process.exit(1);
+  }
+} catch (e) {
+  console.error("Smoke: catalog imports list JSON invalid", e);
+  process.exit(1);
+}
+
+const dnDetailRes = await app.request(
+  `http://localhost/v1/catalog/imports/${encodeURIComponent(dnBatchId)}`,
+  { headers: { Authorization: "Bearer mock" } },
+);
+const dnDetailText = await dnDetailRes.text();
+console.log("GET /v1/catalog/imports/:id (datanorm)", dnDetailRes.status, dnDetailText.slice(0, 240));
+if (!dnDetailRes.ok) {
+  process.exit(1);
+}
+try {
+  const dnDetailJson = JSON.parse(dnDetailText) as {
+    lines?: { supplierSku: string }[];
+    lineTotal?: number;
+  };
+  if (
+    !dnDetailJson.lines?.length ||
+    dnDetailJson.lines[0]?.supplierSku !== "4711" ||
+    (dnDetailJson.lineTotal ?? 0) < 1
+  ) {
+    console.error("Smoke: datanorm detail unexpected", dnDetailJson);
+    process.exit(1);
+  }
+} catch (e) {
+  console.error("Smoke: datanorm detail JSON invalid", e);
+  process.exit(1);
+}
+
+const dnApproveRes = await app.request(
+  `http://localhost/v1/catalog/imports/${encodeURIComponent(dnBatchId)}`,
+  {
+    method: "PATCH",
+    headers: {
+      Authorization: "Bearer mock",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ status: "approved" }),
+  },
+);
+console.log("PATCH /v1/catalog/imports/:id (datanorm approve)", dnApproveRes.status);
+if (!dnApproveRes.ok) {
+  process.exit(1);
+}
+
+const [dnArticleCountRow] = await db
+  .select({ n: count() })
+  .from(catalogArticles)
+  .where(
+    and(
+      eq(catalogArticles.tenantId, tenantId),
+      eq(catalogArticles.supplierId, dnSupplierId),
+    ),
+  );
+if (Number(dnArticleCountRow?.n ?? 0) < 1) {
+  console.error("Smoke: catalog_articles missing after datanorm approve");
+  process.exit(1);
+}
+
+const bmSupplierRes = await app.request("http://localhost/v1/catalog/suppliers", {
+  method: "POST",
+  headers: {
+    Authorization: "Bearer mock",
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    name: `Smoke Katalog BME ${smokeCatalogSuffix}`,
+    sourceKind: "bmecat",
+  }),
+});
+const bmSupplierText = await bmSupplierRes.text();
+console.log("POST /v1/catalog/suppliers (bmecat)", bmSupplierRes.status, bmSupplierText);
+if (!bmSupplierRes.ok) {
+  process.exit(1);
+}
+let bmSupplierId: string;
+try {
+  const bmSupplierJson = JSON.parse(bmSupplierText) as { id?: string };
+  bmSupplierId = bmSupplierJson.id ?? "";
+  if (!bmSupplierId) {
+    console.error("Smoke: catalog supplier (bmecat) missing id");
+    process.exit(1);
+  }
+} catch (e) {
+  console.error("Smoke: catalog supplier (bmecat) JSON invalid", e);
+  process.exit(1);
+}
+
+const bmecatXml = `<?xml version="1.0" encoding="UTF-8"?>
+<BMECAT>
+  <T_NEW_CATALOG>
+    <PRODUCT>
+      <SUPPLIER_PID>SKU-SMOKE-${smokeCatalogSuffix}</SUPPLIER_PID>
+      <DESCRIPTION_SHORT>Smoke BMEcat</DESCRIPTION_SHORT>
+      <PRICE_DETAILS>
+        <ARTICLE_PRICE>
+          <PRICE_AMOUNT>12,50</PRICE_AMOUNT>
+          <PRICE_CURRENCY>EUR</PRICE_CURRENCY>
+        </ARTICLE_PRICE>
+      </PRICE_DETAILS>
+    </PRODUCT>
+  </T_NEW_CATALOG>
+</BMECAT>`;
+const bmImportForm = new FormData();
+bmImportForm.append("supplierId", bmSupplierId);
+bmImportForm.append(
+  "file",
+  new File([bmecatXml], "smoke.bmecat.xml", { type: "application/xml" }),
+);
+const bmImportRes = await app.request("http://localhost/v1/catalog/imports", {
+  method: "POST",
+  headers: { Authorization: "Bearer mock" },
+  body: bmImportForm,
+});
+const bmImportText = await bmImportRes.text();
+console.log("POST /v1/catalog/imports (bmecat)", bmImportRes.status, bmImportText);
+if (!bmImportRes.ok) {
+  process.exit(1);
+}
+let bmBatchId: string;
+try {
+  const bmImportJson = JSON.parse(bmImportText) as { id?: string; status?: string };
+  bmBatchId = bmImportJson.id ?? "";
+  if (!bmBatchId || bmImportJson.status !== "pending_review") {
+    console.error("Smoke: bmecat import unexpected", bmImportJson);
+    process.exit(1);
+  }
+} catch (e) {
+  console.error("Smoke: bmecat import JSON invalid", e);
+  process.exit(1);
+}
+
+const bmDetailRes = await app.request(
+  `http://localhost/v1/catalog/imports/${encodeURIComponent(bmBatchId)}`,
+  { headers: { Authorization: "Bearer mock" } },
+);
+const bmDetailText = await bmDetailRes.text();
+console.log("GET /v1/catalog/imports/:id (bmecat)", bmDetailRes.status, bmDetailText.slice(0, 240));
+if (!bmDetailRes.ok) {
+  process.exit(1);
+}
+try {
+  const bmDetailJson = JSON.parse(bmDetailText) as {
+    lines?: { supplierSku: string }[];
+  };
+  const sku = `SKU-SMOKE-${smokeCatalogSuffix}`;
+  if (!bmDetailJson.lines?.some((l) => l.supplierSku === sku)) {
+    console.error("Smoke: bmecat detail missing expected SKU", bmDetailJson);
+    process.exit(1);
+  }
+} catch (e) {
+  console.error("Smoke: bmecat detail JSON invalid", e);
+  process.exit(1);
+}
+
+const bmApproveRes = await app.request(
+  `http://localhost/v1/catalog/imports/${encodeURIComponent(bmBatchId)}`,
+  {
+    method: "PATCH",
+    headers: {
+      Authorization: "Bearer mock",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ status: "approved" }),
+  },
+);
+console.log("PATCH /v1/catalog/imports/:id (bmecat approve)", bmApproveRes.status);
+if (!bmApproveRes.ok) {
+  process.exit(1);
+}
+
+const [bmArticleCountRow] = await db
+  .select({ n: count() })
+  .from(catalogArticles)
+  .where(
+    and(
+      eq(catalogArticles.tenantId, tenantId),
+      eq(catalogArticles.supplierId, bmSupplierId),
+    ),
+  );
+if (Number(bmArticleCountRow?.n ?? 0) < 1) {
+  console.error("Smoke: catalog_articles missing after bmecat approve");
+  process.exit(1);
+}
+
+console.log("Smoke: Katalog /v1/catalog (DATANORM + BMEcat) OK");

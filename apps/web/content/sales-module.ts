@@ -169,6 +169,14 @@ type SalesMessages = {
     moveUp: string;
     moveDown: string;
     lineCalcFromQty: string;
+    catalogSectionTitle: string;
+    catalogSearchLabel: string;
+    catalogSearchPlaceholder: string;
+    catalogSearchButton: string;
+    catalogNoResults: string;
+    catalogLinkedHint: string;
+    catalogClear: string;
+    catalogLineLinked: string;
   };
   salesForm: {
     newQuote: string;
@@ -434,6 +442,14 @@ const de: SalesMessages = {
     moveUp: "Nach oben",
     moveDown: "Nach unten",
     lineCalcFromQty: "Aus Menge x Preis",
+    catalogSectionTitle: "Lieferanten-Katalog (optional)",
+    catalogSearchLabel: "Suchbegriff",
+    catalogSearchPlaceholder: "Art.-Nr. oder Bezeichnung",
+    catalogSearchButton: "Suchen",
+    catalogNoResults: "Keine Treffer.",
+    catalogLinkedHint: "Mit Katalog-Artikel verknuepft — Preis und Text sind Snapshots.",
+    catalogClear: "Katalog-Verknuepfung entfernen",
+    catalogLineLinked: "Katalog",
   },
   salesForm: {
     newQuote: "Neues Angebot",
@@ -704,6 +720,15 @@ const en: SalesMessages = {
     moveUp: "Move up",
     moveDown: "Move down",
     lineCalcFromQty: "From qty × price",
+    catalogSectionTitle: "Supplier catalog (optional)",
+    catalogSearchLabel: "Search term",
+    catalogSearchPlaceholder: "SKU or description",
+    catalogSearchButton: "Search",
+    catalogNoResults: "No matches.",
+    catalogLinkedHint:
+      "Linked to a catalog article — price and text are snapshots.",
+    catalogClear: "Remove catalog link",
+    catalogLineLinked: "Catalog",
   },
   salesForm: {
     newQuote: "New quote",

@@ -12,13 +12,21 @@ import { loadEnv } from "./env.js";
 import { getOptionalDb } from "./db.js";
 import { requestContextMiddleware } from "./middleware/request-context.js";
 import {
+  createCatalogArticlesListHandler,
   createCatalogImportDetailHandler,
   createCatalogImportPatchHandler,
   createCatalogImportPostHandler,
   createCatalogImportsListHandler,
+  createCatalogSupplierPatchHandler,
   createCatalogSupplierPostHandler,
   createCatalogSuppliersListHandler,
 } from "./routes/catalog.js";
+import {
+  createIdsConnectCartPatchHandler,
+  createIdsConnectCartPostHandler,
+  createIdsConnectCartSubmitHandler,
+  createIdsConnectSearchHandler,
+} from "./routes/ids-connect.js";
 import {
   createGaebDetailHandler,
   createGaebExportGetHandler,
@@ -202,11 +210,17 @@ export function createApp(options?: CreateAppOptions) {
   const projectAssetDownload = createProjectAssetDownloadHandler(getDb);
   const projectAssetDelete = createProjectAssetDeleteHandler(getDb);
   const catalogSuppliersList = createCatalogSuppliersListHandler(getDb);
+  const catalogArticlesList = createCatalogArticlesListHandler(getDb);
   const catalogSupplierPost = createCatalogSupplierPostHandler(getDb);
+  const catalogSupplierPatch = createCatalogSupplierPatchHandler(getDb);
   const catalogImportPost = createCatalogImportPostHandler(getDb);
   const catalogImportsList = createCatalogImportsListHandler(getDb);
   const catalogImportDetail = createCatalogImportDetailHandler(getDb);
   const catalogImportPatch = createCatalogImportPatchHandler(getDb);
+  const idsConnectSearch = createIdsConnectSearchHandler(getDb);
+  const idsConnectCartPost = createIdsConnectCartPostHandler(getDb);
+  const idsConnectCartPatch = createIdsConnectCartPatchHandler(getDb);
+  const idsConnectCartSubmit = createIdsConnectCartSubmitHandler(getDb);
   const salesQuotesList = createSalesQuotesListHandler(getDb);
   const salesQuotePost = createSalesQuotePostHandler(getDb);
   const salesInvoiceFromQuotePost =
@@ -534,8 +548,30 @@ export function createApp(options?: CreateAppOptions) {
   v1.patch("/gaeb/imports/:id", orgMiddleware, gaebPatchHandler);
   v1.get("/gaeb/imports/:id/export", orgMiddleware, gaebExportGet);
   v1.get("/catalog/suppliers", orgMiddleware, catalogSuppliersList);
+  v1.get("/catalog/articles", orgMiddleware, catalogArticlesList);
   v1.post("/catalog/suppliers", orgMiddleware, catalogSupplierPost);
+  v1.patch("/catalog/suppliers/:id", orgMiddleware, catalogSupplierPatch);
   v1.post("/catalog/imports", orgMiddleware, catalogImportPost);
+  v1.post(
+    "/ids-connect/suppliers/:supplierId/search",
+    orgMiddleware,
+    idsConnectSearch,
+  );
+  v1.post(
+    "/ids-connect/suppliers/:supplierId/carts",
+    orgMiddleware,
+    idsConnectCartPost,
+  );
+  v1.patch(
+    "/ids-connect/carts/:cartId",
+    orgMiddleware,
+    idsConnectCartPatch,
+  );
+  v1.post(
+    "/ids-connect/carts/:cartId/submit",
+    orgMiddleware,
+    idsConnectCartSubmit,
+  );
   v1.get("/catalog/imports", orgMiddleware, catalogImportsList);
   v1.get("/catalog/imports/:id", orgMiddleware, catalogImportDetail);
   v1.patch("/catalog/imports/:id", orgMiddleware, catalogImportPatch);

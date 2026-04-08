@@ -4,6 +4,7 @@ export * from "./sync.js";
 export * from "./entities/project.js";
 export * from "./gaeb.js";
 export * from "./catalog.js";
+export * from "./idsConnect.js";
 export * from "./project-assets.js";
 export * from "./sales.js";
 export * from "./sales-reminder-templates.js";

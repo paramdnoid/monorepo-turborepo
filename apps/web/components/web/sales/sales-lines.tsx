@@ -4,11 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import {
   salesInvoiceDetailResponseSchema,
   salesQuoteDetailResponseSchema,
+  type CatalogArticleListItem,
   type SalesDocumentLine,
   type SalesPatchQuoteLineInput,
 } from "@repo/api-contracts";
 import type { z } from "zod";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@repo/ui/alert";
 import { Button } from "@repo/ui/button";
 import {
@@ -41,6 +42,20 @@ function sortDocumentLines(lines: SalesDocumentLine[]): SalesDocumentLine[] {
   );
 }
 
+/** Katalog-API liefert Preis oft als Punkt-Dezimal (`12.50`); Formularparser erwartet Locale-Format. */
+function catalogPriceTextToMinorUnits(
+  raw: string | null | undefined,
+  locale: Locale,
+): number | null {
+  if (raw == null || !String(raw).trim()) return null;
+  const t = String(raw).trim();
+  if (/^\d+(\.\d+)?$/.test(t)) {
+    const n = Number(t);
+    return Number.isFinite(n) ? Math.round(n * 100) : null;
+  }
+  return parseMajorToMinorUnits(t, locale);
+}
+
 function minorToEditString(cents: number, locale: Locale): string {
   return (cents / 100).toLocaleString(locale === "en" ? "en-US" : "de-DE", {
     minimumFractionDigits: 2,
@@ -48,14 +63,14 @@ function minorToEditString(cents: number, locale: Locale): string {
   });
 }
 
-function bpsToPercentEditString(bps: number, locale: Locale): string {
+export function bpsToPercentEditString(bps: number, locale: Locale): string {
   return (bps / 100).toLocaleString(locale === "en" ? "en-US" : "de-DE", {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   });
 }
 
-function parsePercentToBps(raw: string, locale: Locale): number | null {
+export function parsePercentToBps(raw: string, locale: Locale): number | null {
   const n = parseQuantityAsMultiplier(raw, locale);
   if (n === null) return null;
   const bps = Math.round(n * 100);
@@ -243,7 +258,7 @@ export function SalesLinesSection({
         </Button>
       </div>
       {error ? (
-        <Alert variant="destructive">
+        <Alert variant="destructive" role="status" aria-live="polite">
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       ) : null}
@@ -457,13 +472,20 @@ function SalesLineRow({
         </div>
       </td>
       <td className="px-2 py-1.5 align-top min-w-32">
-        <Input
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          disabled={interactionLocked}
-          aria-label={lc.description}
-          className="min-h-9"
-        />
+        <div className="space-y-1">
+          <Input
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            disabled={interactionLocked}
+            aria-label={lc.description}
+            className="min-h-9"
+          />
+          {line.catalogArticleId ? (
+            <span className="text-xs text-muted-foreground">
+              {lc.catalogLineLinked}
+            </span>
+          ) : null}
+        </div>
       </td>
       <td className="px-2 py-1.5 align-top w-20">
         <Input
@@ -493,15 +515,43 @@ function SalesLineRow({
           className="min-h-9"
         />
       </td>
-      <td className="px-2 py-1.5 align-top w-20">
-        <Input
-          value={taxRatePercentStr}
-          onChange={(e) => setTaxRatePercentStr(e.target.value)}
-          disabled={interactionLocked}
-          inputMode="decimal"
-          aria-label={locale === "en" ? "VAT percent" : "MwSt Prozent"}
-          className="min-h-9"
-        />
+      <td className="px-2 py-1.5 align-top w-28">
+        <div className="flex flex-col gap-1">
+          <Input
+            value={taxRatePercentStr}
+            onChange={(e) => setTaxRatePercentStr(e.target.value)}
+            disabled={interactionLocked}
+            inputMode="decimal"
+            aria-label={locale === "en" ? "VAT percent" : "MwSt Prozent"}
+            className="min-h-9"
+          />
+          <div className="flex gap-1">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 flex-1 px-1 text-xs"
+              disabled={interactionLocked}
+              onClick={() =>
+                setTaxRatePercentStr(bpsToPercentEditString(700, locale))
+              }
+            >
+              7%
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 flex-1 px-1 text-xs"
+              disabled={interactionLocked}
+              onClick={() =>
+                setTaxRatePercentStr(bpsToPercentEditString(1900, locale))
+              }
+            >
+              19%
+            </Button>
+          </div>
+        </div>
       </td>
       <td className="px-2 py-1.5 align-top w-20">
         <Input
@@ -588,6 +638,7 @@ type SalesLineAddDialogProps = {
     taxRateBps: number;
     discountBps: number;
     lineTotalCents: number;
+    catalogArticleId?: string;
   }) => Promise<boolean>;
 };
 
@@ -608,6 +659,11 @@ function SalesLineAddDialog({
   const [lineTotalStr, setLineTotalStr] = useState("");
   const [busy, setBusy] = useState(false);
   const [localErr, setLocalErr] = useState<string | null>(null);
+  const [catalogArticleId, setCatalogArticleId] = useState<string | null>(null);
+  const [catalogQuery, setCatalogQuery] = useState("");
+  const [catalogHits, setCatalogHits] = useState<CatalogArticleListItem[]>([]);
+  const [catalogSearchBusy, setCatalogSearchBusy] = useState(false);
+  const [catalogDidSearch, setCatalogDidSearch] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -619,8 +675,51 @@ function SalesLineAddDialog({
       setDiscountPercentStr("0");
       setLineTotalStr("");
       setLocalErr(null);
+      setCatalogArticleId(null);
+      setCatalogQuery("");
+      setCatalogHits([]);
+      setCatalogDidSearch(false);
     }
   }, [open]);
+
+  async function searchCatalog() {
+    setCatalogSearchBusy(true);
+    try {
+      const params = new URLSearchParams();
+      params.set("limit", "30");
+      if (catalogQuery.trim()) params.set("q", catalogQuery.trim());
+      const res = await fetch(`/api/web/catalog/articles?${params}`, {
+        credentials: "include",
+      });
+      if (!res.ok) {
+        setCatalogHits([]);
+        setCatalogDidSearch(true);
+        return;
+      }
+      const data = (await res.json()) as {
+        articles?: CatalogArticleListItem[];
+      };
+      setCatalogHits(data.articles ?? []);
+      setCatalogDidSearch(true);
+    } finally {
+      setCatalogSearchBusy(false);
+    }
+  }
+
+  function applyCatalogArticle(a: CatalogArticleListItem) {
+    setCatalogArticleId(a.id);
+    setDescription(a.name?.trim() ? a.name.trim() : a.supplierSku);
+    setUnit(a.unit ?? "");
+    setQuantity("1");
+    const cents = catalogPriceTextToMinorUnits(a.price, locale);
+    if (cents !== null) {
+      setUnitPriceStr(minorToEditString(cents, locale));
+      setLineTotalStr(minorToEditString(cents, locale));
+    } else {
+      setUnitPriceStr("");
+      setLineTotalStr("");
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -652,6 +751,7 @@ function SalesLineAddDialog({
         taxRateBps,
         discountBps,
         lineTotalCents,
+        ...(catalogArticleId ? { catalogArticleId } : {}),
       });
       if (ok) {
         onOpenChange(false);
@@ -670,10 +770,88 @@ function SalesLineAddDialog({
           </DialogHeader>
           <div className="grid gap-4 py-4">
             {localErr ? (
-              <Alert variant="destructive">
+              <Alert variant="destructive" role="status" aria-live="polite">
                 <AlertDescription>{localErr}</AlertDescription>
               </Alert>
             ) : null}
+            <fieldset className="space-y-3 rounded-md border border-border p-3">
+              <legend className="px-1 text-sm font-medium">{lc.catalogSectionTitle}</legend>
+              <p className="text-xs text-muted-foreground">{lc.catalogLinkedHint}</p>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                <div className="grid min-w-0 flex-1 gap-2">
+                  <Label htmlFor="ln-catalog-q">{lc.catalogSearchLabel}</Label>
+                  <Input
+                    id="ln-catalog-q"
+                    value={catalogQuery}
+                    onChange={(e) => setCatalogQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        void searchCatalog();
+                      }
+                    }}
+                    placeholder={lc.catalogSearchPlaceholder}
+                    autoComplete="off"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={catalogSearchBusy}
+                  onClick={() => void searchCatalog()}
+                >
+                  {catalogSearchBusy ? (
+                    <Loader2 className="size-4 animate-spin" aria-hidden />
+                  ) : null}
+                  {lc.catalogSearchButton}
+                </Button>
+              </div>
+              {catalogHits.length > 0 ? (
+                <ul
+                  className="max-h-40 space-y-1 overflow-y-auto rounded-md border border-border p-1"
+                  role="list"
+                  aria-label={lc.catalogSectionTitle}
+                >
+                  {catalogHits.map((a) => (
+                    <li key={a.id} role="listitem">
+                      <button
+                        type="button"
+                        className="flex w-full flex-col items-start gap-0.5 rounded px-2 py-1.5 text-left text-sm hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        onClick={() => applyCatalogArticle(a)}
+                      >
+                        <span className="font-mono text-xs text-muted-foreground">
+                          {a.supplierSku}
+                        </span>
+                        <span className="line-clamp-2">{a.name ?? "—"}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {a.price ?? "—"} {a.currency} · {a.supplierName}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : catalogDidSearch && !catalogSearchBusy ? (
+                <p className="text-xs text-muted-foreground">{lc.catalogNoResults}</p>
+              ) : null}
+              {catalogArticleId ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-medium text-foreground">
+                    {lc.catalogLineLinked}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 text-xs"
+                    onClick={() => {
+                      setCatalogArticleId(null);
+                    }}
+                  >
+                    {lc.catalogClear}
+                  </Button>
+                </div>
+              ) : null}
+            </fieldset>
             <div className="grid gap-2">
               <Label htmlFor="ln-desc">{lc.description}</Label>
               <Input
@@ -719,6 +897,30 @@ function SalesLineAddDialog({
                   onChange={(e) => setTaxRatePercentStr(e.target.value)}
                   inputMode="decimal"
                 />
+                <div className="flex gap-1">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 flex-1 px-1 text-xs"
+                    onClick={() =>
+                      setTaxRatePercentStr(bpsToPercentEditString(700, locale))
+                    }
+                  >
+                    7%
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 flex-1 px-1 text-xs"
+                    onClick={() =>
+                      setTaxRatePercentStr(bpsToPercentEditString(1900, locale))
+                    }
+                  >
+                    19%
+                  </Button>
+                </div>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="ln-discount">

@@ -72,6 +72,8 @@ pnpm --filter api run check:auth-env         # Issuer/JWKS prüfen (nach AUTH_* 
 | GAEB / Katalog / DATEV | —                                                | `gaeb`, `catalog`, `datev`                        |
 | Sync                   | —                                                | `POST /sync`                                      |
 
+**Katalog (`/v1/catalog`):** Freigabe eines Imports legt bzw. aktualisiert `catalog_articles` und `catalog_prices` im Mandanten. **`POST /sync`** repliziert diese Entitäten nicht — Offline-Clients erhalten Katalogdaten derzeit nicht automatisch. **Verkauf** (`/v1/sales/…`) verknüpft Angebots-/Rechnungszeilen noch nicht mit `catalog_articles`; das wären eigene Stories.
+
 **Keycloak:** Access-Token muss den Claim `tenant_id` (oder `AUTH_TENANT_CLAIM`) enthalten — per **Protokoll-Mapper** vom User-Attribut `tenant_id` wie beim Onboarding (`register`).
 
 **Migrationen:** [`../../packages/db/drizzle/`](../../packages/db/drizzle/) — `pnpm --filter @repo/db exec drizzle-kit migrate`
