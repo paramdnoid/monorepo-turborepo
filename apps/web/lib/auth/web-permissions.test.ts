@@ -51,7 +51,7 @@ describe("route mapping and guard decisions", () => {
 
   it("marks edit-sensitive paths as requiring edit permission", () => {
     assert.equal(routeRequiresEditPermission("/web/projects"), true);
-    assert.equal(routeRequiresEditPermission("/web/scheduling"), true);
+    assert.equal(routeRequiresEditPermission("/web/scheduling"), false);
     assert.equal(
       routeRequiresEditPermission("/web/customers/9ea40c51-b286-4b1e-9501-dcf0f4e3db2e"),
       true,

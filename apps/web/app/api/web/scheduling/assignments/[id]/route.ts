@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getUiText } from "@/content/ui-text";
+import { getAuthSessionContext } from "@/lib/auth/session-user";
 import { validateWebAccessTokenSession } from "@/lib/auth/validate-web-session";
 import { getRequestLocale } from "@/lib/i18n/request-locale";
 
@@ -29,6 +30,14 @@ export async function DELETE(
     return NextResponse.json(
       { error: text.api.auth.bffSessionInvalid },
       noStoreInit({ status: 401 }),
+    );
+  }
+
+  const ctx = await getAuthSessionContext();
+  if (!ctx.permissions.workforce.canEdit) {
+    return NextResponse.json(
+      { error: "forbidden" },
+      noStoreInit({ status: 403 }),
     );
   }
 
@@ -70,6 +79,14 @@ export async function PATCH(
     return NextResponse.json(
       { error: text.api.auth.bffSessionInvalid },
       noStoreInit({ status: 401 }),
+    );
+  }
+
+  const ctx = await getAuthSessionContext();
+  if (!ctx.permissions.workforce.canEdit) {
+    return NextResponse.json(
+      { error: "forbidden" },
+      noStoreInit({ status: 403 }),
     );
   }
 

@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 
 import { getUiText } from "@/content/ui-text";
-import { getAuthSessionContext } from "@/lib/auth/session-user";
 import { validateWebAccessTokenSession } from "@/lib/auth/validate-web-session";
 import { getRequestLocale } from "@/lib/i18n/request-locale";
 
@@ -30,19 +29,11 @@ export async function GET(request: Request) {
     );
   }
 
-  const ctx = await getAuthSessionContext();
-  if (!ctx.permissions.workforce.canExport) {
-    return NextResponse.json(
-      { error: "forbidden" },
-      noStoreInit({ status: 403 }),
-    );
-  }
-
   const url = new URL(request.url);
   const qs = url.searchParams.toString();
   const target = qs
-    ? `${API_BASE}/v1/scheduling/assignments.ics?${qs}`
-    : `${API_BASE}/v1/scheduling/assignments.ics`;
+    ? `${API_BASE}/v1/scheduling/addresses?${qs}`
+    : `${API_BASE}/v1/scheduling/addresses`;
 
   try {
     const res = await fetch(target, {
@@ -53,9 +44,7 @@ export async function GET(request: Request) {
     return new NextResponse(bodyText, {
       status: res.status,
       headers: {
-        "Content-Type": res.headers.get("content-type") ?? "text/calendar; charset=utf-8",
-        "Content-Disposition":
-          res.headers.get("content-disposition") ?? 'attachment; filename="scheduling.ics"',
+        "Content-Type": res.headers.get("content-type") ?? "application/json",
         "Cache-Control": "private, no-store",
       },
     });
@@ -66,3 +55,4 @@ export async function GET(request: Request) {
     );
   }
 }
+

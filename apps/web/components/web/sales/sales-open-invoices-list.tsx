@@ -434,39 +434,47 @@ export function SalesOpenInvoicesList({
   const csvHref = `/api/web/sales/invoices/open-items/export?${csvParams.toString()}`;
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="min-w-48 flex-1 space-y-1">
-          <label className="text-xs font-medium text-muted-foreground" htmlFor="open-inv-q">
-            {copy.docNumber} / {copy.customer}
-          </label>
-          <Input
-            id="open-inv-q"
-            value={queryInput}
-            onChange={(e) => setQueryInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") applySearch();
-            }}
-            placeholder={oc.searchPlaceholder}
-          />
+    <div className="space-y-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+        <div className="min-w-0 flex-1 sm:min-w-48">
+          <div className="flex items-center gap-2">
+            <label
+              className="shrink-0 max-w-28 truncate text-[11px] font-medium text-muted-foreground leading-none"
+              htmlFor="open-inv-q"
+            >
+              {copy.docNumber} / {copy.customer}
+            </label>
+            <Input
+              id="open-inv-q"
+              value={queryInput}
+              onChange={(e) => setQueryInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") applySearch();
+              }}
+              placeholder={oc.searchPlaceholder}
+              className="min-w-0 flex-1"
+            />
+          </div>
         </div>
-        <Button type="button" size="sm" variant="secondary" onClick={applySearch}>
-          {locale === "en" ? "Search" : "Suchen"}
-        </Button>
-        <Button type="button" size="sm" variant="outline" asChild>
-          <a href={csvHref}>{oc.csvDownload}</a>
-        </Button>
+        <div className="flex flex-col gap-1.5 sm:flex-row sm:shrink-0">
+          <Button type="button" size="sm" variant="secondary" className="w-full sm:w-auto" onClick={applySearch}>
+            {locale === "en" ? "Search" : "Suchen"}
+          </Button>
+          <Button type="button" size="sm" variant="outline" className="w-full sm:w-auto" asChild>
+            <a href={csvHref}>{oc.csvDownload}</a>
+          </Button>
+        </div>
       </div>
-      <p className="text-xs text-muted-foreground">{oc.exportMaxHint}</p>
+      <p className="text-[11px] text-muted-foreground">{oc.exportMaxHint}</p>
 
-      <div className="space-y-3 rounded-md border border-border p-3">
-        <div className="space-y-1">
-          <p className="text-sm font-medium">{oc.batchPaymentTitle}</p>
-          <p className="text-xs text-muted-foreground">{oc.batchPaymentHint}</p>
+      <div className="space-y-2 rounded-md border border-border p-2">
+        <div className="space-y-0.5">
+          <p className="text-xs font-medium">{oc.batchPaymentTitle}</p>
+          <p className="text-[11px] text-muted-foreground">{oc.batchPaymentHint}</p>
         </div>
         <div className="grid gap-2 sm:grid-cols-2">
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <label className="shrink-0 text-[11px] font-medium text-muted-foreground leading-none whitespace-nowrap">
               {oc.batchPaymentDate}
             </label>
             <Input
@@ -474,10 +482,11 @@ export function SalesOpenInvoicesList({
               value={batchDateYmd}
               onChange={(e) => setBatchDateYmd(e.target.value)}
               disabled={batchBusy}
+              className="min-w-0 flex-1"
             />
           </div>
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <label className="shrink-0 text-[11px] font-medium text-muted-foreground leading-none whitespace-nowrap">
               {oc.batchPaymentNote}
             </label>
             <Input
@@ -485,17 +494,18 @@ export function SalesOpenInvoicesList({
               onChange={(e) => setBatchNote(e.target.value)}
               disabled={batchBusy}
               placeholder={oc.batchPaymentNote}
+              className="min-w-0 flex-1"
             />
           </div>
         </div>
         {selectedEntries.length > 0 ? (
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {selectedEntries.map((entry) => (
               <div
                 key={`batch-${entry.invoiceId}`}
-                className="grid grid-cols-[1fr,auto] items-center gap-2"
+                className="grid grid-cols-[1fr,auto] items-center gap-1.5"
               >
-                <p className="min-w-0 truncate text-xs text-muted-foreground">
+                <p className="min-w-0 truncate text-[11px] text-muted-foreground">
                   {entry.documentNumber} ·{" "}
                   {formatMinorCurrency(entry.balanceCents, entry.currency, locale)}
                 </p>
@@ -515,14 +525,14 @@ export function SalesOpenInvoicesList({
                     })
                   }
                   disabled={batchBusy}
-                  className="w-32"
+                  className="w-28"
                   aria-label={`${oc.batchPaymentAmount} ${entry.documentNumber}`}
                 />
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-xs text-muted-foreground">{oc.batchPaymentNoSelection}</p>
+          <p className="text-[11px] text-muted-foreground">{oc.batchPaymentNoSelection}</p>
         )}
         <div className="flex flex-wrap gap-2">
           <Button
@@ -569,69 +579,69 @@ export function SalesOpenInvoicesList({
       ) : null}
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           {locale === "en" ? "Loading…" : "Laden …"}
         </p>
       ) : rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{oc.empty}</p>
+        <p className="text-xs text-muted-foreground">{oc.empty}</p>
       ) : (
         <>
-          <div className="overflow-x-auto rounded-md border border-border">
+          <div className="min-w-0 overflow-x-auto rounded-md border border-border">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[1%] whitespace-nowrap">
+                  <TableHead className="h-9 w-[1%] px-1.5 whitespace-nowrap">
                     {oc.batchPaymentSelect}
                   </TableHead>
-                  <TableHead className="w-[1%] whitespace-nowrap">
+                  <TableHead className="h-9 w-[1%] whitespace-nowrap">
                     <button
                       type="button"
-                      className="inline-flex items-center gap-1 font-medium hover:underline"
+                      className="inline-flex items-center gap-0.5 font-medium hover:underline"
                       onClick={() => toggleSort("documentNumber")}
                     >
                       {copy.docNumber} {sortGlyph("documentNumber")}
                     </button>
                   </TableHead>
-                  <TableHead>
+                  <TableHead className="h-9 min-w-0 max-xl:whitespace-normal">
                     <button
                       type="button"
-                      className="inline-flex items-center gap-1 font-medium hover:underline"
+                      className="inline-flex max-w-full items-center gap-0.5 text-left font-medium hover:underline xl:whitespace-nowrap"
                       onClick={() => toggleSort("customerLabel")}
                     >
                       {copy.customer} {sortGlyph("customerLabel")}
                     </button>
                   </TableHead>
-                  <TableHead className="w-[1%] whitespace-nowrap">
+                  <TableHead className="h-9 w-[1%] whitespace-nowrap">
                     <button
                       type="button"
-                      className="inline-flex items-center gap-1 font-medium hover:underline"
+                      className="inline-flex items-center gap-0.5 font-medium hover:underline"
                       onClick={() => toggleSort("dueAt")}
                     >
                       {copy.dueDate} {sortGlyph("dueAt")}
                     </button>
                   </TableHead>
-                  <TableHead className="w-[1%] whitespace-nowrap text-right">
+                  <TableHead className="h-9 w-[1%] whitespace-nowrap text-right">
                     <button
                       type="button"
-                      className="inline-flex items-center gap-1 font-medium hover:underline"
+                      className="inline-flex items-center gap-0.5 font-medium hover:underline"
                       onClick={() => toggleSort("totalCents")}
                     >
                       {copy.total} {sortGlyph("totalCents")}
                     </button>
                   </TableHead>
-                  <TableHead className="w-[1%] whitespace-nowrap text-right">
+                  <TableHead className="h-9 w-[1%] whitespace-nowrap text-right">
                     <button
                       type="button"
-                      className="inline-flex items-center gap-1 font-medium hover:underline"
+                      className="inline-flex items-center gap-0.5 font-medium hover:underline"
                       onClick={() => toggleSort("balanceCents")}
                     >
                       {oc.balance} {sortGlyph("balanceCents")}
                     </button>
                   </TableHead>
-                  <TableHead className="w-[1%] whitespace-nowrap text-right">
+                  <TableHead className="h-9 w-[1%] whitespace-nowrap text-right">
                     {oc.paidTotal}
                   </TableHead>
-                  <TableHead className="w-[1%] whitespace-nowrap">
+                  <TableHead className="h-9 w-[1%] whitespace-nowrap">
                     {copy.status}
                   </TableHead>
                 </TableRow>
@@ -639,7 +649,7 @@ export function SalesOpenInvoicesList({
               <TableBody>
                 {rows.map((r) => (
                   <TableRow key={r.id}>
-                    <TableCell className="w-[1%] whitespace-nowrap">
+                    <TableCell className="w-[1%] p-1.5 whitespace-nowrap">
                       <Checkbox
                         checked={selectedAllocations[r.id] !== undefined}
                         onCheckedChange={(checked) => {
@@ -648,7 +658,7 @@ export function SalesOpenInvoicesList({
                         aria-label={`${oc.batchPaymentSelect} ${r.documentNumber}`}
                       />
                     </TableCell>
-                    <TableCell className="font-medium">
+                    <TableCell className="p-1.5 font-medium">
                       <Link
                         className="text-primary underline-offset-4 hover:underline"
                         href={`/web/sales/invoices/${encodeURIComponent(r.id)}`}
@@ -656,29 +666,31 @@ export function SalesOpenInvoicesList({
                         {r.documentNumber}
                       </Link>
                     </TableCell>
-                    <TableCell>{r.customerLabel}</TableCell>
-                    <TableCell>{formatDateShort(r.dueAt, locale)}</TableCell>
-                    <TableCell className="text-right tabular-nums">
+                    <TableCell className="p-1.5 min-w-0 max-w-[min(100%,20rem)] whitespace-normal wrap-break-word xl:max-w-none xl:whitespace-nowrap">
+                      {r.customerLabel}
+                    </TableCell>
+                    <TableCell className="p-1.5">{formatDateShort(r.dueAt, locale)}</TableCell>
+                    <TableCell className="p-1.5 text-right tabular-nums">
                       {formatMinorCurrency(r.totalCents, r.currency, locale)}
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">
+                    <TableCell className="p-1.5 text-right tabular-nums">
                       {formatMinorCurrency(r.balanceCents, r.currency, locale)}
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">
+                    <TableCell className="p-1.5 text-right tabular-nums">
                       {formatMinorCurrency(r.paidTotalCents, r.currency, locale)}
                     </TableCell>
-                    <TableCell>{invoiceStatusLabel(locale, r.status)}</TableCell>
+                    <TableCell className="p-1.5">{invoiceStatusLabel(locale, r.status)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           </div>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs text-muted-foreground">
+          <div className="flex flex-wrap items-center justify-between gap-1.5">
+            <p className="text-[11px] text-muted-foreground">
               {total}{" "}
               {locale === "en" ? "rows" : "Eintraege"}
             </p>
-            <div className="flex gap-2">
+            <div className="flex gap-1.5">
               <Button
                 type="button"
                 variant="outline"

@@ -60,6 +60,16 @@ export function CustomerAddressEditDialogContent({
   const [city, setCity] = useState(address.city);
   const [country, setCountry] = useState(address.country);
   const [isDefault, setIsDefault] = useState(address.isDefault);
+  const [geoLatitude, setGeoLatitude] = useState<number | null>(
+    address.latitude ?? null,
+  );
+  const [geoLongitude, setGeoLongitude] = useState<number | null>(
+    address.longitude ?? null,
+  );
+  const [geoSource, setGeoSource] = useState<
+    CustomerDetail["addresses"][number]["geocodeSource"]
+  >(address.geocodeSource ?? null);
+  const [geoDirty, setGeoDirty] = useState(false);
 
   const manualValues: CustomerAddressManualValues = useMemo(
     () => ({
@@ -97,6 +107,10 @@ export function CustomerAddressEditDialogContent({
     setCity(address.city);
     setCountry(address.country);
     setIsDefault(address.isDefault);
+    setGeoLatitude(address.latitude ?? null);
+    setGeoLongitude(address.longitude ?? null);
+    setGeoSource(address.geocodeSource ?? null);
+    setGeoDirty(false);
   }, [address]);
 
   function onManualChange(patch: Partial<CustomerAddressManualValues>) {
@@ -111,6 +125,7 @@ export function CustomerAddressEditDialogContent({
 
   function handleSave(e: React.FormEvent) {
     e.preventDefault();
+    const hasCoords = geoLatitude != null && geoLongitude != null;
     onPatch({
       kind,
       label: label.trim() === "" ? null : label.trim(),
@@ -122,6 +137,13 @@ export function CustomerAddressEditDialogContent({
       city: city.trim(),
       country: country.trim().toUpperCase().slice(0, 2),
       isDefault,
+      ...(geoDirty
+        ? {
+            latitude: hasCoords ? geoLatitude : null,
+            longitude: hasCoords ? geoLongitude : null,
+            geocodeSource: hasCoords ? (geoSource ?? "ors") : null,
+          }
+        : {}),
     });
   }
 
@@ -153,6 +175,11 @@ export function CustomerAddressEditDialogContent({
             if (s.addressLine2?.trim()) {
               setAddressLine2(s.addressLine2.trim());
             }
+            const hasCoords = s.latitude != null && s.longitude != null;
+            setGeoLatitude(hasCoords ? s.latitude : null);
+            setGeoLongitude(hasCoords ? s.longitude : null);
+            setGeoSource(hasCoords ? "ors" : null);
+            setGeoDirty(true);
           }}
         />
         <div className="grid gap-2">

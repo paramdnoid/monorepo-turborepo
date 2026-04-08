@@ -61,6 +61,13 @@ function mapAddressRow(r: typeof customerAddresses.$inferSelect) {
     postalCode: r.postalCode,
     city: r.city,
     country: r.country,
+    latitude: r.latitude ?? null,
+    longitude: r.longitude ?? null,
+    geocodedAt: r.geocodedAt ? r.geocodedAt.toISOString() : null,
+    geocodeSource:
+      r.geocodeSource === "manual" || r.geocodeSource === "ors"
+        ? r.geocodeSource
+        : null,
     isDefault: r.isDefault,
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
@@ -513,6 +520,7 @@ export function createCustomerPostHandler(getDb: () => Db | undefined) {
         const a = input.defaultAddress;
         const kindParse = customerAddressKindSchema.safeParse(a.kind);
         const kind = kindParse.success ? kindParse.data : "billing";
+        const hasCoords = a.latitude != null && a.longitude != null;
         if (a.isDefault) {
           await clearDefaultFlagsForKind(db, id, kind);
         }
@@ -526,6 +534,10 @@ export function createCustomerPostHandler(getDb: () => Db | undefined) {
           postalCode: a.postalCode,
           city: a.city,
           country: a.country,
+          latitude: hasCoords ? a.latitude : null,
+          longitude: hasCoords ? a.longitude : null,
+          geocodedAt: hasCoords ? new Date() : null,
+          geocodeSource: hasCoords ? (a.geocodeSource ?? "ors") : null,
           isDefault: Boolean(a.isDefault),
         });
       }
@@ -718,6 +730,7 @@ export function createCustomerAddressPostHandler(getDb: () => Db | undefined) {
     const kind = customerAddressKindSchema.safeParse(a.kind).success
       ? a.kind
       : "billing";
+    const hasCoords = a.latitude != null && a.longitude != null;
     if (a.isDefault) {
       await clearDefaultFlagsForKind(db, customerId, kind);
     }
@@ -733,6 +746,10 @@ export function createCustomerAddressPostHandler(getDb: () => Db | undefined) {
         postalCode: a.postalCode,
         city: a.city,
         country: a.country,
+        latitude: hasCoords ? a.latitude : null,
+        longitude: hasCoords ? a.longitude : null,
+        geocodedAt: hasCoords ? new Date() : null,
+        geocodeSource: hasCoords ? (a.geocodeSource ?? "ors") : null,
         isDefault: Boolean(a.isDefault),
       })
       .returning({ id: customerAddresses.id });
@@ -839,6 +856,15 @@ export function createCustomerAddressPatchHandler(getDb: () => Db | undefined) {
     }
     if (patch.isDefault !== undefined) {
       updates.isDefault = patch.isDefault;
+    }
+    if (patch.latitude !== undefined && patch.longitude !== undefined) {
+      const hasCoords = patch.latitude != null && patch.longitude != null;
+      updates.latitude = hasCoords ? patch.latitude : null;
+      updates.longitude = hasCoords ? patch.longitude : null;
+      updates.geocodedAt = hasCoords ? new Date() : null;
+      updates.geocodeSource = hasCoords ? (patch.geocodeSource ?? "ors") : null;
+    } else if (patch.geocodeSource !== undefined) {
+      updates.geocodeSource = patch.geocodeSource;
     }
 
     await db

@@ -1,14 +1,24 @@
 import { and, asc, eq, gte, inArray, isNull, lte, ne, or } from "drizzle-orm";
 import type { Context } from "hono";
+import { z } from "zod";
 
 import {
   schedulingAssignmentCreateResponseSchema,
   schedulingAssignmentCreateSchema,
   schedulingAssignmentPatchSchema,
+  schedulingAssignmentsReorderRequestSchema,
+  schedulingAssignmentsReorderResponseSchema,
+  schedulingAddressesGeoResponseSchema,
   schedulingAssignmentsListResponseSchema,
   schedulingDayResponseSchema,
+  schedulingRoutingDirectionsRequestSchema,
+  schedulingRoutingDirectionsResponseSchema,
+  schedulingRoutingMatrixRequestSchema,
+  schedulingRoutingMatrixResponseSchema,
 } from "@repo/api-contracts";
 import {
+  customerAddresses,
+  customers,
   employeeAvailabilityOverrides,
   employeeAvailabilityRules,
   employeeRelationships,
@@ -20,9 +30,182 @@ import {
   type Db,
 } from "@repo/db";
 
+import { canEditEmployees } from "../auth/permissions.js";
+
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+type RoutingConfig = {
+  baseUrl: string;
+  apiKey: string;
+  timeoutMs: number;
+  cacheTtlMs: number;
+  cacheMaxEntries: number;
+};
+
+type RoutingCacheEntry<T> = { expiresAt: number; value: T };
+
+const ROUTING_CACHE_DEFAULT_TTL_MS = 5 * 60_000;
+const ROUTING_CACHE_DEFAULT_MAX_ENTRIES = 200;
+
+const routingMatrixCache = new Map<
+  string,
+  RoutingCacheEntry<{
+    provider: "openrouteservice";
+    profile: "driving-car" | "driving-hgv" | "cycling-regular" | "foot-walking";
+    durations: (number | null)[][] | null;
+    distances: (number | null)[][] | null;
+  }>
+>();
+
+const routingDirectionsCache = new Map<
+  string,
+  RoutingCacheEntry<{
+    provider: "openrouteservice";
+    profile: "driving-car" | "driving-hgv" | "cycling-regular" | "foot-walking";
+    distanceMeters: number;
+    durationSeconds: number;
+    geometry: { type: "LineString"; coordinates: [number, number][] };
+  }>
+>();
+
+function clampNumber(v: number, min: number, max: number): number {
+  return Math.min(Math.max(v, min), max);
+}
+
+function roundCoord6(v: number): number {
+  return Math.round(v * 1_000_000) / 1_000_000;
+}
+
+function resolveOrsRoutingConfig(): RoutingConfig | null {
+  const apiKey = process.env.OPENROUTESERVICE_API_KEY?.trim() ?? "";
+
+  const explicitBase =
+    process.env.OPENROUTESERVICE_ROUTING_BASE_URL?.replace(/\/$/, "").trim() ?? "";
+
+  let baseUrl = explicitBase;
+  if (!baseUrl) {
+    const geocodeBase =
+      process.env.OPENROUTESERVICE_BASE_URL?.replace(/\/$/, "").trim() ?? "";
+    if (geocodeBase.endsWith("/geocode")) {
+      baseUrl = geocodeBase.slice(0, -"/geocode".length);
+    }
+  }
+
+  if (!apiKey || !baseUrl) {
+    return null;
+  }
+
+  const timeoutRaw = Number(process.env.ROUTING_API_TIMEOUT_MS);
+  const timeoutMs = Number.isFinite(timeoutRaw)
+    ? clampNumber(timeoutRaw, 1000, 30_000)
+    : 8000;
+
+  const ttlRaw = Number(process.env.ROUTING_CACHE_TTL_MS);
+  const cacheTtlMs = Number.isFinite(ttlRaw)
+    ? clampNumber(ttlRaw, 0, 60 * 60_000)
+    : ROUTING_CACHE_DEFAULT_TTL_MS;
+
+  const maxRaw = Number(process.env.ROUTING_CACHE_MAX_ENTRIES);
+  const cacheMaxEntries = Number.isFinite(maxRaw)
+    ? clampNumber(maxRaw, 0, 2000)
+    : ROUTING_CACHE_DEFAULT_MAX_ENTRIES;
+
+  return {
+    baseUrl,
+    apiKey,
+    timeoutMs,
+    cacheTtlMs,
+    cacheMaxEntries,
+  };
+}
+
+function cacheGet<T>(cache: Map<string, RoutingCacheEntry<T>>, key: string): T | null {
+  const hit = cache.get(key);
+  if (!hit) {
+    return null;
+  }
+  if (Date.now() > hit.expiresAt) {
+    cache.delete(key);
+    return null;
+  }
+  return hit.value;
+}
+
+function cacheSet<T>(
+  cache: Map<string, RoutingCacheEntry<T>>,
+  key: string,
+  value: T,
+  ttlMs: number,
+  maxEntries: number,
+): void {
+  if (ttlMs <= 0 || maxEntries <= 0) {
+    return;
+  }
+  cache.set(key, { expiresAt: Date.now() + ttlMs, value });
+  while (cache.size > maxEntries) {
+    const firstKey = cache.keys().next().value as string | undefined;
+    if (!firstKey) break;
+    cache.delete(firstKey);
+  }
+}
+
+function parseOrsDirectionsGeojson(raw: unknown): {
+  distanceMeters: number;
+  durationSeconds: number;
+  geometry: { type: "LineString"; coordinates: [number, number][] };
+} | null {
+  if (!raw || typeof raw !== "object") {
+    return null;
+  }
+  const features = (raw as { features?: unknown }).features;
+  if (!Array.isArray(features) || !features[0] || typeof features[0] !== "object") {
+    return null;
+  }
+  const f0 = features[0] as {
+    geometry?: unknown;
+    properties?: unknown;
+  };
+  if (!f0.geometry || typeof f0.geometry !== "object") {
+    return null;
+  }
+  const geom = f0.geometry as { type?: unknown; coordinates?: unknown };
+  if (geom.type !== "LineString" || !Array.isArray(geom.coordinates)) {
+    return null;
+  }
+  const coords = geom.coordinates
+    .map((p) => (Array.isArray(p) ? [Number(p[0]), Number(p[1])] : [NaN, NaN]))
+    .filter(
+      (p): p is [number, number] =>
+        p.length === 2 && Number.isFinite(p[0]) && Number.isFinite(p[1]),
+    );
+  if (coords.length < 2) {
+    return null;
+  }
+
+  const summary =
+    f0.properties && typeof f0.properties === "object"
+      ? (f0.properties as { summary?: unknown }).summary
+      : null;
+  const distanceMeters =
+    summary && typeof summary === "object"
+      ? Number((summary as { distance?: unknown }).distance)
+      : NaN;
+  const durationSeconds =
+    summary && typeof summary === "object"
+      ? Number((summary as { duration?: unknown }).duration)
+      : NaN;
+  if (!Number.isFinite(distanceMeters) || !Number.isFinite(durationSeconds)) {
+    return null;
+  }
+
+  return {
+    distanceMeters,
+    durationSeconds,
+    geometry: { type: "LineString", coordinates: coords },
+  };
+}
 
 function todayIsoDate(): string {
   return new Date().toISOString().slice(0, 10);
@@ -70,11 +253,102 @@ function formatTimeForApi(value: unknown): string {
   return String(value);
 }
 
+function formatSchedulingAddressLabel(a: {
+  label: string | null;
+  recipientName: string;
+  street: string;
+  postalCode: string;
+  city: string;
+}): string {
+  const label = a.label?.trim();
+  const head = label && label.length > 0 ? label : a.recipientName.trim();
+  return `${head} · ${a.street.trim()}, ${a.postalCode.trim()} ${a.city.trim()}`;
+}
+
+function hasAssignmentCustomPlaceInput(data: {
+  placeLatitude: number | null;
+  placeLongitude: number | null;
+  placeStreet: string | null;
+  placeHouseNumber: string | null;
+  placePostalCode: string | null;
+  placeCity: string | null;
+  placeCountry: string | null;
+}): boolean {
+  if (data.placeLatitude != null && data.placeLongitude != null) {
+    return true;
+  }
+  return [
+    data.placeStreet,
+    data.placeHouseNumber,
+    data.placePostalCode,
+    data.placeCity,
+    data.placeCountry,
+  ].some((s) => s != null && String(s).trim() !== "");
+}
+
+function formatPlaceFromStructuredFields(p: {
+  placeStreet: string | null;
+  placeHouseNumber: string | null;
+  placePostalCode: string | null;
+  placeCity: string | null;
+  placeCountry: string | null;
+}): string | null {
+  const street = [p.placeStreet?.trim(), p.placeHouseNumber?.trim()]
+    .filter((x): x is string => Boolean(x && x.length > 0))
+    .join(" ");
+  const cityLine = [p.placePostalCode?.trim(), p.placeCity?.trim()]
+    .filter((x): x is string => Boolean(x && x.length > 0))
+    .join(" ");
+  const country = p.placeCountry?.trim();
+  const parts = [street, cityLine, country].filter(
+    (x): x is string => Boolean(x && x.length > 0),
+  );
+  if (parts.length === 0) {
+    return null;
+  }
+  return parts.join(", ").slice(0, 200);
+}
+
+function trimPlaceText(value: string | null | undefined, max: number): string | null {
+  if (value == null) {
+    return null;
+  }
+  const t = value.trim();
+  return t ? t.slice(0, max) : null;
+}
+
 function normalizeEmployeeStatus(v: string): "ACTIVE" | "ONBOARDING" | "INACTIVE" {
   if (v === "ACTIVE" || v === "ONBOARDING" || v === "INACTIVE") {
     return v;
   }
   return "ACTIVE";
+}
+
+function mergeSchedulingPlacePatch(
+  current: typeof schedulingAssignments.$inferSelect,
+  patch: z.infer<typeof schedulingAssignmentPatchSchema>,
+) {
+  return {
+    placeLatitude:
+      patch.placeLatitude !== undefined ? patch.placeLatitude : (current.placeLatitude ?? null),
+    placeLongitude:
+      patch.placeLongitude !== undefined
+        ? patch.placeLongitude
+        : (current.placeLongitude ?? null),
+    placeStreet:
+      patch.placeStreet !== undefined ? patch.placeStreet : (current.placeStreet ?? null),
+    placeHouseNumber:
+      patch.placeHouseNumber !== undefined
+        ? patch.placeHouseNumber
+        : (current.placeHouseNumber ?? null),
+    placePostalCode:
+      patch.placePostalCode !== undefined
+        ? patch.placePostalCode
+        : (current.placePostalCode ?? null),
+    placeCity: patch.placeCity !== undefined ? patch.placeCity : (current.placeCity ?? null),
+    placeCountry:
+      patch.placeCountry !== undefined ? patch.placeCountry : (current.placeCountry ?? null),
+  };
 }
 
 function mapAssignmentRow(r: typeof schedulingAssignments.$inferSelect) {
@@ -83,10 +357,21 @@ function mapAssignmentRow(r: typeof schedulingAssignments.$inferSelect) {
     employeeId: r.employeeId,
     date: String(r.date),
     startTime: formatTimeForApi(r.startTime),
+    plannedDurationMinutes: r.plannedDurationMinutes,
+    windowStartTime: r.windowStartTime ? formatTimeForApi(r.windowStartTime) : null,
+    windowEndTime: r.windowEndTime ? formatTimeForApi(r.windowEndTime) : null,
     title: r.title,
     place: r.place ?? null,
+    placeStreet: r.placeStreet ?? null,
+    placeHouseNumber: r.placeHouseNumber ?? null,
+    placePostalCode: r.placePostalCode ?? null,
+    placeCity: r.placeCity ?? null,
+    placeCountry: r.placeCountry ?? null,
+    placeLatitude: r.placeLatitude ?? null,
+    placeLongitude: r.placeLongitude ?? null,
     reminderMinutesBefore: r.reminderMinutesBefore ?? null,
     projectId: r.projectId ?? null,
+    addressId: r.addressId ?? null,
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
   };
@@ -96,19 +381,59 @@ async function resolveSchedulingProjectId(
   db: Db,
   tenantId: string,
   projectId: string | null | undefined,
-): Promise<{ ok: true; projectId: string | null } | { ok: false }> {
+): Promise<
+  | { ok: true; projectId: string | null; siteAddressId: string | null }
+  | { ok: false }
+> {
   if (projectId === undefined || projectId === null) {
-    return { ok: true, projectId: null };
+    return { ok: true, projectId: null, siteAddressId: null };
   }
   const rows = await db
-    .select({ id: projects.id })
+    .select({ id: projects.id, siteAddressId: projects.siteAddressId })
     .from(projects)
     .where(and(eq(projects.id, projectId), eq(projects.tenantId, tenantId)))
     .limit(1);
   if (!rows[0]) {
     return { ok: false };
   }
-  return { ok: true, projectId };
+  return { ok: true, projectId, siteAddressId: rows[0].siteAddressId ?? null };
+}
+
+async function resolveSchedulingAddressId(
+  db: Db,
+  tenantId: string,
+  requestedAddressId: string | null | undefined,
+  fallbackAddressId: string | null,
+): Promise<
+  | { ok: true; addressId: string | null; addressLabel: string | null }
+  | { ok: false }
+> {
+  const candidate = requestedAddressId ?? fallbackAddressId;
+  if (!candidate) {
+    return { ok: true, addressId: null, addressLabel: null };
+  }
+  const rows = await db
+    .select({
+      id: customerAddresses.id,
+      label: customerAddresses.label,
+      recipientName: customerAddresses.recipientName,
+      street: customerAddresses.street,
+      postalCode: customerAddresses.postalCode,
+      city: customerAddresses.city,
+    })
+    .from(customerAddresses)
+    .innerJoin(customers, eq(customers.id, customerAddresses.customerId))
+    .where(and(eq(customerAddresses.id, candidate), eq(customers.tenantId, tenantId)))
+    .limit(1);
+  const row = rows[0];
+  if (!row) {
+    return { ok: false };
+  }
+  return {
+    ok: true,
+    addressId: candidate,
+    addressLabel: formatSchedulingAddressLabel(row),
+  };
 }
 
 type DependencyWarning = {
@@ -461,11 +786,422 @@ export function createSchedulingAssignmentsListHandler(getDb: () => Db | undefin
   };
 }
 
+export function createSchedulingAddressesGeoHandler(getDb: () => Db | undefined) {
+  return async (c: Context) => {
+    const auth = c.get("auth");
+    if (!auth) {
+      return c.json({ error: "missing_auth" }, 500);
+    }
+    const db = getDb();
+    if (!db) {
+      return c.json({ error: "database_unavailable" }, 503);
+    }
+
+    const rawIds = c.req.query("ids")?.trim() ?? "";
+    if (!rawIds) {
+      return c.json({ error: "validation_error" }, 400);
+    }
+    const ids = rawIds
+      .split(",")
+      .map((s) => s.trim())
+      .filter((id) => UUID_RE.test(id));
+    const uniqueIds = [...new Set(ids)].slice(0, 200);
+    if (uniqueIds.length === 0) {
+      return c.json({ error: "validation_error" }, 400);
+    }
+
+    const rows = await db
+      .select({
+        id: customerAddresses.id,
+        label: customerAddresses.label,
+        recipientName: customerAddresses.recipientName,
+        street: customerAddresses.street,
+        postalCode: customerAddresses.postalCode,
+        city: customerAddresses.city,
+        latitude: customerAddresses.latitude,
+        longitude: customerAddresses.longitude,
+        createdAt: customerAddresses.createdAt,
+      })
+      .from(customerAddresses)
+      .innerJoin(customers, eq(customers.id, customerAddresses.customerId))
+      .where(
+        and(
+          eq(customers.tenantId, auth.tenantId),
+          inArray(customerAddresses.id, uniqueIds),
+        ),
+      )
+      .orderBy(asc(customerAddresses.createdAt), asc(customerAddresses.id));
+
+    const body = {
+      addresses: rows.map((r) => ({
+        id: r.id,
+        label: formatSchedulingAddressLabel(r),
+        latitude: r.latitude ?? null,
+        longitude: r.longitude ?? null,
+      })),
+    };
+    const parsed = schedulingAddressesGeoResponseSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ error: "serialize_error" }, 500);
+    }
+    return c.json(parsed.data);
+  };
+}
+
+export function createSchedulingRoutingMatrixHandler(getDb: () => Db | undefined) {
+  return async (c: Context) => {
+    const auth = c.get("auth");
+    if (!auth) {
+      return c.json({ error: "missing_auth" }, 500);
+    }
+    const db = getDb();
+    if (!db) {
+      return c.json({ error: "database_unavailable" }, 503);
+    }
+
+    const cfg = resolveOrsRoutingConfig();
+    if (!cfg) {
+      return c.json({ error: "routing_not_configured" }, 503);
+    }
+
+    let body: unknown;
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ error: "invalid_json" }, 400);
+    }
+
+    const parsedReq = schedulingRoutingMatrixRequestSchema.safeParse(body);
+    if (!parsedReq.success) {
+      return c.json(
+        { error: "validation_error", issues: parsedReq.error.issues },
+        400,
+      );
+    }
+
+    const profile = parsedReq.data.profile;
+    const metrics = [...new Set(parsedReq.data.metrics)].sort();
+    const locations = parsedReq.data.locations.map((p) => [
+      roundCoord6(p.longitude),
+      roundCoord6(p.latitude),
+    ]) satisfies [number, number][];
+
+    const cacheKey = JSON.stringify({
+      tenantId: auth.tenantId,
+      kind: "ors-matrix",
+      profile,
+      metrics,
+      locations,
+    });
+
+    const cached = cacheGet(routingMatrixCache, cacheKey);
+    if (cached) {
+      const out = { ...cached, cached: true };
+      const parsed = schedulingRoutingMatrixResponseSchema.safeParse(out);
+      if (!parsed.success) {
+        return c.json({ error: "serialize_error" }, 500);
+      }
+      return c.json(parsed.data);
+    }
+
+    const target = `${cfg.baseUrl}/v2/matrix/${encodeURIComponent(profile)}`;
+    const requestBody = {
+      locations,
+      metrics,
+      resolve_locations: false,
+    };
+
+    const ac = new AbortController();
+    const t = setTimeout(() => ac.abort(), cfg.timeoutMs);
+    try {
+      const res = await fetch(target, {
+        method: "POST",
+        headers: {
+          Authorization: cfg.apiKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
+        signal: ac.signal,
+      });
+      const raw: unknown = await res.json().catch(() => null);
+      if (!res.ok || raw === null || typeof raw !== "object") {
+        return c.json({ error: "routing_unavailable" }, 503);
+      }
+
+      const r0 = raw as { durations?: unknown; distances?: unknown };
+      const out = {
+        provider: "openrouteservice" as const,
+        profile,
+        cached: false,
+        durations: metrics.includes("duration") ? (r0.durations ?? null) : null,
+        distances: metrics.includes("distance") ? (r0.distances ?? null) : null,
+      };
+      const parsed = schedulingRoutingMatrixResponseSchema.safeParse(out);
+      if (!parsed.success) {
+        return c.json({ error: "routing_unavailable" }, 503);
+      }
+
+      cacheSet(
+        routingMatrixCache,
+        cacheKey,
+        parsed.data,
+        cfg.cacheTtlMs,
+        cfg.cacheMaxEntries,
+      );
+      return c.json(parsed.data);
+    } catch {
+      return c.json({ error: "routing_unavailable" }, 503);
+    } finally {
+      clearTimeout(t);
+    }
+  };
+}
+
+export function createSchedulingRoutingDirectionsHandler(getDb: () => Db | undefined) {
+  return async (c: Context) => {
+    const auth = c.get("auth");
+    if (!auth) {
+      return c.json({ error: "missing_auth" }, 500);
+    }
+    const db = getDb();
+    if (!db) {
+      return c.json({ error: "database_unavailable" }, 503);
+    }
+
+    const cfg = resolveOrsRoutingConfig();
+    if (!cfg) {
+      return c.json({ error: "routing_not_configured" }, 503);
+    }
+
+    let body: unknown;
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ error: "invalid_json" }, 400);
+    }
+
+    const parsedReq = schedulingRoutingDirectionsRequestSchema.safeParse(body);
+    if (!parsedReq.success) {
+      return c.json(
+        { error: "validation_error", issues: parsedReq.error.issues },
+        400,
+      );
+    }
+
+    const profile = parsedReq.data.profile;
+    const coordinates = parsedReq.data.coordinates.map((p) => [
+      roundCoord6(p.longitude),
+      roundCoord6(p.latitude),
+    ]) satisfies [number, number][];
+
+    const cacheKey = JSON.stringify({
+      tenantId: auth.tenantId,
+      kind: "ors-directions",
+      profile,
+      coordinates,
+    });
+
+    const cached = cacheGet(routingDirectionsCache, cacheKey);
+    if (cached) {
+      const out = { ...cached, cached: true };
+      const parsed = schedulingRoutingDirectionsResponseSchema.safeParse(out);
+      if (!parsed.success) {
+        return c.json({ error: "serialize_error" }, 500);
+      }
+      return c.json(parsed.data);
+    }
+
+    const target = `${cfg.baseUrl}/v2/directions/${encodeURIComponent(profile)}/geojson`;
+    const requestBody = {
+      coordinates,
+      instructions: false,
+    };
+
+    const ac = new AbortController();
+    const t = setTimeout(() => ac.abort(), cfg.timeoutMs);
+    try {
+      const res = await fetch(target, {
+        method: "POST",
+        headers: {
+          Authorization: cfg.apiKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
+        signal: ac.signal,
+      });
+      const raw: unknown = await res.json().catch(() => null);
+      if (!res.ok || raw === null) {
+        return c.json({ error: "routing_unavailable" }, 503);
+      }
+
+      const parsedOrs = parseOrsDirectionsGeojson(raw);
+      if (!parsedOrs) {
+        return c.json({ error: "routing_unavailable" }, 503);
+      }
+
+      const out = {
+        provider: "openrouteservice" as const,
+        profile,
+        cached: false,
+        distanceMeters: parsedOrs.distanceMeters,
+        durationSeconds: parsedOrs.durationSeconds,
+        geometry: parsedOrs.geometry,
+      };
+      const parsed = schedulingRoutingDirectionsResponseSchema.safeParse(out);
+      if (!parsed.success) {
+        return c.json({ error: "routing_unavailable" }, 503);
+      }
+
+      cacheSet(
+        routingDirectionsCache,
+        cacheKey,
+        parsed.data,
+        cfg.cacheTtlMs,
+        cfg.cacheMaxEntries,
+      );
+      return c.json(parsed.data);
+    } catch {
+      return c.json({ error: "routing_unavailable" }, 503);
+    } finally {
+      clearTimeout(t);
+    }
+  };
+}
+
+export function createSchedulingAssignmentsReorderHandler(getDb: () => Db | undefined) {
+  return async (c: Context) => {
+    const auth = c.get("auth");
+    if (!auth) {
+      return c.json({ error: "missing_auth" }, 500);
+    }
+    if (!canEditEmployees(auth)) {
+      return c.json({ error: "forbidden" }, 403);
+    }
+    const db = getDb();
+    if (!db) {
+      return c.json({ error: "database_unavailable" }, 503);
+    }
+
+    let body: unknown;
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ error: "invalid_json" }, 400);
+    }
+
+    const parsedReq = schedulingAssignmentsReorderRequestSchema.safeParse(body);
+    if (!parsedReq.success) {
+      return c.json(
+        { error: "validation_error", issues: parsedReq.error.issues },
+        400,
+      );
+    }
+
+    const items = parsedReq.data.assignments;
+    const idSet = new Set<string>();
+    const desiredTimeSet = new Set<string>();
+    for (const it of items) {
+      if (idSet.has(it.id)) {
+        return c.json({ error: "validation_error" }, 400);
+      }
+      idSet.add(it.id);
+      const normalizedTime = formatTimeForApi(it.startTime);
+      if (desiredTimeSet.has(normalizedTime)) {
+        return c.json({ error: "validation_error" }, 400);
+      }
+      desiredTimeSet.add(normalizedTime);
+    }
+    const ids = [...idSet];
+    if (ids.length === 0) {
+      return c.json({ error: "validation_error" }, 400);
+    }
+
+    const rows = await db
+      .select({
+        id: schedulingAssignments.id,
+        employeeId: schedulingAssignments.employeeId,
+        date: schedulingAssignments.date,
+        startTime: schedulingAssignments.startTime,
+      })
+      .from(schedulingAssignments)
+      .where(
+        and(eq(schedulingAssignments.tenantId, auth.tenantId), inArray(schedulingAssignments.id, ids)),
+      );
+    if (rows.length !== ids.length) {
+      return c.json({ error: "not_found" }, 404);
+    }
+
+    const employeeId = rows[0]?.employeeId;
+    const dateIso = rows[0] ? String(rows[0].date) : null;
+    if (!employeeId || !dateIso) {
+      return c.json({ error: "serialize_error" }, 500);
+    }
+    for (const r of rows) {
+      if (r.employeeId !== employeeId || String(r.date) !== dateIso) {
+        return c.json({ error: "validation_error" }, 400);
+      }
+    }
+
+    const currentTimeSet = new Set(rows.map((r) => formatTimeForApi(r.startTime)));
+    if (currentTimeSet.size !== rows.length) {
+      return c.json({ error: "employee_slot_conflict" }, 409);
+    }
+    if (desiredTimeSet.size !== rows.length) {
+      return c.json({ error: "validation_error" }, 400);
+    }
+    for (const t of desiredTimeSet) {
+      if (!currentTimeSet.has(t)) {
+        return c.json({ error: "validation_error" }, 400);
+      }
+    }
+
+    const desiredTimes = [...desiredTimeSet];
+    const potentialConflicts = await db
+      .select({ id: schedulingAssignments.id })
+      .from(schedulingAssignments)
+      .where(
+        and(
+          eq(schedulingAssignments.tenantId, auth.tenantId),
+          eq(schedulingAssignments.employeeId, employeeId),
+          eq(schedulingAssignments.date, dateIso),
+          inArray(schedulingAssignments.startTime, desiredTimes),
+        ),
+      );
+    const conflict = potentialConflicts.find((r) => !idSet.has(r.id));
+    if (conflict) {
+      return c.json({ error: "employee_slot_conflict" }, 409);
+    }
+
+    const desiredTimeById = new Map(items.map((it) => [it.id, it.startTime] as const));
+    const now = new Date();
+    await db.transaction(async (tx) => {
+      for (const r of rows) {
+        const nextStartTime = desiredTimeById.get(r.id);
+        if (!nextStartTime) continue;
+        await tx
+          .update(schedulingAssignments)
+          .set({ startTime: nextStartTime, updatedAt: now })
+          .where(and(eq(schedulingAssignments.tenantId, auth.tenantId), eq(schedulingAssignments.id, r.id)));
+      }
+    });
+
+    const out = { ok: true as const };
+    const parsedRes = schedulingAssignmentsReorderResponseSchema.safeParse(out);
+    if (!parsedRes.success) {
+      return c.json({ error: "serialize_error" }, 500);
+    }
+    return c.json(parsedRes.data);
+  };
+}
+
 export function createSchedulingAssignmentPostHandler(getDb: () => Db | undefined) {
   return async (c: Context) => {
     const auth = c.get("auth");
     if (!auth) {
       return c.json({ error: "missing_auth" }, 500);
+    }
+    if (!canEditEmployees(auth)) {
+      return c.json({ error: "forbidden" }, 403);
     }
     const db = getDb();
     if (!db) {
@@ -524,6 +1260,17 @@ export function createSchedulingAssignmentPostHandler(getDb: () => Db | undefine
     );
     if (!projectResolved.ok) {
       return c.json({ error: "project_not_found" }, 404);
+    }
+
+    const customPlaceInput = hasAssignmentCustomPlaceInput(parsed.data);
+    const addressResolved = await resolveSchedulingAddressId(
+      db,
+      auth.tenantId,
+      parsed.data.addressId,
+      customPlaceInput ? null : projectResolved.siteAddressId,
+    );
+    if (!addressResolved.ok) {
+      return c.json({ error: "address_not_found" }, 404);
     }
 
     const relationshipRows = await db
@@ -603,6 +1350,19 @@ export function createSchedulingAssignmentPostHandler(getDb: () => Db | undefine
       }
     }
 
+    const explicitPlace = trimPlaceText(parsed.data.place ?? null, 200);
+    const structuredPlace = formatPlaceFromStructuredFields({
+      placeStreet: parsed.data.placeStreet,
+      placeHouseNumber: parsed.data.placeHouseNumber,
+      placePostalCode: parsed.data.placePostalCode,
+      placeCity: parsed.data.placeCity,
+      placeCountry: parsed.data.placeCountry,
+    });
+    const place =
+      explicitPlace ??
+      structuredPlace ??
+      (addressResolved.addressLabel ? addressResolved.addressLabel.slice(0, 200) : null);
+
     const now = new Date();
     const [inserted] = await db
       .insert(schedulingAssignments)
@@ -611,10 +1371,21 @@ export function createSchedulingAssignmentPostHandler(getDb: () => Db | undefine
         employeeId: parsed.data.employeeId,
         date: parsed.data.date,
         startTime: parsed.data.startTime,
+        plannedDurationMinutes: parsed.data.plannedDurationMinutes,
+        windowStartTime: parsed.data.windowStartTime,
+        windowEndTime: parsed.data.windowEndTime,
         title: parsed.data.title.trim(),
-        place: parsed.data.place?.trim() ? parsed.data.place.trim() : null,
+        place,
+        placeStreet: trimPlaceText(parsed.data.placeStreet, 500),
+        placeHouseNumber: trimPlaceText(parsed.data.placeHouseNumber, 80),
+        placePostalCode: trimPlaceText(parsed.data.placePostalCode, 40),
+        placeCity: trimPlaceText(parsed.data.placeCity, 200),
+        placeCountry: trimPlaceText(parsed.data.placeCountry, 200),
+        placeLatitude: parsed.data.placeLatitude,
+        placeLongitude: parsed.data.placeLongitude,
         reminderMinutesBefore: parsed.data.reminderMinutesBefore ?? null,
         projectId: projectResolved.projectId,
+        addressId: addressResolved.addressId,
         updatedAt: now,
       })
       .returning();
@@ -639,6 +1410,9 @@ export function createSchedulingAssignmentPatchHandler(getDb: () => Db | undefin
     const auth = c.get("auth");
     if (!auth) {
       return c.json({ error: "missing_auth" }, 500);
+    }
+    if (!canEditEmployees(auth)) {
+      return c.json({ error: "forbidden" }, 403);
     }
     const db = getDb();
     if (!db) {
@@ -683,20 +1457,47 @@ export function createSchedulingAssignmentPatchHandler(getDb: () => Db | undefin
     const nextEmployeeId = patch.employeeId ?? current.employeeId;
     const nextDate = patch.date ?? String(current.date);
     const nextStartTime = patch.startTime ?? formatTimeForApi(current.startTime);
+    const nextPlannedDurationMinutes =
+      patch.plannedDurationMinutes ?? current.plannedDurationMinutes;
+    const nextWindowStartTime =
+      patch.windowStartTime !== undefined
+        ? patch.windowStartTime
+        : (current.windowStartTime ?? null);
+    const nextWindowEndTime =
+      patch.windowEndTime !== undefined ? patch.windowEndTime : (current.windowEndTime ?? null);
     const nextTitle =
       patch.title !== undefined ? patch.title.trim() : current.title;
-    const nextPlace =
-      patch.place !== undefined
-        ? patch.place?.trim()
-          ? patch.place.trim()
-          : null
-        : current.place ?? null;
+
+    const mergedPlaceRaw = mergeSchedulingPlacePatch(current, patch);
+    const nextPlaceStreet = trimPlaceText(mergedPlaceRaw.placeStreet, 500);
+    const nextPlaceHouseNumber = trimPlaceText(mergedPlaceRaw.placeHouseNumber, 80);
+    const nextPlacePostalCode = trimPlaceText(mergedPlaceRaw.placePostalCode, 40);
+    const nextPlaceCity = trimPlaceText(mergedPlaceRaw.placeCity, 200);
+    const nextPlaceCountry = trimPlaceText(mergedPlaceRaw.placeCountry, 200);
+    const nextPlaceLatitude = mergedPlaceRaw.placeLatitude;
+    const nextPlaceLongitude = mergedPlaceRaw.placeLongitude;
+
+    let nextPlace: string | null;
+    if (patch.place !== undefined) {
+      nextPlace = trimPlaceText(patch.place, 200);
+    } else {
+      const structured = formatPlaceFromStructuredFields({
+        placeStreet: nextPlaceStreet,
+        placeHouseNumber: nextPlaceHouseNumber,
+        placePostalCode: nextPlacePostalCode,
+        placeCity: nextPlaceCity,
+        placeCountry: nextPlaceCountry,
+      });
+      nextPlace = structured ?? (current.place ?? null);
+    }
+
     const nextReminder =
       patch.reminderMinutesBefore !== undefined
         ? patch.reminderMinutesBefore
         : current.reminderMinutesBefore;
 
     let nextProjectId: string | null = current.projectId ?? null;
+    let projectSiteAddressId: string | null = null;
     if (patch.projectId !== undefined) {
       const projectResolved = await resolveSchedulingProjectId(
         db,
@@ -707,6 +1508,61 @@ export function createSchedulingAssignmentPatchHandler(getDb: () => Db | undefin
         return c.json({ error: "project_not_found" }, 404);
       }
       nextProjectId = projectResolved.projectId;
+      projectSiteAddressId = projectResolved.siteAddressId;
+    }
+
+    let nextAddressId: string | null = current.addressId ?? null;
+    let nextAddressLabel: string | null = null;
+    if (patch.addressId !== undefined) {
+      if (patch.addressId === null) {
+        nextAddressId = null;
+      } else {
+        const addressResolved = await resolveSchedulingAddressId(
+          db,
+          auth.tenantId,
+          patch.addressId,
+          null,
+        );
+        if (!addressResolved.ok) {
+          return c.json({ error: "address_not_found" }, 404);
+        }
+        nextAddressId = addressResolved.addressId;
+        nextAddressLabel = addressResolved.addressLabel;
+      }
+    } else if (patch.projectId !== undefined) {
+      if (hasAssignmentCustomPlaceInput(mergedPlaceRaw)) {
+        nextAddressId = null;
+      } else {
+        nextAddressId = projectSiteAddressId;
+      }
+    }
+
+    if (patch.addressId === undefined && hasAssignmentCustomPlaceInput(mergedPlaceRaw)) {
+      nextAddressId = null;
+    }
+
+    if (
+      patch.place === undefined &&
+      nextPlace === null &&
+      nextAddressId &&
+      nextPlaceLatitude == null &&
+      nextPlaceLongitude == null
+    ) {
+      if (!nextAddressLabel) {
+        const addressResolved = await resolveSchedulingAddressId(
+          db,
+          auth.tenantId,
+          nextAddressId,
+          null,
+        );
+        if (!addressResolved.ok) {
+          return c.json({ error: "address_not_found" }, 404);
+        }
+        nextAddressLabel = addressResolved.addressLabel;
+      }
+      if (nextAddressLabel) {
+        nextPlace = nextAddressLabel.slice(0, 200);
+      }
     }
 
     const employeeRows = await db
@@ -826,10 +1682,21 @@ export function createSchedulingAssignmentPatchHandler(getDb: () => Db | undefin
         employeeId: nextEmployeeId,
         date: nextDate,
         startTime: nextStartTime,
+        plannedDurationMinutes: nextPlannedDurationMinutes,
+        windowStartTime: nextWindowStartTime,
+        windowEndTime: nextWindowEndTime,
         title: nextTitle,
         place: nextPlace,
+        placeStreet: nextPlaceStreet,
+        placeHouseNumber: nextPlaceHouseNumber,
+        placePostalCode: nextPlacePostalCode,
+        placeCity: nextPlaceCity,
+        placeCountry: nextPlaceCountry,
+        placeLatitude: nextPlaceLatitude,
+        placeLongitude: nextPlaceLongitude,
         reminderMinutesBefore: nextReminder ?? null,
         projectId: nextProjectId,
+        addressId: nextAddressId,
         updatedAt: now,
       })
       .where(
@@ -859,6 +1726,9 @@ export function createSchedulingAssignmentDeleteHandler(getDb: () => Db | undefi
     const auth = c.get("auth");
     if (!auth) {
       return c.json({ error: "missing_auth" }, 500);
+    }
+    if (!canEditEmployees(auth)) {
+      return c.json({ error: "forbidden" }, 403);
     }
     const db = getDb();
     if (!db) {
@@ -892,6 +1762,9 @@ export function createSchedulingAssignmentsIcsHandler(getDb: () => Db | undefine
     const auth = c.get("auth");
     if (!auth) {
       return c.json({ error: "missing_auth" }, 500);
+    }
+    if (!canEditEmployees(auth)) {
+      return c.json({ error: "forbidden" }, 403);
     }
     const db = getDb();
     if (!db) {
@@ -982,7 +1855,7 @@ export function createSchedulingAssignmentsIcsHandler(getDb: () => Db | undefine
       lines.push(`UID:${a.id}@zunftgewerk.local`);
       lines.push(`DTSTAMP:${stamp}`);
       lines.push(`DTSTART:${formatIcsLocalDateTime(String(a.date), formatTimeForApi(a.startTime))}`);
-      lines.push("DURATION:PT1H");
+      lines.push(`DURATION:PT${a.plannedDurationMinutes}M`);
       lines.push(`SUMMARY:${escapeIcsText(a.title)}`);
       if (a.place) {
         lines.push(`LOCATION:${escapeIcsText(a.place)}`);

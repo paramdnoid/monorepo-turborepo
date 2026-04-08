@@ -1,4 +1,5 @@
 @import "@repo/ui/styles/globals.css";
+@import "leaflet/dist/leaflet.css";
 
 /* Onboarding / auth panel utilities (from product design system) */
 .enterprise-grid {

@@ -1,13 +1,16 @@
 "use client";
 
 import * as React from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { de } from "react-day-picker/locale/de";
 import { enUS } from "react-day-picker/locale/en-US";
 
 import {
+  projectHubResponseSchema,
   projectsListResponseSchema,
   schedulingAssignmentCreateResponseSchema,
+  schedulingAddressesGeoResponseSchema,
   schedulingAssignmentsListResponseSchema,
   schedulingDayResponseSchema,
   type SchedulingDependencyWarning,
@@ -45,13 +48,103 @@ import { cn } from "@repo/ui/utils";
 
 import type { Locale } from "@/lib/i18n/locale";
 import { parseResponseJson } from "@/lib/parse-response-json";
+import { useWebApp } from "@/components/web/shell/web-app-context";
+import {
+  WebPlaceLookupFields,
+  type WebPlaceLookupFieldsCopy,
+  type WebPlaceLookupValue,
+} from "@/components/web/settings/web-place-lookup-fields";
+
+const SchedulingMapPanel = dynamic(
+  () => import("./scheduling-map-panel").then((m) => m.SchedulingMapPanel),
+  { ssr: false },
+);
 
 const PROJECT_SELECT_NONE = "__none__" as const;
+
+const SCHED_EMPTY_PLACE: WebPlaceLookupValue = {
+  street: "",
+  houseNumber: "",
+  postalCode: "",
+  city: "",
+  country: "DE",
+  latitude: null,
+  longitude: null,
+};
+
+function trimToNull(s: string, max: number): string | null {
+  const t = s.trim();
+  return t ? t.slice(0, max) : null;
+}
+
+function buildSchedulingPlacePayload(v: WebPlaceLookupValue) {
+  return {
+    place: null as string | null,
+    placeStreet: trimToNull(v.street, 500),
+    placeHouseNumber: trimToNull(v.houseNumber, 80),
+    placePostalCode: trimToNull(v.postalCode, 40),
+    placeCity: trimToNull(v.city, 200),
+    placeCountry: trimToNull(v.country, 200),
+    placeLatitude: v.latitude,
+    placeLongitude: v.longitude,
+  };
+}
 
 function isUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
     value,
   );
+}
+
+function parseIsoDateLocal(value: string | undefined): Date | null {
+  if (!value) return null;
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
+  if (!m) return null;
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const d = Number(m[3]);
+  if (!Number.isInteger(y) || !Number.isInteger(mo) || !Number.isInteger(d)) {
+    return null;
+  }
+  const dt = new Date(y, mo - 1, d);
+  if (Number.isNaN(dt.getTime())) return null;
+  if (dt.getFullYear() !== y || dt.getMonth() !== mo - 1 || dt.getDate() !== d) {
+    return null;
+  }
+  return dt;
+}
+
+function addDays(d: Date, days: number): Date {
+  const next = new Date(d);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+function getMonthGridRange(month: Date, weekStartsOn: number): { from: Date; to: Date } {
+  const firstOfMonth = new Date(month.getFullYear(), month.getMonth(), 1);
+  const lastOfMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0);
+  const weekEndsOn = (weekStartsOn + 6) % 7;
+
+  const from = new Date(firstOfMonth);
+  while (from.getDay() !== weekStartsOn) {
+    from.setDate(from.getDate() - 1);
+  }
+  const to = new Date(lastOfMonth);
+  while (to.getDay() !== weekEndsOn) {
+    to.setDate(to.getDate() + 1);
+  }
+  return { from, to };
+}
+
+function splitRangeMaxDaysInclusive(from: Date, to: Date, maxDays: number): Array<[Date, Date]> {
+  const out: Array<[Date, Date]> = [];
+  let cursor = new Date(from);
+  while (cursor <= to) {
+    const segmentTo = addDays(cursor, maxDays - 1);
+    out.push([new Date(cursor), segmentTo < to ? segmentTo : new Date(to)]);
+    cursor = addDays(segmentTo, 1);
+  }
+  return out;
 }
 
 type SchedulingAssignment = {
@@ -62,6 +155,14 @@ type SchedulingAssignment = {
   place: string;
   employeeId: string;
   projectId: string | null;
+  addressId: string | null;
+  placeStreet: string | null;
+  placeHouseNumber: string | null;
+  placePostalCode: string | null;
+  placeCity: string | null;
+  placeCountry: string | null;
+  placeLatitude: number | null;
+  placeLongitude: number | null;
   reminderMinutesBefore: number | null;
 };
 
@@ -159,15 +260,22 @@ function readPatchFieldErrors(
 export function SchedulingContent({
   locale,
   initialProjectId,
+  initialDate,
 }: {
   locale: Locale;
   initialProjectId?: string;
+  initialDate?: string;
 }) {
-  const initialMonth = React.useMemo(() => new Date(), []);
+  const { session } = useWebApp();
+  const canEdit = session.permissions.workforce.canEdit;
+  const initialSelected = React.useMemo(() => {
+    return parseIsoDateLocal(initialDate) ?? new Date();
+  }, [initialDate]);
+  const initialMonth = React.useMemo(() => {
+    return new Date(initialSelected.getFullYear(), initialSelected.getMonth(), 1);
+  }, [initialSelected]);
   const [month, setMonth] = React.useState(initialMonth);
-  const [selected, setSelected] = React.useState<Date | undefined>(
-    () => new Date(),
-  );
+  const [selected, setSelected] = React.useState<Date | undefined>(() => initialSelected);
   const [employees, setEmployees] = React.useState<SchedulingDayEmployee[]>([]);
   const [dependencyWarnings, setDependencyWarnings] = React.useState<
     SchedulingDependencyWarning[]
@@ -178,6 +286,14 @@ export function SchedulingContent({
   const [assignments, setAssignments] = React.useState<SchedulingAssignment[]>(
     [],
   );
+  const [addressGeoBusy, setAddressGeoBusy] = React.useState(false);
+  const [addressGeoById, setAddressGeoById] = React.useState<
+    Record<
+      string,
+      { label: string; latitude: number | null; longitude: number | null } | undefined
+    >
+  >({});
+  const addressGeoRequestIdRef = React.useRef(0);
   const [assignmentDates, setAssignmentDates] = React.useState<Set<string>>(
     () => new Set(),
   );
@@ -187,7 +303,9 @@ export function SchedulingContent({
   );
   const [draftTime, setDraftTime] = React.useState("08:00");
   const [draftTitle, setDraftTitle] = React.useState("");
-  const [draftPlace, setDraftPlace] = React.useState("");
+  const [draftPlaceValue, setDraftPlaceValue] = React.useState<WebPlaceLookupValue>(
+    () => ({ ...SCHED_EMPTY_PLACE }),
+  );
   const [draftEmployeeId, setDraftEmployeeId] = React.useState<string>("");
   const [draftReminderMinutes, setDraftReminderMinutes] = React.useState<
     "none" | "15" | "30" | "60" | "120"
@@ -198,7 +316,9 @@ export function SchedulingContent({
   const [editDate, setEditDate] = React.useState("");
   const [editTime, setEditTime] = React.useState("08:00");
   const [editTitle, setEditTitle] = React.useState("");
-  const [editPlace, setEditPlace] = React.useState("");
+  const [editPlaceValue, setEditPlaceValue] = React.useState<WebPlaceLookupValue>(
+    () => ({ ...SCHED_EMPTY_PLACE }),
+  );
   const [editEmployeeId, setEditEmployeeId] = React.useState("");
   const [editReminderMinutes, setEditReminderMinutes] = React.useState<
     "none" | "15" | "30" | "60" | "120"
@@ -207,15 +327,70 @@ export function SchedulingContent({
     React.useState<AssignmentEditFieldErrors>({});
 
   const [projectOptions, setProjectOptions] = React.useState<
-    { id: string; title: string }[]
+    { id: string; title: string; siteAddressId: string | null }[]
   >([]);
   const [draftProjectId, setDraftProjectId] = React.useState<string>(
     PROJECT_SELECT_NONE,
   );
+  const [draftAddressId, setDraftAddressId] = React.useState<string | null>(null);
   const [editProjectId, setEditProjectId] = React.useState<string>(
     PROJECT_SELECT_NONE,
   );
+  const [editAddressId, setEditAddressId] = React.useState<string | null>(null);
+  const [activeProjectId, setActiveProjectId] = React.useState<string>(
+    PROJECT_SELECT_NONE,
+  );
   const projectPrefillDoneRef = React.useRef(false);
+  const lastSyncedEditProjectIdRef = React.useRef<string | null>(null);
+
+  const schedulingPlaceCopy: WebPlaceLookupFieldsCopy = React.useMemo(
+    () =>
+      locale === "en"
+        ? {
+            placeholder: "Search address…",
+            locateTitle: "Use GPS location",
+            notConfiguredHint:
+              "Address lookup is not configured. You can fill in the fields manually.",
+            autoFilledHint:
+              "Filled automatically — please verify and adjust if needed.",
+            locateUnsupported: "Your browser does not support geolocation.",
+            locateDenied:
+              "Location access was denied. Please allow location access in your browser settings.",
+            locateUnavailable:
+              "Location unavailable. Location services might be disabled.",
+            locateTimeout: "Location lookup timed out. Please try again.",
+            locateFailed: "Could not determine location.",
+            streetLabel: "Street",
+            houseNumberLabel: "House no.",
+            postalCodeLabel: "Postal code",
+            cityLabel: "City",
+            countryLabel: "Country",
+            coordinatesLabel: "Coordinates",
+          }
+        : {
+            placeholder: "Adresse suchen…",
+            locateTitle: "GPS-Standort ermitteln",
+            notConfiguredHint:
+              "Adresssuche ist nicht konfiguriert. Felder koennen manuell befuellt werden.",
+            autoFilledHint:
+              "Automatisch ermittelt – bitte pruefen und ggf. korrigieren.",
+            locateUnsupported: "Ihr Browser unterstuetzt keine GPS-Ortung.",
+            locateDenied:
+              "GPS-Zugriff wurde verweigert. Bitte aktivieren Sie die Standortfreigabe in Ihren Browser-Einstellungen.",
+            locateUnavailable:
+              "Position nicht verfuegbar. Standortdienste sind moeglicherweise deaktiviert.",
+            locateTimeout:
+              "Zeitueberschreitung bei der Standortermittlung. Bitte versuchen Sie es erneut.",
+            locateFailed: "Standort konnte nicht ermittelt werden.",
+            streetLabel: "Strasse",
+            houseNumberLabel: "Hausnummer",
+            postalCodeLabel: "PLZ",
+            cityLabel: "Stadt",
+            countryLabel: "Land",
+            coordinatesLabel: "Koordinaten",
+          },
+    [locale],
+  );
 
   const rdpLocale = locale === "en" ? enUS : de;
   const selectedDate = selected ? toIsoDateLocal(selected) : null;
@@ -234,7 +409,11 @@ export function SchedulingContent({
           return;
         }
         setProjectOptions(
-          parsed.data.projects.map((p) => ({ id: p.id, title: p.title })),
+          parsed.data.projects.map((p) => ({
+            id: p.id,
+            title: p.title,
+            siteAddressId: p.siteAddressId,
+          })),
         );
       } catch {
         // Projects list is optional; scheduling still works without it.
@@ -257,6 +436,7 @@ export function SchedulingContent({
       projectOptions.some((p) => p.id === initialProjectId)
     ) {
       setDraftProjectId(initialProjectId);
+      setActiveProjectId(initialProjectId);
       projectPrefillDoneRef.current = true;
     }
   }, [initialProjectId, projectOptions]);
@@ -268,6 +448,110 @@ export function SchedulingContent({
     }
     return m;
   }, [projectOptions]);
+
+  const projectSiteAddressLabelCacheRef = React.useRef(
+    new Map<string, string | null>(),
+  );
+
+  const loadProjectSiteAddressLabel = React.useCallback(
+    async (projectId: string): Promise<string | null> => {
+      const cached = projectSiteAddressLabelCacheRef.current.get(projectId);
+      if (cached !== undefined) {
+        return cached;
+      }
+      try {
+        const res = await fetch(
+          `/api/web/projects/${encodeURIComponent(projectId)}/hub`,
+          { credentials: "include" },
+        );
+        const text = await res.text();
+        const json = parseResponseJson(text);
+        const parsed = projectHubResponseSchema.safeParse(json);
+        if (!res.ok || !parsed.success) {
+          projectSiteAddressLabelCacheRef.current.set(projectId, null);
+          return null;
+        }
+        const label = parsed.data.siteAddressLabel ?? null;
+        projectSiteAddressLabelCacheRef.current.set(projectId, label);
+        return label;
+      } catch {
+        projectSiteAddressLabelCacheRef.current.set(projectId, null);
+        return null;
+      }
+    },
+    [],
+  );
+
+  React.useEffect(() => {
+    if (draftProjectId === PROJECT_SELECT_NONE) {
+      setDraftAddressId(null);
+      return;
+    }
+    const project = projectOptions.find((p) => p.id === draftProjectId) ?? null;
+    const siteAddressId = project?.siteAddressId ?? null;
+    setDraftAddressId(siteAddressId);
+    if (!siteAddressId) return;
+
+    let cancelled = false;
+    void (async () => {
+      const label = await loadProjectSiteAddressLabel(draftProjectId);
+      if (cancelled || !label) return;
+      const oneLine = label.replace(/\s*\n\s*/g, ", ").trim();
+      const trimmed = oneLine.length > 200 ? `${oneLine.slice(0, 197)}…` : oneLine;
+      setDraftPlaceValue((prev) => {
+        const hasUserContent =
+          prev.street.trim() !== "" ||
+          prev.postalCode.trim() !== "" ||
+          prev.city.trim() !== "" ||
+          prev.latitude != null;
+        if (hasUserContent) return prev;
+        return { ...prev, street: trimmed };
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [draftProjectId, loadProjectSiteAddressLabel, projectOptions]);
+
+  React.useEffect(() => {
+    if (!editAssignmentId) return;
+    if (editProjectId === PROJECT_SELECT_NONE) {
+      if (lastSyncedEditProjectIdRef.current !== PROJECT_SELECT_NONE) {
+        lastSyncedEditProjectIdRef.current = PROJECT_SELECT_NONE;
+        setEditAddressId(null);
+      }
+      return;
+    }
+    if (editProjectId === lastSyncedEditProjectIdRef.current) {
+      return;
+    }
+    lastSyncedEditProjectIdRef.current = editProjectId;
+    const project = projectOptions.find((p) => p.id === editProjectId) ?? null;
+    if (!project) return;
+    const siteAddressId = project?.siteAddressId ?? null;
+    setEditAddressId(siteAddressId);
+    if (!siteAddressId) return;
+
+    let cancelled = false;
+    void (async () => {
+      const label = await loadProjectSiteAddressLabel(editProjectId);
+      if (cancelled || !label) return;
+      const oneLine = label.replace(/\s*\n\s*/g, ", ").trim();
+      const trimmed = oneLine.length > 200 ? `${oneLine.slice(0, 197)}…` : oneLine;
+      setEditPlaceValue((prev) => {
+        const hasUserContent =
+          prev.street.trim() !== "" ||
+          prev.postalCode.trim() !== "" ||
+          prev.city.trim() !== "" ||
+          prev.latitude != null;
+        if (hasUserContent) return prev;
+        return { ...prev, street: trimmed };
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [editAssignmentId, editProjectId, loadProjectSiteAddressLabel, projectOptions]);
 
   const editProjectSelectItems = React.useMemo(() => {
     const items = projectOptions.map((p) => ({ ...p }));
@@ -281,10 +565,29 @@ export function SchedulingContent({
           locale === "en"
             ? "Linked project (not in current list)"
             : "Verknuepftes Projekt (nicht in Liste)",
+        siteAddressId: null,
       });
     }
     return items;
   }, [projectOptions, editProjectId, locale]);
+
+  const activeProjectSelectItems = React.useMemo(() => {
+    const items = projectOptions.map((p) => ({ ...p }));
+    if (
+      activeProjectId !== PROJECT_SELECT_NONE &&
+      !items.some((p) => p.id === activeProjectId)
+    ) {
+      items.push({
+        id: activeProjectId,
+        title:
+          locale === "en"
+            ? "Filter project (not in current list)"
+            : "Filter-Projekt (nicht in Liste)",
+        siteAddressId: null,
+      });
+    }
+    return items;
+  }, [projectOptions, activeProjectId, locale]);
 
   const availableEmployees = React.useMemo(
     () => employees.filter((e) => e.isAvailable),
@@ -296,6 +599,8 @@ export function SchedulingContent({
     [assignments],
   );
   const allAssignableEmployees = employees;
+  const projectFilterId =
+    activeProjectId === PROJECT_SELECT_NONE ? null : activeProjectId;
 
   React.useEffect(() => {
     if (!selectedDate) return;
@@ -349,19 +654,83 @@ export function SchedulingContent({
   }, [locale, selectedDate]);
 
   const loadAssignmentDates = React.useCallback(async () => {
+    const weekStartsOn = locale === "en" ? 0 : 1;
+    const { from, to } = getMonthGridRange(month, weekStartsOn);
+    const segments = splitRangeMaxDaysInclusive(from, to, 31);
+    const nextDates = new Set<string>();
     try {
-      const res = await fetch("/api/web/scheduling/assignments", {
+      for (const [segFrom, segTo] of segments) {
+        const qs = new URLSearchParams({
+          dateFrom: toIsoDateLocal(segFrom),
+          dateTo: toIsoDateLocal(segTo),
+        });
+        if (projectFilterId) {
+          qs.set("projectId", projectFilterId);
+        }
+        const res = await fetch(`/api/web/scheduling/assignments?${qs.toString()}`, {
+          credentials: "include",
+        });
+        const text = await res.text();
+        const json = parseResponseJson(text);
+        const parsed = schedulingAssignmentsListResponseSchema.safeParse(json);
+        if (!res.ok || !parsed.success) {
+          continue;
+        }
+        for (const a of parsed.data.assignments) {
+          nextDates.add(a.date);
+        }
+      }
+      setAssignmentDates(nextDates);
+    } catch {
+      // silently ignore calendar marker loading errors
+    }
+  }, [locale, month, projectFilterId]);
+
+  const loadAddressGeo = React.useCallback(async (addressIds: string[]) => {
+    const ids = [...new Set(addressIds.filter(isUuid))].slice(0, 200);
+    const requestId = (addressGeoRequestIdRef.current += 1);
+    if (ids.length === 0) {
+      setAddressGeoById({});
+      setAddressGeoBusy(false);
+      return;
+    }
+    setAddressGeoBusy(true);
+    try {
+      const qs = new URLSearchParams({ ids: ids.join(",") });
+      const res = await fetch(`/api/web/scheduling/addresses?${qs.toString()}`, {
         credentials: "include",
       });
       const text = await res.text();
       const json = parseResponseJson(text);
-      const parsed = schedulingAssignmentsListResponseSchema.safeParse(json);
-      if (!res.ok || !parsed.success) {
+      const parsed = schedulingAddressesGeoResponseSchema.safeParse(json);
+      if (requestId !== addressGeoRequestIdRef.current) {
         return;
       }
-      setAssignmentDates(new Set(parsed.data.assignments.map((a) => a.date)));
+      if (!res.ok || !parsed.success) {
+        setAddressGeoById({});
+        return;
+      }
+      const next: Record<
+        string,
+        { label: string; latitude: number | null; longitude: number | null }
+      > = {};
+      for (const a of parsed.data.addresses) {
+        next[a.id] = {
+          label: a.label,
+          latitude: a.latitude,
+          longitude: a.longitude,
+        };
+      }
+      setAddressGeoById(next);
     } catch {
-      // silently ignore calendar marker loading errors
+      if (requestId !== addressGeoRequestIdRef.current) {
+        return;
+      }
+      setAddressGeoById({});
+    } finally {
+      if (requestId === addressGeoRequestIdRef.current) {
+        setAddressGeoBusy(false);
+      }
     }
   }, []);
 
@@ -370,15 +739,19 @@ export function SchedulingContent({
       setAssignmentBusy(true);
       setAssignmentError(null);
       try {
-        const res = await fetch(
-          `/api/web/scheduling/assignments?date=${encodeURIComponent(date)}`,
-          { credentials: "include" },
-        );
+        const qs = new URLSearchParams({ date });
+        if (projectFilterId) {
+          qs.set("projectId", projectFilterId);
+        }
+        const res = await fetch(`/api/web/scheduling/assignments?${qs.toString()}`, {
+          credentials: "include",
+        });
         const text = await res.text();
         const json = parseResponseJson(text);
         const parsed = schedulingAssignmentsListResponseSchema.safeParse(json);
         if (!res.ok || !parsed.success) {
           setAssignments([]);
+          void loadAddressGeo([]);
           setAssignmentError(
             locale === "en"
               ? "Could not load assignments."
@@ -386,8 +759,7 @@ export function SchedulingContent({
           );
           return;
         }
-        setAssignments(
-          parsed.data.assignments.map((a) => ({
+        const mapped = parsed.data.assignments.map((a) => ({
             id: a.id,
             date: a.date,
             atTime: a.startTime,
@@ -395,11 +767,25 @@ export function SchedulingContent({
             place: a.place ?? "",
             employeeId: a.employeeId,
             projectId: a.projectId,
+            addressId: a.addressId,
+            placeStreet: a.placeStreet ?? null,
+            placeHouseNumber: a.placeHouseNumber ?? null,
+            placePostalCode: a.placePostalCode ?? null,
+            placeCity: a.placeCity ?? null,
+            placeCountry: a.placeCountry ?? null,
+            placeLatitude: a.placeLatitude ?? null,
+            placeLongitude: a.placeLongitude ?? null,
             reminderMinutesBefore: a.reminderMinutesBefore,
-          })),
+          }));
+        setAssignments(mapped);
+        void loadAddressGeo(
+          parsed.data.assignments
+            .map((a) => a.addressId)
+            .filter((id): id is string => typeof id === "string"),
         );
       } catch {
         setAssignments([]);
+        void loadAddressGeo([]);
         setAssignmentError(
           locale === "en"
             ? "Could not load assignments."
@@ -409,7 +795,7 @@ export function SchedulingContent({
         setAssignmentBusy(false);
       }
     },
-    [locale],
+    [locale, loadAddressGeo, projectFilterId],
   );
 
   React.useEffect(() => {
@@ -423,6 +809,11 @@ export function SchedulingContent({
     }
     void loadDayAssignments(selectedDate);
   }, [loadDayAssignments, selectedDate]);
+
+  const reloadAfterReorder = React.useCallback(async () => {
+    if (!selectedDate) return;
+    await Promise.all([loadDayAssignments(selectedDate), loadAssignmentDates()]);
+  }, [loadAssignmentDates, loadDayAssignments, selectedDate]);
 
   React.useEffect(() => {
     const current = draftEmployeeId;
@@ -511,6 +902,14 @@ export function SchedulingContent({
   );
 
   async function addAssignment() {
+    if (!canEdit) {
+      setAssignmentError(
+        locale === "en"
+          ? "You do not have permission for this action."
+          : "Keine Berechtigung fuer diese Aktion.",
+      );
+      return;
+    }
     if (assignmentBusy || !selectedDate || !draftEmployeeId || !draftTitle.trim()) {
       return;
     }
@@ -526,13 +925,14 @@ export function SchedulingContent({
           date: selectedDate,
           startTime: draftTime,
           title: draftTitle.trim(),
-          place: draftPlace.trim() ? draftPlace.trim() : null,
+          ...buildSchedulingPlacePayload(draftPlaceValue),
           reminderMinutesBefore:
             draftReminderMinutes === "none"
               ? null
               : Number(draftReminderMinutes),
           projectId:
             draftProjectId === PROJECT_SELECT_NONE ? null : draftProjectId,
+          addressId: draftAddressId,
         }),
       });
       const text = await res.text();
@@ -551,6 +951,54 @@ export function SchedulingContent({
           );
           return;
         }
+        if (res.status === 404 && apiError === "address_not_found") {
+          setAssignmentError(
+            locale === "en"
+              ? "Site address not found or not accessible."
+              : "Baustellenadresse nicht gefunden oder kein Zugriff.",
+          );
+          return;
+        }
+        if (res.status === 403 && apiError === "forbidden") {
+          setAssignmentError(
+            locale === "en"
+              ? "You do not have permission for this action."
+              : "Keine Berechtigung fuer diese Aktion.",
+          );
+          return;
+        }
+        if (res.status === 404 && apiError === "employee_not_found") {
+          setAssignmentError(
+            locale === "en"
+              ? "Employee not found or archived."
+              : "Mitarbeitende nicht gefunden oder archiviert.",
+          );
+          return;
+        }
+        if (res.status === 409 && apiError === "employee_slot_conflict") {
+          setAssignmentError(
+            locale === "en"
+              ? "Conflict: employee already has an assignment in this slot."
+              : "Konflikt: Mitarbeitende sind in diesem Zeitslot bereits eingeplant.",
+          );
+          return;
+        }
+        if (res.status === 409 && apiError === "mutually_exclusive_conflict") {
+          setAssignmentError(
+            locale === "en"
+              ? "Conflict: mutually exclusive team members are already assigned at this time."
+              : "Konflikt: Gegenseitig ausgeschlossene Teammitglieder sind zu dieser Zeit bereits eingeplant.",
+          );
+          return;
+        }
+        if (res.status === 400 && apiError === "validation_error") {
+          setAssignmentError(
+            locale === "en"
+              ? "Please check the required fields."
+              : "Bitte die Pflichtfelder prüfen.",
+          );
+          return;
+        }
         setAssignmentError(
           locale === "en"
             ? "Could not create assignment."
@@ -559,8 +1007,11 @@ export function SchedulingContent({
         return;
       }
       setDraftTitle("");
-      setDraftPlace("");
       setDraftReminderMinutes("none");
+      if (draftProjectId === PROJECT_SELECT_NONE) {
+        setDraftPlaceValue({ ...SCHED_EMPTY_PLACE });
+        setDraftAddressId(null);
+      }
       if (parsed.data.dependencyWarnings.length > 0) {
         setDependencyWarnings(parsed.data.dependencyWarnings);
       }
@@ -580,13 +1031,35 @@ export function SchedulingContent({
   }
 
   function startEditAssignment(assignment: SchedulingAssignment) {
+    lastSyncedEditProjectIdRef.current =
+      assignment.projectId ?? PROJECT_SELECT_NONE;
     setEditAssignmentId(assignment.id);
     setEditDate(assignment.date);
     setEditTime(normalizeTimeForInput(assignment.atTime));
     setEditTitle(assignment.title);
-    setEditPlace(assignment.place);
+    const hasStructuredPlace =
+      (assignment.placeStreet ?? "").trim() !== "" ||
+      (assignment.placeHouseNumber ?? "").trim() !== "" ||
+      (assignment.placePostalCode ?? "").trim() !== "" ||
+      (assignment.placeCity ?? "").trim() !== "" ||
+      assignment.placeLatitude != null ||
+      assignment.placeLongitude != null;
+    const legacyPlaceLine =
+      !hasStructuredPlace && assignment.place.trim() !== ""
+        ? assignment.place.trim()
+        : "";
+    setEditPlaceValue({
+      street: (assignment.placeStreet ?? "").trim() || legacyPlaceLine,
+      houseNumber: assignment.placeHouseNumber ?? "",
+      postalCode: assignment.placePostalCode ?? "",
+      city: assignment.placeCity ?? "",
+      country: (assignment.placeCountry ?? "DE").toUpperCase().slice(0, 2),
+      latitude: assignment.placeLatitude,
+      longitude: assignment.placeLongitude,
+    });
     setEditEmployeeId(assignment.employeeId);
     setEditProjectId(assignment.projectId ?? PROJECT_SELECT_NONE);
+    setEditAddressId(assignment.addressId);
     const reminder = assignment.reminderMinutesBefore;
     setEditReminderMinutes(
       reminder === 15
@@ -608,10 +1081,21 @@ export function SchedulingContent({
       return;
     }
     setEditAssignmentId(null);
+    setEditAddressId(null);
+    setEditPlaceValue({ ...SCHED_EMPTY_PLACE });
+    lastSyncedEditProjectIdRef.current = null;
     setEditFieldErrors({});
   }
 
   async function saveAssignmentEdit() {
+    if (!canEdit) {
+      setAssignmentError(
+        locale === "en"
+          ? "You do not have permission for this action."
+          : "Keine Berechtigung fuer diese Aktion.",
+      );
+      return;
+    }
     if (!editAssignmentId) {
       return;
     }
@@ -652,11 +1136,12 @@ export function SchedulingContent({
             date: editDate,
             startTime: editTime,
             title: editTitle.trim(),
-            place: editPlace.trim() ? editPlace.trim() : null,
+            ...buildSchedulingPlacePayload(editPlaceValue),
             reminderMinutesBefore:
               editReminderMinutes === "none" ? null : Number(editReminderMinutes),
             projectId:
               editProjectId === PROJECT_SELECT_NONE ? null : editProjectId,
+            addressId: editAddressId,
           }),
         },
       );
@@ -680,11 +1165,27 @@ export function SchedulingContent({
           );
           return;
         }
+        if (res.status === 403 && apiError === "forbidden") {
+          setAssignmentError(
+            locale === "en"
+              ? "You do not have permission for this action."
+              : "Keine Berechtigung fuer diese Aktion.",
+          );
+          return;
+        }
         if (res.status === 404 && apiError === "project_not_found") {
           setAssignmentError(
             locale === "en"
               ? "Project not found or not accessible."
               : "Projekt nicht gefunden oder kein Zugriff.",
+          );
+          return;
+        }
+        if (res.status === 404 && apiError === "address_not_found") {
+          setAssignmentError(
+            locale === "en"
+              ? "Site address not found or not accessible."
+              : "Baustellenadresse nicht gefunden oder kein Zugriff.",
           );
           return;
         }
@@ -728,6 +1229,14 @@ export function SchedulingContent({
   }
 
   async function removeAssignment(id: string) {
+    if (!canEdit) {
+      setAssignmentError(
+        locale === "en"
+          ? "You do not have permission for this action."
+          : "Keine Berechtigung fuer diese Aktion.",
+      );
+      return;
+    }
     if (assignmentBusy || !selectedDate) {
       return;
     }
@@ -742,6 +1251,14 @@ export function SchedulingContent({
         },
       );
       if (!res.ok) {
+        if (res.status === 403) {
+          setAssignmentError(
+            locale === "en"
+              ? "You do not have permission for this action."
+              : "Keine Berechtigung fuer diese Aktion.",
+          );
+          return;
+        }
         setAssignmentError(
           locale === "en"
             ? "Could not remove assignment."
@@ -904,20 +1421,51 @@ export function SchedulingContent({
           <div className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h3 className="text-sm font-medium">{assignmentTitle}</h3>
-              {selectedDate ? (
-                <Button variant="outline" size="sm" asChild>
-                  <Link
-                    href={`/api/web/scheduling/assignments-ics?date=${encodeURIComponent(
-                      selectedDate,
-                    )}`}
-                  >
-                    {locale === "en"
-                      ? "Export calendar (.ics)"
-                      : "Kalender exportieren (.ics)"}
-                  </Link>
-                </Button>
-              ) : null}
+              <div className="flex flex-wrap items-center gap-2">
+                <Select value={activeProjectId} onValueChange={setActiveProjectId}>
+                  <SelectTrigger className="h-8 w-[220px]">
+                    <SelectValue
+                      placeholder={
+                        locale === "en" ? "All projects" : "Alle Projekte"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={PROJECT_SELECT_NONE}>
+                      {locale === "en" ? "All projects" : "Alle Projekte"}
+                    </SelectItem>
+                    {activeProjectSelectItems.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedDate && canEdit ? (
+                  <Button variant="outline" size="sm" asChild>
+                    <Link
+                      href={`/api/web/scheduling/assignments-ics?${new URLSearchParams(
+                        {
+                          ...(selectedDate ? { date: selectedDate } : {}),
+                          ...(projectFilterId ? { projectId: projectFilterId } : {}),
+                        },
+                      ).toString()}`}
+                    >
+                      {locale === "en"
+                        ? "Export calendar (.ics)"
+                        : "Kalender exportieren (.ics)"}
+                    </Link>
+                  </Button>
+                ) : null}
+              </div>
             </div>
+            {!canEdit ? (
+              <p className="text-xs text-muted-foreground">
+                {locale === "en"
+                  ? "Read-only mode: creating, editing, and removing assignments is disabled."
+                  : "Nur Lesemodus: Einsaetze koennen nicht angelegt, bearbeitet oder entfernt werden."}
+              </p>
+            ) : null}
             {assignmentError ? (
               <p className="text-sm text-destructive">{assignmentError}</p>
             ) : null}
@@ -931,6 +1479,7 @@ export function SchedulingContent({
                   type="time"
                   value={draftTime}
                   onChange={(ev) => setDraftTime(ev.target.value)}
+                  disabled={assignmentBusy || !canEdit}
                 />
               </div>
               <div className="grid gap-2">
@@ -940,6 +1489,7 @@ export function SchedulingContent({
                 <Select
                   value={draftEmployeeId}
                   onValueChange={setDraftEmployeeId}
+                  disabled={assignmentBusy || !canEdit}
                 >
                   <SelectTrigger id="sched-employee">
                     <SelectValue />
@@ -964,6 +1514,7 @@ export function SchedulingContent({
                       v as "none" | "15" | "30" | "60" | "120",
                     )
                   }
+                  disabled={assignmentBusy || !canEdit}
                 >
                   <SelectTrigger id="sched-reminder">
                     <SelectValue />
@@ -992,21 +1543,24 @@ export function SchedulingContent({
                     ev.preventDefault();
                     void addAssignment();
                   }}
+                  disabled={assignmentBusy || !canEdit}
                 />
               </div>
               <div className="grid gap-2 md:col-span-2">
-                <Label htmlFor="sched-place">
+                <Label id="sched-place-label">
                   {locale === "en" ? "Place" : "Ort"}
                 </Label>
-                <Input
-                  id="sched-place"
-                  value={draftPlace}
-                  onChange={(ev) => setDraftPlace(ev.target.value)}
-                  onKeyDown={(ev) => {
-                    if (ev.key !== "Enter") return;
-                    ev.preventDefault();
-                    void addAssignment();
+                <WebPlaceLookupFields
+                  idPrefix="sched-draft-place"
+                  copy={schedulingPlaceCopy}
+                  value={draftPlaceValue}
+                  onChange={(next) => {
+                    setDraftPlaceValue(next);
+                    if (next.latitude != null && next.longitude != null) {
+                      setDraftAddressId(null);
+                    }
                   }}
+                  className={assignmentBusy || !canEdit ? "pointer-events-none opacity-60" : undefined}
                 />
               </div>
               <div className="grid gap-2 md:col-span-2">
@@ -1014,6 +1568,7 @@ export function SchedulingContent({
                 <Select
                   value={draftProjectId}
                   onValueChange={setDraftProjectId}
+                  disabled={assignmentBusy || !canEdit}
                 >
                   <SelectTrigger id="sched-project">
                     <SelectValue />
@@ -1040,7 +1595,8 @@ export function SchedulingContent({
                     assignmentBusy ||
                     !selectedDate ||
                     !draftEmployeeId ||
-                    !draftTitle.trim()
+                    !draftTitle.trim() ||
+                    !canEdit
                   }
                 >
                   {assignmentBusy
@@ -1051,6 +1607,31 @@ export function SchedulingContent({
                 </Button>
               </div>
             </div>
+
+            {selectedDate && selectedDayAssignments.length > 0 ? (
+              <SchedulingMapPanel
+                locale={locale}
+                date={selectedDate}
+                employees={employees.map((e) => ({
+                  employeeId: e.employeeId,
+                  displayName: e.displayName,
+                }))}
+                assignments={selectedDayAssignments.map((a) => ({
+                  id: a.id,
+                  atTime: a.atTime,
+                  title: a.title,
+                  place: a.place,
+                  employeeId: a.employeeId,
+                  addressId: a.addressId,
+                  placeLatitude: a.placeLatitude,
+                  placeLongitude: a.placeLongitude,
+                }))}
+                addressGeoById={addressGeoById}
+                busy={addressGeoBusy}
+                canEdit={canEdit}
+                onReordered={reloadAfterReorder}
+              />
+            ) : null}
 
             {selectedDayAssignments.length === 0 ? (
               <p className="text-sm text-muted-foreground">
@@ -1092,7 +1673,7 @@ export function SchedulingContent({
                           variant="ghost"
                           size="sm"
                           onClick={() => startEditAssignment(a)}
-                          disabled={assignmentBusy}
+                          disabled={assignmentBusy || !canEdit}
                         >
                           {locale === "en" ? "Edit" : "Bearbeiten"}
                         </Button>
@@ -1103,7 +1684,7 @@ export function SchedulingContent({
                           onClick={() => {
                             void removeAssignment(a.id);
                           }}
-                          disabled={assignmentBusy}
+                          disabled={assignmentBusy || !canEdit}
                         >
                           {locale === "en" ? "Remove" : "Entfernen"}
                         </Button>
@@ -1233,14 +1814,20 @@ export function SchedulingContent({
               ) : null}
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="sched-edit-place">
+              <Label htmlFor="sched-edit-place-street">
                 {locale === "en" ? "Place" : "Ort"}
               </Label>
-              <Input
-                id="sched-edit-place"
-                value={editPlace}
-                onChange={(ev) => setEditPlace(ev.target.value)}
-                disabled={assignmentBusy}
+              <WebPlaceLookupFields
+                idPrefix="sched-edit-place"
+                copy={schedulingPlaceCopy}
+                value={editPlaceValue}
+                onChange={(next) => {
+                  setEditPlaceValue(next);
+                  if (next.latitude != null && next.longitude != null) {
+                    setEditAddressId(null);
+                  }
+                }}
+                className={assignmentBusy ? "pointer-events-none opacity-60" : undefined}
               />
               {editFieldErrors.place ? (
                 <p className="text-xs text-destructive">{editFieldErrors.place}</p>

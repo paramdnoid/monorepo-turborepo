@@ -160,6 +160,11 @@ export const customerAddresses = pgTable("customer_addresses", {
   postalCode: text("postal_code").notNull(),
   city: text("city").notNull(),
   country: text("country").notNull().default("DE"),
+  latitude: doublePrecision("latitude"),
+  longitude: doublePrecision("longitude"),
+  geocodedAt: timestamp("geocoded_at", { withTimezone: true }),
+  /** `manual` | `ors` — Freitext in DB, Validierung in API. */
+  geocodeSource: text("geocode_source"),
   isDefault: boolean("is_default").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
@@ -517,10 +522,25 @@ export const schedulingAssignments = pgTable(
       .references(() => employees.id, { onDelete: "cascade" }),
     date: date("date").notNull(),
     startTime: time("start_time").notNull(),
+    plannedDurationMinutes: integer("planned_duration_minutes").notNull().default(60),
+    windowStartTime: time("window_start_time"),
+    windowEndTime: time("window_end_time"),
     title: text("title").notNull(),
     place: text("place"),
+    /** Strukturierter Ort (Geocode); ergänzt `place` für Karte/Routing. */
+    placeStreet: text("place_street"),
+    placeHouseNumber: text("place_house_number"),
+    placePostalCode: text("place_postal_code"),
+    placeCity: text("place_city"),
+    /** ISO 3166-1 alpha-2 */
+    placeCountry: text("place_country"),
+    placeLatitude: doublePrecision("place_latitude"),
+    placeLongitude: doublePrecision("place_longitude"),
     reminderMinutesBefore: integer("reminder_minutes_before"),
     projectId: uuid("project_id").references(() => projects.id, {
+      onDelete: "set null",
+    }),
+    addressId: uuid("address_id").references(() => customerAddresses.id, {
       onDelete: "set null",
     }),
     createdAt: timestamp("created_at", { withTimezone: true })

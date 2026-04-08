@@ -100,9 +100,13 @@ import {
   createSchedulingAssignmentPatchHandler,
   createSchedulingAssignmentDeleteHandler,
   createSchedulingAssignmentPostHandler,
+  createSchedulingAssignmentsReorderHandler,
+  createSchedulingAddressesGeoHandler,
   createSchedulingAssignmentsIcsHandler,
   createSchedulingAssignmentsListHandler,
   createSchedulingDayHandler,
+  createSchedulingRoutingDirectionsHandler,
+  createSchedulingRoutingMatrixHandler,
 } from "./routes/scheduling.js";
 import {
   createWorkTimeEntriesListHandler,
@@ -312,6 +316,10 @@ export function createApp(options?: CreateAppOptions) {
   const employeeActivityList = createEmployeeActivityListHandler(getDb);
   const schedulingDay = createSchedulingDayHandler(getDb);
   const schedulingAssignmentsList = createSchedulingAssignmentsListHandler(getDb);
+  const schedulingAddressesGeo = createSchedulingAddressesGeoHandler(getDb);
+  const schedulingRoutingMatrix = createSchedulingRoutingMatrixHandler(getDb);
+  const schedulingRoutingDirections = createSchedulingRoutingDirectionsHandler(getDb);
+  const schedulingAssignmentsReorder = createSchedulingAssignmentsReorderHandler(getDb);
   const schedulingAssignmentPost = createSchedulingAssignmentPostHandler(getDb);
   const schedulingAssignmentPatch = createSchedulingAssignmentPatchHandler(getDb);
   const schedulingAssignmentDelete = createSchedulingAssignmentDeleteHandler(getDb);
@@ -471,6 +479,18 @@ export function createApp(options?: CreateAppOptions) {
   v1.post("/employees/:id/sick", orgMiddleware, employeeSickPost);
   v1.get("/scheduling/day", orgMiddleware, schedulingDay);
   v1.get("/scheduling/assignments", orgMiddleware, schedulingAssignmentsList);
+  v1.get("/scheduling/addresses", orgMiddleware, schedulingAddressesGeo);
+  v1.post("/scheduling/routing/matrix", orgMiddleware, schedulingRoutingMatrix);
+  v1.post(
+    "/scheduling/routing/directions",
+    orgMiddleware,
+    schedulingRoutingDirections,
+  );
+  v1.post(
+    "/scheduling/assignments/reorder",
+    orgMiddleware,
+    schedulingAssignmentsReorder,
+  );
   v1.post("/scheduling/assignments", orgMiddleware, schedulingAssignmentPost);
   v1.patch(
     "/scheduling/assignments/:id",

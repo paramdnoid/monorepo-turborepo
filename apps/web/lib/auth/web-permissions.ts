@@ -110,7 +110,7 @@ export function routeRequiresEditPermission(pathname: string): boolean {
   if (normalized === "/web/projects") {
     return true;
   }
-  if (normalized === "/web/scheduling" || normalized === "/web/work-time") {
+  if (normalized === "/web/work-time") {
     return true;
   }
   if (/^\/web\/sales\/(quotes|invoices)\/[^/]+$/.test(normalized)) {

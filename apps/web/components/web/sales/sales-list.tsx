@@ -734,15 +734,15 @@ export function SalesList({ locale, mode }: SalesListProps) {
   const rangeTo = total === 0 ? 0 : Math.min(total, page * pageSize + rows.length);
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-1">
-          <p className="text-sm text-muted-foreground">{copy.listHint}</p>
+    <div className="space-y-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-0.5">
+          <p className="text-xs text-muted-foreground">{copy.listHint}</p>
           {!canEdit ? (
             <p className="text-xs text-muted-foreground">{ui.readonlyHint}</p>
           ) : null}
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5">
           {canExport ? (
             <>
               <Button
@@ -797,67 +797,95 @@ export function SalesList({ locale, mode }: SalesListProps) {
         </div>
       </div>
 
-      <div className="grid gap-2 rounded-md border bg-card p-3 md:grid-cols-[minmax(0,1fr)_220px_160px_160px_auto] md:items-end">
-        <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground" htmlFor={`sales-search-${mode}`}>
-            {copy.customer}
-          </label>
-          <Input
-            id={`sales-search-${mode}`}
-            value={queryInput}
-            onChange={(e) => setQueryInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                const next = queryInput.trim();
-                setQuery(next);
-                setPage(0);
-              }
-            }}
-            placeholder={ui.searchPlaceholder}
-          />
+      <div className="grid grid-cols-1 gap-2 rounded-md border bg-card p-2 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_12.5rem_minmax(0,10.75rem)_minmax(0,10.75rem)_auto] xl:items-center">
+        <div className="min-w-0 sm:col-span-2 xl:col-span-1">
+          <div className="flex items-center gap-2">
+            <label
+              className="shrink-0 text-[11px] font-medium text-muted-foreground leading-none"
+              htmlFor={`sales-search-${mode}`}
+            >
+              {copy.customer}
+            </label>
+            <Input
+              id={`sales-search-${mode}`}
+              value={queryInput}
+              onChange={(e) => setQueryInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  const next = queryInput.trim();
+                  setQuery(next);
+                  setPage(0);
+                }
+              }}
+              placeholder={ui.searchPlaceholder}
+              className="min-w-0 flex-1"
+            />
+          </div>
         </div>
-        <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground" htmlFor={`sales-status-${mode}`}>
-            {copy.status}
-          </label>
-          <select
-            id={`sales-status-${mode}`}
-            className="h-9 w-full rounded-md border bg-background px-3 text-sm"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="all">{ui.statusAll}</option>
-            {statusOptions.map((status) => (
-              <option key={status} value={status}>
-                {statusLabel(status)}
-              </option>
-            ))}
-          </select>
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <label
+              className="shrink-0 text-[11px] font-medium text-muted-foreground leading-none"
+              htmlFor={`sales-status-${mode}`}
+            >
+              {copy.status}
+            </label>
+            <select
+              id={`sales-status-${mode}`}
+              className="h-8 min-w-0 flex-1 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm dark:bg-input/30"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="all">{ui.statusAll}</option>
+              {statusOptions.map((status) => (
+                <option key={status} value={status}>
+                  {statusLabel(status)}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
-        <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground" htmlFor={`sales-date-from-${mode}`}>
-            {ui.from}
-          </label>
-          <Input
-            id={`sales-date-from-${mode}`}
-            type="date"
-            value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-          />
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <label
+              className="shrink-0 text-[11px] font-medium text-muted-foreground leading-none"
+              htmlFor={`sales-date-from-${mode}`}
+            >
+              {ui.from}
+            </label>
+            <Input
+              id={`sales-date-from-${mode}`}
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="min-w-0 flex-1"
+            />
+          </div>
         </div>
-        <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground" htmlFor={`sales-date-to-${mode}`}>
-            {ui.to}
-          </label>
-          <Input
-            id={`sales-date-to-${mode}`}
-            type="date"
-            value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
-          />
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <label
+              className="shrink-0 text-[11px] font-medium text-muted-foreground leading-none"
+              htmlFor={`sales-date-to-${mode}`}
+            >
+              {ui.to}
+            </label>
+            <Input
+              id={`sales-date-to-${mode}`}
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="min-w-0 flex-1"
+            />
+          </div>
         </div>
-        <Button type="button" variant="outline" onClick={onResetFilters}>
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full justify-center sm:col-span-2 xl:col-span-1 xl:w-auto xl:justify-start"
+          onClick={onResetFilters}
+        >
           {ui.clear}
         </Button>
       </div>
@@ -870,30 +898,36 @@ export function SalesList({ locale, mode }: SalesListProps) {
       ) : null}
 
       {!loading && rows.length > 0 && canBatch && canArchive ? (
-        <div className="flex flex-wrap items-center gap-2 rounded-md border bg-card p-3">
-          <span className="text-xs text-muted-foreground">
+        <div className="flex flex-col gap-2 rounded-md border bg-card p-2 sm:flex-row sm:flex-wrap sm:items-center">
+          <span className="text-[11px] text-muted-foreground sm:shrink-0">
             {ui.selectedCount.replace("{n}", String(selectedIds.length))}
           </span>
-          <label className="text-xs text-muted-foreground" htmlFor={`sales-batch-status-${mode}`}>
-            {ui.targetStatus}
-          </label>
-          <select
-            id={`sales-batch-status-${mode}`}
-            className="h-9 rounded-md border bg-background px-3 text-sm"
-            value={batchStatusTarget}
-            onChange={(e) => setBatchStatusTarget(e.target.value)}
-            disabled={batchBusy}
-          >
-            {statusOptions.map((status) => (
-              <option key={status} value={status}>
-                {statusLabel(status)}
-              </option>
-            ))}
-          </select>
+          <div className="flex min-w-0 flex-1 items-center gap-2 sm:max-w-sm sm:flex-none">
+            <label
+              className="shrink-0 text-[11px] font-medium text-muted-foreground leading-none"
+              htmlFor={`sales-batch-status-${mode}`}
+            >
+              {ui.targetStatus}
+            </label>
+            <select
+              id={`sales-batch-status-${mode}`}
+              className="h-8 min-w-0 flex-1 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm dark:bg-input/30"
+              value={batchStatusTarget}
+              onChange={(e) => setBatchStatusTarget(e.target.value)}
+              disabled={batchBusy}
+            >
+              {statusOptions.map((status) => (
+                <option key={status} value={status}>
+                  {statusLabel(status)}
+                </option>
+              ))}
+            </select>
+          </div>
           <Button
             type="button"
             size="sm"
             variant="secondary"
+            className="w-full shrink-0 sm:w-auto"
             disabled={selectedIds.length === 0 || batchBusy}
             onClick={() => void handleApplyBatchStatus()}
           >
@@ -903,13 +937,13 @@ export function SalesList({ locale, mode }: SalesListProps) {
       ) : null}
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           {locale === "en" ? "Loading…" : "Laden …"}
         </p>
       ) : null}
 
       {!loading && !error && rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           {query || statusFilter !== "all" || dateFrom || dateTo
             ? ui.noFilteredResults
             : mode === "quotes"
@@ -919,12 +953,12 @@ export function SalesList({ locale, mode }: SalesListProps) {
       ) : null}
 
       {!loading && rows.length > 0 ? (
-        <div className="rounded-md border bg-card">
+        <div className="min-w-0 rounded-md border bg-card">
           <Table>
             <TableHeader>
               <TableRow>
                 {canBatch ? (
-                  <TableHead className="w-[1%] p-2">
+                  <TableHead className="h-9 w-[1%] px-1.5">
                     <Checkbox
                       checked={
                         allOnPageSelected
@@ -938,60 +972,63 @@ export function SalesList({ locale, mode }: SalesListProps) {
                     />
                   </TableHead>
                 ) : null}
-                <TableHead aria-sort={ariaSort("documentNumber")}>
+                <TableHead className="h-9" aria-sort={ariaSort("documentNumber")}>
                   <button
                     type="button"
-                    className="inline-flex items-center gap-1 hover:text-foreground"
+                    className="inline-flex items-center gap-0.5 hover:text-foreground"
                     onClick={() => toggleSort("documentNumber")}
                   >
                     {copy.docNumber} <span aria-hidden>{sortGlyph("documentNumber")}</span>
                     <span className="sr-only">{sortSrText("documentNumber")}</span>
                   </button>
                 </TableHead>
-                <TableHead aria-sort={ariaSort("customerLabel")}>
+                <TableHead
+                  className="h-9 min-w-0 max-xl:whitespace-normal"
+                  aria-sort={ariaSort("customerLabel")}
+                >
                   <button
                     type="button"
-                    className="inline-flex items-center gap-1 hover:text-foreground"
+                    className="inline-flex max-w-full items-center gap-0.5 text-left hover:text-foreground xl:whitespace-nowrap"
                     onClick={() => toggleSort("customerLabel")}
                   >
                     {copy.customer} <span aria-hidden>{sortGlyph("customerLabel")}</span>
                     <span className="sr-only">{sortSrText("customerLabel")}</span>
                   </button>
                 </TableHead>
-                <TableHead aria-sort={ariaSort("status")}>
+                <TableHead className="h-9" aria-sort={ariaSort("status")}>
                   <button
                     type="button"
-                    className="inline-flex items-center gap-1 hover:text-foreground"
+                    className="inline-flex items-center gap-0.5 hover:text-foreground"
                     onClick={() => toggleSort("status")}
                   >
                     {copy.status} <span aria-hidden>{sortGlyph("status")}</span>
                     <span className="sr-only">{sortSrText("status")}</span>
                   </button>
                 </TableHead>
-                <TableHead className="text-right" aria-sort={ariaSort("totalCents")}>
+                <TableHead className="h-9 text-right" aria-sort={ariaSort("totalCents")}>
                   <button
                     type="button"
-                    className="inline-flex items-center gap-1 hover:text-foreground"
+                    className="inline-flex items-center gap-0.5 hover:text-foreground"
                     onClick={() => toggleSort("totalCents")}
                   >
                     {copy.total} <span aria-hidden>{sortGlyph("totalCents")}</span>
                     <span className="sr-only">{sortSrText("totalCents")}</span>
                   </button>
                 </TableHead>
-                <TableHead aria-sort={ariaSort("extraDate")}>
+                <TableHead className="h-9" aria-sort={ariaSort("extraDate")}>
                   <button
                     type="button"
-                    className="inline-flex items-center gap-1 hover:text-foreground"
+                    className="inline-flex items-center gap-0.5 hover:text-foreground"
                     onClick={() => toggleSort("extraDate")}
                   >
                     {extraHead} <span aria-hidden>{sortGlyph("extraDate")}</span>
                     <span className="sr-only">{sortSrText("extraDate")}</span>
                   </button>
                 </TableHead>
-                <TableHead aria-sort={ariaSort("updatedAt")}>
+                <TableHead className="h-9" aria-sort={ariaSort("updatedAt")}>
                   <button
                     type="button"
-                    className="inline-flex items-center gap-1 hover:text-foreground"
+                    className="inline-flex items-center gap-0.5 hover:text-foreground"
                     onClick={() => toggleSort("updatedAt")}
                   >
                     {copy.date} <span aria-hidden>{sortGlyph("updatedAt")}</span>
@@ -1004,7 +1041,7 @@ export function SalesList({ locale, mode }: SalesListProps) {
               {rows.map((r) => (
                 <TableRow key={r.id}>
                   {canBatch ? (
-                    <TableCell className="w-[1%] p-2 align-middle">
+                    <TableCell className="w-[1%] p-1.5 align-middle">
                       <Checkbox
                         checked={selectedIds.includes(r.id)}
                         onCheckedChange={() => toggleRow(r.id)}
@@ -1012,7 +1049,7 @@ export function SalesList({ locale, mode }: SalesListProps) {
                       />
                     </TableCell>
                   ) : null}
-                  <TableCell className="font-medium">
+                  <TableCell className="p-1.5 font-medium">
                     <Link
                       href={`${baseHref}/${r.id}`}
                       className="text-primary underline-offset-4 hover:underline"
@@ -1020,15 +1057,17 @@ export function SalesList({ locale, mode }: SalesListProps) {
                       {r.documentNumber}
                     </Link>
                   </TableCell>
-                  <TableCell>{r.customerLabel}</TableCell>
-                  <TableCell>{statusLabel(r.status)}</TableCell>
-                  <TableCell className="text-right tabular-nums">
+                  <TableCell className="p-1.5 min-w-0 max-w-[min(100%,20rem)] whitespace-normal wrap-break-word xl:max-w-none xl:whitespace-nowrap">
+                    {r.customerLabel}
+                  </TableCell>
+                  <TableCell className="p-1.5">{statusLabel(r.status)}</TableCell>
+                  <TableCell className="p-1.5 text-right tabular-nums">
                     {formatMinorCurrency(r.totalCents, r.currency, locale)}
                   </TableCell>
-                  <TableCell className="text-muted-foreground">
+                  <TableCell className="p-1.5 text-muted-foreground">
                     {formatDate(r.extra, locale)}
                   </TableCell>
-                  <TableCell className="text-muted-foreground">
+                  <TableCell className="p-1.5 text-muted-foreground">
                     {formatDate(r.updatedAt, locale)}
                   </TableCell>
                 </TableRow>
@@ -1039,13 +1078,13 @@ export function SalesList({ locale, mode }: SalesListProps) {
       ) : null}
 
       {!loading && !error ? (
-        <div className="flex flex-col gap-2 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-1.5 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
           <span>
             {locale === "en"
               ? `${rangeFrom}-${rangeTo} of ${total}`
               : `${rangeFrom}-${rangeTo} von ${total}`}
           </span>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <Button
               type="button"
               variant="outline"

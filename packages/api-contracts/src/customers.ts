@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { employeeGeocodeSourceSchema } from "./employees.js";
+
 export const customerAddressKindSchema = z.enum([
   "billing",
   "shipping",
@@ -16,6 +18,38 @@ const optionalTrimmedNull = z
   .union([z.string().trim().max(4000), z.null()])
   .optional();
 
+function coordsRefine(
+  ctx: z.RefinementCtx,
+  data: { latitude?: number | null; longitude?: number | null },
+) {
+  const hasLat = data.latitude != null;
+  const hasLng = data.longitude != null;
+  if (hasLat !== hasLng) {
+    ctx.addIssue({
+      code: "custom",
+      message: "latitude_and_longitude_together",
+      path: hasLat ? ["longitude"] : ["latitude"],
+    });
+    return;
+  }
+  if (hasLat && data.latitude != null) {
+    const latitude = data.latitude;
+    if (latitude < -90 || latitude > 90) {
+      ctx.addIssue({ code: "custom", message: "latitude_range", path: ["latitude"] });
+    }
+  }
+  if (hasLng && data.longitude != null) {
+    const longitude = data.longitude;
+    if (longitude < -180 || longitude > 180) {
+      ctx.addIssue({
+        code: "custom",
+        message: "longitude_range",
+        path: ["longitude"],
+      });
+    }
+  }
+}
+
 export const customerAddressSchema = z.object({
   id: z.string().uuid(),
   kind: customerAddressKindSchema,
@@ -26,6 +60,10 @@ export const customerAddressSchema = z.object({
   postalCode: z.string(),
   city: z.string(),
   country: z.string(),
+  latitude: z.number().nullable(),
+  longitude: z.number().nullable(),
+  geocodedAt: z.string().nullable(),
+  geocodeSource: employeeGeocodeSourceSchema.nullable(),
   isDefault: z.boolean(),
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -127,10 +165,18 @@ const addressInputBase = z.object({
     .length(2)
     .regex(/^[A-Z]{2}$/)
     .default("DE"),
+  latitude: z.number().finite().nullable().optional().default(null),
+  longitude: z.number().finite().nullable().optional().default(null),
+  geocodeSource: z
+    .union([employeeGeocodeSourceSchema, z.null()])
+    .optional()
+    .default(null),
   isDefault: z.boolean().optional().default(false),
 });
 
-export const customerCreateAddressSchema = addressInputBase;
+export const customerCreateAddressSchema = addressInputBase.superRefine((data, ctx) => {
+  coordsRefine(ctx, data);
+});
 
 export const customerCreateSchema = z.object({
   displayName: z.string().trim().min(1).max(400),
@@ -230,7 +276,22 @@ export const customerPatchSchema = z.object({
 
 export type CustomerPatchInput = z.infer<typeof customerPatchSchema>;
 
-export const customerPatchAddressSchema = addressInputBase.partial();
+export const customerPatchAddressSchema = addressInputBase
+  .partial()
+  .superRefine((data, ctx) => {
+    if (data.latitude === undefined && data.longitude === undefined) {
+      return;
+    }
+    if (data.latitude === undefined || data.longitude === undefined) {
+      ctx.addIssue({
+        code: "custom",
+        message: "latitude_and_longitude_together",
+        path: data.latitude === undefined ? ["latitude"] : ["longitude"],
+      });
+      return;
+    }
+    coordsRefine(ctx, data);
+  });
 
 export type CustomerPatchAddressInput = z.infer<
   typeof customerPatchAddressSchema

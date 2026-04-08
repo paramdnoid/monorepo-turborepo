@@ -120,6 +120,11 @@ export function CustomersCustomerDetailContent({
     city: "",
     country: "DE",
   });
+  const [addGeo, setAddGeo] = useState<{
+    latitude: number | null;
+    longitude: number | null;
+    geocodeSource: CustomerDetail["addresses"][number]["geocodeSource"];
+  }>({ latitude: null, longitude: null, geocodeSource: null });
   const [addBusy, setAddBusy] = useState(false);
   const [newAddressOpen, setNewAddressOpen] = useState(false);
 
@@ -258,6 +263,7 @@ export function CustomersCustomerDetailContent({
       city: "",
       country: "DE",
     });
+    setAddGeo({ latitude: null, longitude: null, geocodeSource: null });
     setAddKind("billing");
   }, [newAddressOpen]);
 
@@ -441,6 +447,7 @@ export function CustomersCustomerDetailContent({
       toast.error(copy.validation);
       return;
     }
+    const hasCoords = addGeo.latitude != null && addGeo.longitude != null;
     setAddBusy(true);
     try {
       const res = await fetch(`/api/web/customers/${customerId}/addresses`, {
@@ -460,6 +467,9 @@ export function CustomersCustomerDetailContent({
             0,
             2,
           ),
+          latitude: hasCoords ? addGeo.latitude : null,
+          longitude: hasCoords ? addGeo.longitude : null,
+          geocodeSource: hasCoords ? addGeo.geocodeSource ?? "ors" : null,
           isDefault: true,
         }),
       });
@@ -939,6 +949,12 @@ export function CustomersCustomerDetailContent({
                     ? s.addressLine2.trim()
                     : prev.line2,
                 }));
+                const hasCoords = s.latitude != null && s.longitude != null;
+                setAddGeo({
+                  latitude: hasCoords ? s.latitude : null,
+                  longitude: hasCoords ? s.longitude : null,
+                  geocodeSource: hasCoords ? "ors" : null,
+                });
               }}
             />
             <div className="grid gap-2">
